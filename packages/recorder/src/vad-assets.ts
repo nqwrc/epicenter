@@ -32,6 +32,14 @@ const ortDist = dirname(requireFromVad.resolve('onnxruntime-web'));
 export const vadAssetSources: string[] = [
 	join(vadDist, 'vad.worklet.bundle.min.js'),
 	join(vadDist, 'silero_vad_v5.onnx'),
+	// Both Silero weights ship because the two entry points disagree on which
+	// one they run. The live microphone VAD is asked for `v5`, while the offline
+	// pass `containsSpeech` uses (`NonRealTimeVAD`) constructs `SileroLegacy`
+	// unconditionally and exposes no way to choose. Serving only v5 leaves the
+	// offline model fetch 404ing, and that failure is deliberately silent: the
+	// gate answers "there was speech" whenever it cannot tell, so the symptom
+	// would not be an error but the silence gate quietly never firing.
+	join(vadDist, 'silero_vad_legacy.onnx'),
 	join(ortDist, 'ort-wasm-simd-threaded.mjs'),
 	join(ortDist, 'ort-wasm-simd-threaded.wasm'),
 ].map((path) => path.replace(/\\/g, '/'));

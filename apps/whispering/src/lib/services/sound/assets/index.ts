@@ -1,4 +1,4 @@
-import { base } from '$app/paths';
+import { WHISPERING_BASE_PATHNAME } from '#platform/base-path';
 import type { WhisperingSoundNames } from '$lib/constants/sounds';
 import blipSoundSrc from './sound_ex_machina_Button_Blip.mp3';
 import stopVadSoundSrc from './zapsplat_household_alarm_clock_large_snooze_button_press_001_12968.mp3';
@@ -20,14 +20,14 @@ import recipeCompleteSoundSrc from './zapsplat_multimedia_notification_alert_pin
 // These three are `static/` rather than bundled imports on purpose: the audio is
 // not committed, and a bundled import of a missing file fails the build for
 // everyone instead of degrading to silence on the one machine that has it. That
-// is also why `base` is spelled out here. Vite rewrites the base into the URL of
+// is also why the base is spelled out here. Vite rewrites the base into the URL of
 // an imported asset, but a hand-written absolute path is emitted verbatim, and
 // under the Epicenter host this app is served from `/apps/whispering`
 // (`svelte.config.js`), so the bare `/sounds/...` form resolved against the host
 // root and 404'd on every dictation.
-const wisprStartSoundSrc = `${base}/sounds/wispr/dictation-start.wav`;
-const wisprStopSoundSrc = `${base}/sounds/wispr/dictation-stop.wav`;
-const wisprPasteSoundSrc = `${base}/sounds/wispr/paste.wav`;
+const wisprStartSoundSrc = `${WHISPERING_BASE_PATHNAME}/sounds/wispr/dictation-start.wav`;
+const wisprStopSoundSrc = `${WHISPERING_BASE_PATHNAME}/sounds/wispr/dictation-stop.wav`;
+const wisprPasteSoundSrc = `${WHISPERING_BASE_PATHNAME}/sounds/wispr/paste.wav`;
 
 export const soundSources = {
 	'manual-start': wisprStartSoundSrc,

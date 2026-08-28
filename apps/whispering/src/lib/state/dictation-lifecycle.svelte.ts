@@ -135,8 +135,13 @@ function createDictationLifecycle() {
 		},
 
 		/**
-		 * A new dictation is starting: clear any terminal outcome from the last one
-		 * so it does not linger into this attempt.
+		 * Retire the outcome track: no dictation is worth showing.
+		 *
+		 * Two callers mean the same thing by it. A new dictation is starting, so
+		 * the last one's terminal outcome must not linger into this attempt; or an
+		 * attempt produced no words at all, and a person who said nothing should
+		 * see nothing rather than a receipt for it (`operations/pipeline.ts`).
+		 * Only the outcome is cleared, never the live capture.
 		 */
 		reset(): void {
 			clearRetireTimer();
