@@ -1055,6 +1055,23 @@ fn launch_host(app: &DesktopAppHandle, port: u16) -> Result<LaunchedHost> {
         .stdout(Stdio::piped())
         .stderr(Stdio::from(log.try_clone()?));
 
+    // The bundled host is a console-subsystem executable, because `bun build
+    // --compile` produces one and it stays runnable from a terminal that way.
+    // The desktop binary is a GUI one, so it owns no console to lend the child,
+    // and Windows answers by allocating a fresh one: a command prompt opened
+    // beside the app and sat there for as long as the host lived. Say the child
+    // gets no console instead. This does not touch the pipes above, which is
+    // the whole protocol with the host (the boot frame, the auth frames, and
+    // stderr into the log file); a console is only ever where a console
+    // program's output goes when nobody has redirected it, and everything here
+    // is redirected.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
     let mut child = command
         .spawn()
         .context("spawn the bundled Bun application host")?;
