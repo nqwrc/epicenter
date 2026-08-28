@@ -42,6 +42,16 @@ export const vadAssetSources: string[] = [
 	join(vadDist, 'silero_vad_legacy.onnx'),
 	join(ortDist, 'ort-wasm-simd-threaded.mjs'),
 	join(ortDist, 'ort-wasm-simd-threaded.wasm'),
+	// The jsep pair as well, because the two VAD entry points reach onnxruntime
+	// by different routes and ask for different builds. The live microphone VAD
+	// runs inside `vad.worklet.bundle.min.js`, which carries its own runtime, so
+	// the plain build was all it needed. The offline pass behind `containsSpeech`
+	// imports `onnxruntime-web`'s main entry instead, and that is the
+	// webgpu-capable jsep build, which loads `ort-wasm-simd-threaded.jsep.*` by
+	// name. Serving only the plain files 404s that fetch and takes the whole
+	// speech gate down with it.
+	join(ortDist, 'ort-wasm-simd-threaded.jsep.mjs'),
+	join(ortDist, 'ort-wasm-simd-threaded.jsep.wasm'),
 ].map((path) => path.replace(/\\/g, '/'));
 
 /**

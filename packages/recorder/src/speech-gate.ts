@@ -1,5 +1,17 @@
 import { NonRealTimeVAD } from '@ricky0123/vad-web';
+import { defineErrors, extractErrorMessage } from 'wellcrafted/error';
+import { createLogger } from 'wellcrafted/logger';
 import { DEFAULT_VAD_ASSET_PATH } from './vad-recorder';
+
+const log = createLogger('epicenter/recorder/speech-gate');
+
+const SpeechGateError = defineErrors({
+	/** The gate could not run, so the caller was told there was speech. */
+	Unavailable: ({ cause }: { cause: unknown }) => ({
+		message: `Could not check the recording for speech, so it was treated as speech: ${extractErrorMessage(cause)}`,
+		cause,
+	}),
+});
 
 /**
  * Ask whether a finished recording contains any speech at all.
@@ -82,7 +94,13 @@ export async function containsSpeech({
 			return true;
 		}
 		return false;
-	} catch {
+	} catch (cause) {
+		// Failing open is correct; failing open in silence is not. A gate that
+		// cannot run looks identical from the outside to a gate that ran and found
+		// speech, so without this line the only symptom of a broken gate is the
+		// hallucinated transcript it was added to prevent, and the only way to
+		// discover it is a user reporting the original bug. Say so once, here.
+		log.warn(SpeechGateError.Unavailable({ cause }));
 		return true;
 	}
 }
