@@ -1,91 +1,37 @@
-//! macOS-only: the recording overlay as a non-activating `NSPanel`.
+//! The recording overlay: a hidden, non-activating window that shows
+//! Whispering's recording status without ever stealing focus from whatever
+//! app the user is dictating into.
 //!
-//! A plain always-on-top `WebviewWindow` still activates the app when clicked:
-//! `focusable: false` only blocks keyboard focus, not application activation.
-//! That would yank the Whispering window forward every time the user clicks
-//! stop/cancel on the overlay while dictating into another app. An `NSPanel`
-//! with `can_become_key_window: false` never activates the app, so the
-//! overlay's buttons work without stealing focus or raising the Whispering window.
-//!
-//! The panel is created hidden at startup and registered under the same
-//! `recording-overlay` label the JS window manager looks up, so the frontend
-//! drives show/hide/position/levels exactly as it does for the plain
-//! `WebviewWindow` on other platforms (the manager already prefers an existing
-//! window via `getByLabel` before creating one).
+//! One platform module is compiled per target; each owns its own construction
+//! (there is no shared window-building API to factor out, since macOS uses an
+//! `NSPanel` and Windows restyles a plain `WebviewWindow` after the fact) but
+//! both register under the same `WINDOW_LABEL`, sized to the same fixed pill
+//! footprint, so the frontend's `getByLabel`-then-create window manager works
+//! identically everywhere it runs.
 
-// `Manager` is needed in scope because the `tauri_panel!` macro expands to code
-// that calls `.app_handle()` on the window.
-use tauri::webview::NewWindowResponse;
-use tauri::{AppHandle, Manager, WebviewUrl};
-use tauri_nspanel::{tauri_panel, CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "windows")]
+mod windows;
 
-// Must stay in sync with `RECORDING_OVERLAY_WINDOW_LABEL` and the pill's size in
-// Whispering's `recording-overlay/window-manager.tauri.ts`.
+// Must stay in sync with `RECORDING_OVERLAY_WINDOW_LABEL` and `OVERLAY_WIDTH`
+// / `OVERLAY_HEIGHT` in Whispering's `recording-overlay/window-manager.tauri.ts`.
 pub const WINDOW_LABEL: &str = "recording-overlay";
-const OVERLAY_WIDTH: f64 = 224.0;
-const OVERLAY_HEIGHT: f64 = 40.0;
+const OVERLAY_WIDTH: f64 = 300.0;
+const OVERLAY_HEIGHT: f64 = 72.0;
 
-tauri_panel! {
-    panel!(RecordingOverlayPanel {
-        config: {
-            can_become_key_window: false,
-            is_floating_panel: true
-        }
-    })
-}
-
-/// Create the recording overlay panel, hidden. The frontend repositions and
+/// Create the recording overlay window, hidden. The frontend repositions and
 /// shows it once recording starts, so the initial position here is unused.
 pub fn create_recording_overlay(
-    app: &AppHandle,
+    app: &tauri::AppHandle,
     url: tauri::Url,
     initialization_script: String,
     port: u16,
 ) -> tauri::Result<()> {
-    if app.get_webview_window(WINDOW_LABEL).is_some() {
-        return Ok(());
-    }
+    #[cfg(target_os = "macos")]
+    let result = macos::create_recording_overlay(app, url, initialization_script, port);
+    #[cfg(target_os = "windows")]
+    let result = windows::create_recording_overlay(app, url, initialization_script, port);
 
-    let panel = PanelBuilder::<_, RecordingOverlayPanel>::new(app, WINDOW_LABEL)
-        .url(WebviewUrl::External(url))
-        .title("Recording")
-        .position(tauri::Position::Logical(tauri::LogicalPosition {
-            x: 0.0,
-            y: 0.0,
-        }))
-        .size(tauri::Size::Logical(tauri::LogicalSize {
-            width: OVERLAY_WIDTH,
-            height: OVERLAY_HEIGHT,
-        }))
-        .level(PanelLevel::Status)
-        // Borderless + non-activating: clicking the panel (e.g. the stop button)
-        // must never activate Epicenter or raise its Whispering window while the
-        // user is dictating into another app. `no_activate` only covers window
-        // creation; this style bit is what makes clicks non-activating.
-        .style_mask(StyleMask::empty().nonactivating_panel())
-        .has_shadow(false)
-        .transparent(true)
-        .no_activate(true)
-        // Round the panel itself to the pill shape (radius = half the height) so
-        // there is no square window backing peeking past the CSS pill's rounded
-        // corners.
-        .corner_radius(OVERLAY_HEIGHT / 2.0)
-        // accept_first_mouse so a click lands on the stop/cancel button even
-        // when the panel is not the active window (it never activates).
-        .with_window(move |w| {
-            w.decorations(false)
-                .transparent(true)
-                .accept_first_mouse(true)
-                .initialization_script(initialization_script)
-                .on_navigation(move |url| crate::is_allowed_navigation(url, port))
-                .on_new_window(|_, _| NewWindowResponse::Deny)
-        })
-        .collection_behavior(
-            CollectionBehavior::new()
-                .can_join_all_spaces()
-                .full_screen_auxiliary(),
-        )
-        .build()?;
-    panel.hide();
-    Ok(())
+    result
 }

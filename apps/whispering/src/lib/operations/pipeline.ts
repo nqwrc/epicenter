@@ -166,8 +166,10 @@ export async function processRecordingPipeline(
 		// The delivered transcript is the dictation receipt. Every reach is a success,
 		// even when history could not be confirmed, so this is always `delivered`; the reach decides
 		// whether the pill flashes (clean `output`) or persists (a reduced
-		// `clipboard`).
-		dictationLifecycle.markDelivered(transcriptDelivery.reach);
+		// `clipboard`). The word count rides the same event so the pill can show
+		// "N words" without a second round trip for the delivered text.
+		const wordCount = deliveredText.trim().split(/\s+/).filter(Boolean).length;
+		dictationLifecycle.markDelivered(transcriptDelivery.reach, wordCount);
 	} else {
 		transcribeLoading?.resolve(transcribeNotice);
 	}

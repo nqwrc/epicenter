@@ -76,7 +76,7 @@ use shell::{
 #[cfg(desktop)]
 pub mod keyboard;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub mod overlay;
 
 #[cfg(target_os = "macos")]
@@ -1392,7 +1392,7 @@ fn create_windows_on_main_thread(
     let token = token.to_string();
     app.clone().run_on_main_thread(move || {
         let result = (|| {
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             create_recording_overlay(&app, port, &token)?;
 
             ensure_window(&app, BuiltInApp::Whispering, port, &token, false)?;
@@ -1408,7 +1408,7 @@ fn create_windows_on_main_thread(
         .context("the main thread stopped before creating Epicenter windows")?
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn create_recording_overlay(app: &DesktopAppHandle, port: u16, token: &str) -> Result<()> {
     let origin = origin(port);
     let url: tauri::Url = format!("{origin}/apps/whispering/recording-overlay/").parse()?;
@@ -1489,7 +1489,7 @@ fn invalidate_windows(app: &DesktopAppHandle) {
                 let _ = window.hide();
             }
         }
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
         if let Some(window) = app.get_webview_window(overlay::WINDOW_LABEL) {
             if window.destroy().is_err() {
                 let _ = window.hide();

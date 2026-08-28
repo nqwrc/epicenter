@@ -35,7 +35,7 @@ export type DictationOutcome =
 	| { kind: 'none' }
 	| { kind: 'transcribing' }
 	| { kind: 'polishing' }
-	| { kind: 'delivered'; reach: DeliveryReach }
+	| { kind: 'delivered'; reach: DeliveryReach; wordCount?: number }
 	| ({ kind: 'failed' } & DictationFailure);
 
 export type DictationLifecycle = {
@@ -158,10 +158,14 @@ function createDictationLifecycle() {
 		 * is no notification for a reduced reach (ADR-0039): the persistent pill tag
 		 * and the recordings row are the surfaces, and a revoked Accessibility grant
 		 * already raises its own standing notice.
+		 *
+		 * `wordCount` is the delivered text's word count, optional so a caller that
+		 * has no text handy (tests, future callers) can omit it; the pill falls
+		 * back to a plain "Delivered" label when absent.
 		 */
-		markDelivered(reach: DeliveryReach): void {
+		markDelivered(reach: DeliveryReach, wordCount?: number): void {
 			clearDeliveredTimer();
-			outcome = { kind: 'delivered', reach };
+			outcome = { kind: 'delivered', reach, wordCount };
 			// Only the clean reach auto-retires; a reduced reach stays put.
 			if (reach !== 'output') return;
 			deliveredTimer = setTimeout(() => {
