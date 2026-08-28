@@ -782,6 +782,11 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to build Epicenter")
         .run(|app, event| match event {
+            // `Reopen` is a macOS-only variant (the Dock-icon click that asks a
+            // still-running app for a window back). It is absent from `RunEvent`
+            // on every other platform, so matching on it unconditionally fails
+            // to compile off macOS; gate the arm rather than the whole match.
+            #[cfg(target_os = "macos")]
             RunEvent::Reopen { .. } => request_window(app, BuiltInApp::Home),
             RunEvent::Exit => shutdown_host(app),
             _ => {}
