@@ -33,6 +33,7 @@ import { defineData, type KvOf, type RowOf } from '@epicenter/data/definition';
 /** Runtime-minted structural row ids. */
 export type RecordingId = string;
 export type RecipeId = string;
+export type SnippetId = string;
 
 const recordingsTable = {
 	/**
@@ -75,6 +76,13 @@ const recipesTable = {
 	name: field.string(),
 	instructions: field.string(),
 	icon: field.nullable(field.string()),
+} as const;
+
+const snippetsTable = {
+	/** What the person says. Matched whole-word and case-insensitively. */
+	trigger: field.string(),
+	/** What gets delivered, verbatim. Plain text: delivery has no rich text. */
+	replacement: field.string(),
 } as const;
 
 /**
@@ -178,7 +186,11 @@ export const whisperingDefinition = defineData({
 	id: 'so.epicenter.whispering',
 	title: 'Whispering',
 	kv: settingsKv,
-	tables: { recordings: recordingsTable, recipes: recipesTable },
+	tables: {
+		recordings: recordingsTable,
+		recipes: recipesTable,
+		snippets: snippetsTable,
+	},
 });
 
 /** The typed view of one store through Whispering's workspace. */
@@ -186,6 +198,7 @@ export type WhisperingData = DataView<typeof whisperingDefinition>;
 
 export type Recording = RowOf<typeof recordingsTable>;
 export type Recipe = RowOf<typeof recipesTable>;
+export type Snippet = RowOf<typeof snippetsTable>;
 /**
  * The settings values an application composes after a read.
  *
