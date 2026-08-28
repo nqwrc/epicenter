@@ -1,6 +1,7 @@
 import HomeIcon from '@lucide/svelte/icons/house';
 import LayersIcon from '@lucide/svelte/icons/layers';
 import ListIcon from '@lucide/svelte/icons/list';
+import ReplaceIcon from '@lucide/svelte/icons/replace';
 import SettingsIcon from '@lucide/svelte/icons/settings';
 import type { Component } from 'svelte';
 import { WHISPERING_BASE_PATHNAME, whisperingPath } from '$lib/constants/urls';
@@ -41,6 +42,12 @@ export const NAV_ITEMS = [
 		href: whisperingPath('/recipes'),
 		icon: LayersIcon,
 		isActive: matchesRoute(whisperingPath('/recipes')),
+	},
+	{
+		label: 'Snippets',
+		href: whisperingPath('/snippets'),
+		icon: ReplaceIcon,
+		isActive: matchesRoute(whisperingPath('/snippets')),
 	},
 	{
 		label: 'Settings',
