@@ -41,37 +41,16 @@
 		onReveal?: () => void;
 	} = $props();
 
-	// `failed` has no auto-clear at its source (`dictation-lifecycle.svelte.ts`
-	// holds it until the next dictation resets it on purpose, so the recordings
-	// row stays the durable record of it). The floating HUD is not that record,
-	// and the Wispr Flow spec wants the error pill itself to fade back to idle
-	// after a beat. Mirror the incoming `status` locally and let a `failed`
-	// entry expire on its own; this only affects what this pill draws, not the
-	// underlying lifecycle, the OS notification, or the recordings row.
-	/* svelte-ignore state_referenced_locally -- deliberate: seed the local
-	   mirror once from the initial prop value; the effect below keeps it in
-	   sync on every subsequent change. */
-	let displayStatus = $state.raw<RecordingPillStatus | null>(status);
-	$effect(() => {
-		displayStatus = status;
-		if (status?.phase !== 'failed') return;
-		const timeout = setTimeout(() => {
-			// Only clear if a newer status has not already taken over.
-			if (displayStatus === status) displayStatus = null;
-		}, 2000);
-		return () => clearTimeout(timeout);
-	});
-
 	// Narrow the status to its live-recording variant once, so the template
 	// reads the discriminated fields directly (manual vs vad, speech latched, a
 	// previous phrase transcribing) instead of a flattened bag of booleans.
 	const recording = $derived(
-		displayStatus?.phase === 'recording' ? displayStatus : null,
+		status?.phase === 'recording' ? status : null,
 	);
-	const isRecording = $derived(displayStatus?.phase === 'recording');
+	const isRecording = $derived(status?.phase === 'recording');
 
 	// mm:ss elapsed timer, local to the pill and driven off `isRecording` alone
-	// (not the whole `displayStatus` object) so a VAD session's frequent status
+	// (not the whole `status` object) so a VAD session's frequent status
 	// updates (speech latching on and off) do not reset it mid-listen; only a
 	// transition into or out of `recording` restarts the interval.
 	let elapsedSeconds = $state(0);
@@ -99,8 +78,8 @@
 	// `OVERLAY_HEIGHT` in the desktop overlay's window manager, which must be
 	// large enough to host the widest state plus shadow/glow bleed.
 	const dims = $derived.by((): { w: number; h: number } => {
-		if (!displayStatus) return { w: 120, h: 36 };
-		switch (displayStatus.phase) {
+		if (!status) return { w: 120, h: 36 };
+		switch (status.phase) {
 			case 'recording':
 				return { w: 260, h: 44 };
 			case 'transcribing':
@@ -111,7 +90,7 @@
 			case 'failed':
 				return { w: 220, h: 44 };
 			default:
-				displayStatus satisfies never;
+				status satisfies never;
 				return { w: 120, h: 36 };
 		}
 	});
@@ -120,7 +99,7 @@
 	// right); polishing spreads its label from the ship-raw control; every
 	// other phase is a single centered cluster.
 	const layoutJustify = $derived(
-		isRecording || displayStatus?.phase === 'polishing'
+		isRecording || status?.phase === 'polishing'
 			? 'justify-between'
 			: 'justify-center',
 	);
@@ -132,8 +111,8 @@
 	// (ADR-0039): the text landed somewhere other than the cursor, which is
 	// worth calling out beside the count rather than a silent green check.
 	const deliveredLabel = $derived.by(() => {
-		if (displayStatus?.phase !== 'delivered') return '';
-		const { wordCount, reach } = displayStatus;
+		if (status?.phase !== 'delivered') return '';
+		const { wordCount, reach } = status;
 		const wordsLabel =
 			wordCount != null ? `${wordCount} word${wordCount === 1 ? '' : 's'}` : 'Delivered';
 		return reach === 'clipboard' ? `${wordsLabel} · Clipboard` : wordsLabel;
@@ -155,14 +134,14 @@
 	class={cn(
 		'wispr-pill box-border flex items-center gap-2 rounded-full px-3 text-white/90 select-none',
 		layoutJustify,
-		displayStatus?.phase === 'failed' && 'wispr-pill--failed',
+		status?.phase === 'failed' && 'wispr-pill--failed',
 		onReveal && 'cursor-pointer',
 	)}
 	style="width: {dims.w}px; height: {dims.h}px;"
 	title={onReveal ? 'Open Whispering' : undefined}
 	onclick={onReveal}
 >
-	{#if !displayStatus}
+	{#if !status}
 		<!-- Idle: hidden by the desktop overlay window (it hides on a `null`
 		     status), but drawn correctly here too in case a host ever mounts
 		     the pill instead of hiding it. -->
@@ -229,7 +208,7 @@
 				<SquareIcon class="size-3.5" />
 			</button>
 		</div>
-	{:else if displayStatus.phase === 'transcribing' || displayStatus.phase === 'polishing'}
+	{:else if status.phase === 'transcribing' || status.phase === 'polishing'}
 		<!-- Processing: shimmering bar + "Flowing…" label mask the ASR and Polish
 		     passes. Polishing alone carries a control (ADR-0099): a small X skips
 		     the in-flight Polish pass and ships the raw transcript now. -->
@@ -239,7 +218,7 @@
 				>Flowing…</span
 			>
 		</div>
-		{#if displayStatus.phase === 'polishing'}
+		{#if status.phase === 'polishing'}
 			<button
 				type="button"
 				class={cn(actionBase, 'hover:bg-[#faa2ca]/20 hover:text-[#ffd2e4]')}
@@ -253,20 +232,20 @@
 				<XIcon class="size-4" />
 			</button>
 		{/if}
-	{:else if displayStatus.phase === 'delivered'}
+	{:else if status.phase === 'delivered'}
 		<CheckIcon
 			class={cn(
 				'size-4 shrink-0',
-				displayStatus.reach === 'clipboard' ? 'text-amber-400' : 'text-[#10B981]',
+				status.reach === 'clipboard' ? 'text-amber-400' : 'text-[#10B981]',
 			)}
 		/>
 		<span class="min-w-0 truncate text-[13px] font-medium tracking-tight text-white/90"
 			>{deliveredLabel}</span
 		>
-	{:else if displayStatus.phase === 'failed'}
+	{:else if status.phase === 'failed'}
 		<TriangleAlertIcon class="size-4 shrink-0 text-amber-400" />
 		<span class="min-w-0 truncate text-[13px] font-medium tracking-tight text-white/90"
-			>{DICTATION_FAILURE_LABEL[displayStatus.tier]}</span
+			>{DICTATION_FAILURE_LABEL[status.tier]}</span
 		>
 	{/if}
 </div>

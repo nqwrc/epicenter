@@ -83,17 +83,33 @@ export type DictationLifecycleError = InferErrors<
 // capture is idle.)
 const DELIVERED_FLASH_MS = 900;
 
+// How long a failure holds the pill before the outcome retires to `none`.
+// Longer than a delivery's glance, because a failure is unexpected and there is
+// no landed text to corroborate it, but still bounded: the floating HUD is
+// always on top, so an outcome that never retires leaves an empty capsule
+// covering whatever the user moved on to. The durable records are the
+// recordings row and the OS notification, neither of which this timer touches.
+const FAILED_FLASH_MS = 2000;
+
 function createDictationLifecycle() {
 	// The outcome track is the ephemeral signal directly: `none` when no utterance
 	// is in flight, otherwise the most-recent utterance's phase. Reset to `none`
 	// when a new dictation begins so a stale `failed` never lingers past the next
 	// attempt.
 	let outcome = $state.raw<DictationOutcome>({ kind: 'none' });
-	let deliveredTimer: ReturnType<typeof setTimeout> | undefined;
+	let retireTimer: ReturnType<typeof setTimeout> | undefined;
 
-	function clearDeliveredTimer() {
-		clearTimeout(deliveredTimer);
-		deliveredTimer = undefined;
+	function clearRetireTimer() {
+		clearTimeout(retireTimer);
+		retireTimer = undefined;
+	}
+
+	/** Retire `outcome` to `none` after `delay`, unless a newer outcome took over. */
+	function retireAfter(delay: number, kind: DictationOutcome['kind']) {
+		retireTimer = setTimeout(() => {
+			retireTimer = undefined;
+			if (outcome.kind === kind) outcome = { kind: 'none' };
+		}, delay);
 	}
 
 	// The live session, read straight off the recorder machines. The pill owner is
@@ -123,13 +139,13 @@ function createDictationLifecycle() {
 		 * so it does not linger into this attempt.
 		 */
 		reset(): void {
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'none' };
 		},
 
 		/** The recorder stopped (or a VAD utterance ended); now transcribing. */
 		markTranscribing(): void {
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'transcribing' };
 		},
 
@@ -141,7 +157,7 @@ function createDictationLifecycle() {
 		 * delivered.
 		 */
 		markPolishing(): void {
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'polishing' };
 		},
 
@@ -164,20 +180,27 @@ function createDictationLifecycle() {
 		 * back to a plain "Delivered" label when absent.
 		 */
 		markDelivered(reach: DeliveryReach, wordCount?: number): void {
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'delivered', reach, wordCount };
 			// Only the clean reach auto-retires; a reduced reach stays put.
 			if (reach !== 'output') return;
-			deliveredTimer = setTimeout(() => {
-				deliveredTimer = undefined;
-				// Only retire the flash if a newer outcome has not taken over.
-				if (outcome.kind === 'delivered') outcome = { kind: 'none' };
-			}, DELIVERED_FLASH_MS);
+			retireAfter(DELIVERED_FLASH_MS, 'delivered');
 		},
 
-		/** A dictation failed: hold the failed outcome until the next dictation
-		 * resets it. Transient, not a held state: the pill glances it (manual), the
-		 * notification path fires it, and the recordings row is the durable record. */
+		/** A dictation failed: glance the failure, then retire to `none`.
+		 *
+		 * Transient, not a held state: the pill glances it (manual), the
+		 * notification path fires it, and the recordings row is the durable record.
+		 * The retirement is here rather than in the pill component because the
+		 * desktop pill does not own its own visibility. It draws into an
+		 * always-on-top overlay window whose show/hide is driven by this outcome
+		 * projecting to `null`, so a component-local fade cleared the drawn content
+		 * and left an empty capsule floating over the user's screen until the next
+		 * dictation. Retiring at the source is the one place every surface agrees:
+		 * the window hides, the pill clears, and the web indicator does the same.
+		 *
+		 * The OS notification is unaffected, because it fires on the failure's error
+		 * identity rather than on the outcome persisting. */
 		markFailed(failure: DictationFailure): void {
 			// Log here rather than at each call site, because this is the funnel every
 			// failure already passes through, so a new failure path cannot be added
@@ -192,8 +215,9 @@ function createDictationLifecycle() {
 					cause: failure.error,
 				}),
 			);
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'failed', ...failure };
+			retireAfter(FAILED_FLASH_MS, 'failed');
 		},
 	};
 }
