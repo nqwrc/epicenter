@@ -79,11 +79,21 @@ export const INFERENCE = {
 		apiKeyConfigKey: 'providers.groq.apiKey',
 		endpointConfigKey: 'providers.groq.endpoint',
 		models: [
-			// Production models
+			// Production models. Ordered deliberately: `CompletionRuntimeConfig`
+			// falls back to `models[0]` when a provider is selected, so the first
+			// entry is the one a person gets without choosing, and Polish runs on
+			// the critical path before dictated text reaches the cursor. The
+			// fastest model that can fix grammar without reshaping meaning is
+			// therefore the right head of this list, not the largest one.
+			'openai/gpt-oss-20b',
+			'openai/gpt-oss-120b',
+			'llama-3.1-8b-instant',
 			'gemma2-9b-it',
 			'meta-llama/llama-guard-4-12b',
+			// Enterprise tier: reachable only under a Groq sales contract, so an
+			// ordinary key gets a 404 whose message reads "does not exist or you do
+			// not have access to it". Kept selectable for the accounts that have it.
 			'llama-3.3-70b-versatile',
-			'llama-3.1-8b-instant',
 			// Preview models
 			'deepseek-r1-distill-llama-70b',
 			'meta-llama/llama-4-maverick-17b-128e-instruct',
