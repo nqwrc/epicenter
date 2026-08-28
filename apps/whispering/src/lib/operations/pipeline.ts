@@ -4,6 +4,7 @@ import {
 	deliverTranscriptionResult,
 	type TranscriptionSource,
 } from '$lib/operations/delivery';
+import { expandSnippets } from '$lib/operations/expand-snippets';
 import { polishWillRun, runPolish } from '$lib/operations/run-polish';
 import { playSoundIfEnabled } from '$lib/operations/sound';
 import { transcribeAndPersist } from '$lib/operations/transcribe';
@@ -134,7 +135,11 @@ export async function processRecordingPipeline(
 	// Polish is best-effort: a failed AI pass carries the raw transcript in
 	// `fallback`, so a transcript is never lost to a polish error. Surface the
 	// failure without blocking delivery.
-	const deliveredText = polishError ? polishError.fallback : polishedText;
+	const polishOutput = polishError ? polishError.fallback : polishedText;
+	// Snippets expand after Polish and before delivery, on whichever text is
+	// about to ship. A trigger Polish reworded simply will not match, which
+	// shows up as the literal trigger in the output: visible, and recoverable.
+	const deliveredText = expandSnippets(polishOutput, app.snippets.all);
 	if (polishError) {
 		report.info({
 			title: 'Polishing skipped',
@@ -142,14 +147,18 @@ export async function processRecordingPipeline(
 		});
 	}
 
-	// Attempt to persist the polished transcript alongside the raw transcript so
+	// Attempt to persist the delivered transcript alongside the raw transcript so
 	// history can show what was actually delivered, with the original one click
 	// away. Only write when a Polish pass actually produced a result: row creation
 	// already left `polishedTranscript` null, so speed mode (no AI call) and a
-	// polish failure (the fallback delivers the raw words) need no second write.
+	// polish failure (the fallback carries the raw words) need no second write.
+	//
+	// Snippet expansion rides along in `deliveredText`, so a polished row records
+	// what shipped. The two no-write paths keep only the unexpanded transcript,
+	// which is the existing speed-mode tradeoff and not something snippets change.
 	if (willPolish && !polishError) {
 		const polishedHistory = await saveRecordingHistory(app, recording.id, {
-			polishedTranscript: polishedText,
+			polishedTranscript: deliveredText,
 		});
 		if (polishedHistory.error !== null) history = polishedHistory;
 	}
