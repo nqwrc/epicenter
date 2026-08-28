@@ -20,6 +20,10 @@ import {
 	createWhisperingRecipes,
 	type WhisperingRecipes,
 } from './recipes.svelte';
+import {
+	createWhisperingSnippets,
+	type WhisperingSnippets,
+} from './snippets.svelte';
 import type { WhisperingBlobs } from './recording-audio';
 import {
 	createWhisperingRecordings,
@@ -148,6 +152,7 @@ export type WhisperingApp = {
 	readonly settings: WhisperingSettings;
 	readonly recordings: WhisperingRecordings;
 	readonly recipes: WhisperingRecipes;
+	readonly snippets: WhisperingSnippets;
 	/**
 	 * What sync is doing, or undefined when this generation has no account or
 	 * its dials were permanently denied. A denied bound replica works offline
@@ -217,16 +222,21 @@ export async function openWhisperingApp(
 	const recipesDomain = createWhisperingRecipes({
 		table: work.tables.recipes,
 	});
+	const snippetsDomain = createWhisperingSnippets({
+		table: work.tables.snippets,
+	});
 
 	let disposed = false;
 	return Object.freeze({
 		settings: settingsDomain.settings,
 		recordings: recordingsDomain.recordings,
 		recipes: recipesDomain,
+		snippets: snippetsDomain,
 		syncStatus: () => account?.syncStatus(),
 		async [Symbol.asyncDispose]() {
 			if (disposed) return;
 			disposed = true;
+			snippetsDomain[Symbol.dispose]();
 			recipesDomain[Symbol.dispose]();
 			recordingsDomain[Symbol.dispose]();
 			settingsDomain[Symbol.dispose]();
