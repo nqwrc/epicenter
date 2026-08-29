@@ -13,6 +13,7 @@ pub const COMMANDS: &[&str] = &[
     "write_text",
     "simulate_enter_keystroke",
     "simulate_copy_keystroke",
+    "simulate_backspaces",
     "enumerate_recording_devices",
     "start_recording",
     "stop_recording",

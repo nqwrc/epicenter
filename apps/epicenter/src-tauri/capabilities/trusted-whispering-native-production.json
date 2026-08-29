@@ -21,6 +21,7 @@
 		"allow-write-text",
 		"allow-simulate-enter-keystroke",
 		"allow-simulate-copy-keystroke",
+		"allow-simulate-backspaces",
 		"allow-enumerate-recording-devices",
 		"allow-start-recording",
 		"allow-stop-recording",

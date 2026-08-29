@@ -22,6 +22,14 @@ export const commands = {
 	/**  Simulates the platform copy shortcut with layout-independent key codes. */
 	simulateCopyKeystroke: () =>
 		typedError<null, string>(__TAURI_INVOKE('simulate_copy_keystroke')),
+	/**
+	 *  Simulates pressing Backspace `count` times.
+	 *
+	 *  One press deletes one grapheme cluster, so the caller counts graphemes, not
+	 *  UTF-16 code units. Refuses above the cap rather than deleting part of it.
+	 */
+	simulateBackspaces: (count: number) =>
+		typedError<null, string>(__TAURI_INVOKE('simulate_backspaces', { count })),
 	enumerateRecordingDevices: () =>
 		typedError<string[], RecorderError>(
 			__TAURI_INVOKE('enumerate_recording_devices'),

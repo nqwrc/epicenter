@@ -57,7 +57,9 @@ pub mod download;
 use download::{cancel_download, DownloadManager};
 
 mod delivery;
-use delivery::{simulate_copy_keystroke, simulate_enter_keystroke, write_text};
+use delivery::{
+    simulate_backspaces, simulate_copy_keystroke, simulate_enter_keystroke, write_text,
+};
 
 mod keyring_storage;
 use keyring_storage::{read_auth_cell, write_auth_cell};
@@ -345,6 +347,7 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             write_text,
             simulate_enter_keystroke,
             simulate_copy_keystroke,
+            simulate_backspaces,
             enumerate_recording_devices,
             start_recording,
             stop_recording,

@@ -152,3 +152,31 @@ pub async fn simulate_copy_keystroke() -> Result<(), String> {
 
     Ok(())
 }
+
+/// The most backspaces one undo may send.
+///
+/// Matches the Snippets replacement cap. Without it a five-minute dictation
+/// would fire thousands of synthetic keystrokes into whatever holds focus, and
+/// a partial delete is worse than a refusal: nobody can tell how far it got.
+const MAX_BACKSPACES: u32 = 2000;
+
+/// Simulates pressing Backspace `count` times.
+///
+/// One press deletes one grapheme cluster, so the caller counts graphemes, not
+/// UTF-16 code units. Refuses above the cap rather than deleting part of it.
+#[tauri::command]
+#[specta::specta]
+pub async fn simulate_backspaces(count: u32) -> Result<(), String> {
+    if count > MAX_BACKSPACES {
+        return Err(format!(
+            "Refusing to send {count} backspaces: the limit is {MAX_BACKSPACES}."
+        ));
+    }
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|error| error.to_string())?;
+    for _ in 0..count {
+        enigo
+            .key(Key::Backspace, Direction::Click)
+            .map_err(|error| format!("Failed to simulate Backspace: {error}"))?;
+    }
+    Ok(())
+}
