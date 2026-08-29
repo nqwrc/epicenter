@@ -26,6 +26,7 @@ const deliverTranscriptionResult = mock(async () => ({
 }));
 const playSoundIfEnabled = mock(async () => Ok(undefined));
 const recordDelivery = mock();
+const dictationReset = mock();
 
 mock.module('$lib/operations/expand-snippets', () => ({ expandSnippets }));
 // The matcher is pure, so the real one runs here: a stub would hide the very
@@ -58,6 +59,7 @@ mock.module('$lib/report', () => ({
 }));
 mock.module('$lib/state/dictation-lifecycle.svelte', () => ({
 	dictationLifecycle: {
+		reset: dictationReset,
 		markTranscribing: mock(),
 		markFailed: mock(),
 		markPolishing: mock(),
@@ -106,6 +108,7 @@ afterEach(() => {
 	deliverTranscriptionResult.mockClear();
 	playSoundIfEnabled.mockClear();
 	recordDelivery.mockClear();
+	dictationReset.mockClear();
 });
 
 test('a command runs instead of being delivered', async () => {
@@ -115,6 +118,9 @@ test('a command runs instead of being delivered', async () => {
 	expect(deliverTranscriptionResult).not.toHaveBeenCalled();
 	// No text arrived anywhere, so there is no receipt to sound.
 	expect(playSoundIfEnabled).not.toHaveBeenCalled();
+	// A command delivers no text, so the "Transcribing" marker set on the way in
+	// must be cleared, or the pill spins forever on work that already finished.
+	expect(dictationReset).toHaveBeenCalledTimes(1);
 });
 
 test('ordinary speech is untouched', async () => {

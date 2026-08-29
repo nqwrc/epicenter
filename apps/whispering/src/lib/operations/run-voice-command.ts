@@ -18,6 +18,13 @@ import type { WhisperingApp } from '$lib/whispering/app';
 const log = createLogger('whispering/voice-command');
 
 /**
+ * The most backspaces one undo may send, mirroring the host's own cap. Checked
+ * here as well so an over-long dictation gets a calm notice rather than the
+ * host's opaque refusal surfacing as an error.
+ */
+const MAX_BACKSPACES = 2000;
+
+/**
  * Whether this command has anything to act on right now.
  *
  * A matched phrase is not enough to swallow an utterance. `isDictation` is true
@@ -57,6 +64,15 @@ async function scratchThat(): Promise<void> {
 			title: 'Nothing to undo',
 			description:
 				'There is no dictation at your cursor to remove. Only text Whispering pasted at the cursor can be taken back.',
+		});
+		return;
+	}
+
+	if (undo.graphemes > MAX_BACKSPACES) {
+		report.info({
+			title: 'That dictation is too long to undo',
+			description:
+				'Undo is capped at 2000 characters, so nothing was removed. Select the text and delete it instead.',
 		});
 		return;
 	}

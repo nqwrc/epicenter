@@ -124,6 +124,10 @@ export async function processRecordingPipeline(
 		const command = matchCommand(transcribedText);
 		if (command !== null && commandApplies(command)) {
 			await runVoiceCommand(app, command);
+			// A command delivers no text, so there is no outcome to show. Clear the
+			// `transcribing` marker set on the way in, or the pill spins forever on
+			// work that already finished.
+			dictationLifecycle.reset();
 			return;
 		}
 	}
