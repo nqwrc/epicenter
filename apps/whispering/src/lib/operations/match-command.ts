@@ -19,11 +19,11 @@ export type VoiceCommandId = 'scratchThat' | 'stopListening';
  * The spoken phrases, already in normalized form. Fixed in code rather than
  * user data: snippets are the user's content, commands are app behavior.
  */
-const PHRASES: Record<string, VoiceCommandId> = {
-	'scratch that': 'scratchThat',
-	'undo that': 'scratchThat',
-	'stop listening': 'stopListening',
-};
+const PHRASES: Map<string, VoiceCommandId> = new Map([
+	['scratch that', 'scratchThat'],
+	['undo that', 'scratchThat'],
+	['stop listening', 'stopListening'],
+]);
 
 /** Punctuation and symbols, stripped from the ends of an utterance only. */
 const EDGE_PUNCTUATION = /^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu;
@@ -48,5 +48,5 @@ function normalize(text: string): string {
 export function matchCommand(text: string): VoiceCommandId | null {
 	const normalized = normalize(text);
 	if (normalized === '') return null;
-	return PHRASES[normalized] ?? null;
+	return PHRASES.get(normalized) ?? null;
 }

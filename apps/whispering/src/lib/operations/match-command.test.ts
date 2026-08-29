@@ -32,3 +32,9 @@ test('empty and punctuation-only input match nothing', () => {
 	expect(matchCommand('   ')).toBeNull();
 	expect(matchCommand('...')).toBeNull();
 });
+
+test('an inherited object key is not a command', () => {
+	expect(matchCommand('constructor')).toBeNull();
+	expect(matchCommand('toString')).toBeNull();
+	expect(matchCommand('__proto__')).toBeNull();
+});
