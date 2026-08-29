@@ -5,12 +5,18 @@ import {
 	type TranscriptionSource,
 } from '$lib/operations/delivery';
 import { expandSnippets } from '$lib/operations/expand-snippets';
+import { matchCommand } from '$lib/operations/match-command';
 import { polishWillRun, runPolish } from '$lib/operations/run-polish';
+import {
+	commandApplies,
+	runVoiceCommand,
+} from '$lib/operations/run-voice-command';
 import { playSoundIfEnabled } from '$lib/operations/sound';
 import { transcribeAndPersist } from '$lib/operations/transcribe';
 import { saveRecordingHistory } from '$lib/operations/transcription-history';
 import { report } from '$lib/report';
 import { dictationLifecycle } from '$lib/state/dictation-lifecycle.svelte';
+import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import { polishHud } from '$lib/state/polish-hud.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
 
@@ -106,6 +112,22 @@ export async function processRecordingPipeline(
 	const { text: transcribedText } = transcription;
 	let history = transcription.history;
 
+	// Command Mode intercepts here, before Polish: Polish would reword "scratch
+	// that" into prose, so a matcher downstream of it would only ever see the
+	// phrase destroyed. A match ends the pipeline, so nothing below runs: no
+	// snippet expansion, no polished write, no completion sound, no delivery.
+	//
+	// Live capture only, and applicable only. `isDictation` is true in manual
+	// mode as well as VAD, so a phrase whose target is not live falls through and
+	// delivers as ordinary text rather than silently eating the utterance.
+	if (isDictation && app.settings.get('commandModeEnabled')) {
+		const command = matchCommand(transcribedText);
+		if (command !== null && commandApplies(command)) {
+			await runVoiceCommand(app, command);
+			return;
+		}
+	}
+
 	// Run Polish over the raw transcript, then deliver the polished text. When
 	// history succeeds, the raw stays on `recordings.transcript` so "show
 	// original" is recoverable. We hold delivery until Polish finishes and
@@ -171,6 +193,19 @@ export async function processRecordingPipeline(
 			text: deliveredText,
 			source: deliverySource,
 		});
+
+	// Hold what was delivered so "scratch that" has something to take back.
+	// Dictation only: undoing a file import would target a paste the person
+	// never dictated. The outcome carries the sink kind and whether an Enter
+	// followed, which is what decides whether a backspace can reach it at all.
+	if (isDictation) {
+		lastDelivery.record({
+			text: deliveredText,
+			sinkKind: transcriptDelivery.sinkKind,
+			reach: transcriptDelivery.reach,
+			pressedEnter: transcriptDelivery.pressedEnter,
+		});
+	}
 	if (isDictation) {
 		// The delivered transcript is the dictation receipt. Every reach is a success,
 		// even when history could not be confirmed, so this is always `delivered`; the reach decides

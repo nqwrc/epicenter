@@ -115,7 +115,8 @@ export function watchManualRecordingEnded(app: WhisperingApp): void {
 	});
 }
 
-function isVadRecordingActive() {
+/** True while a VAD session is armed, whether or not speech is being heard. */
+export function isVadRecordingActive() {
 	return (
 		vadRecorder.state === 'LISTENING' || vadRecorder.state === 'SPEECH_DETECTED'
 	);
