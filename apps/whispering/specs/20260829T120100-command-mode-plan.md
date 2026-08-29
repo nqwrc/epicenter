@@ -31,8 +31,8 @@ with `enigo` behind `tauri-specta` bindings.
 - The setting key is `commandModeEnabled`, default **`false`**.
 - Command ids are exactly `'scratchThat'` and `'stopListening'`.
 
-Tests for the Whispering app: `bun run --filter whispering test`
-Typecheck: `bun run --filter whispering typecheck`
+Tests for the Whispering app: `bun run --filter '@epicenter/whispering' test`
+Typecheck: `bun run --filter '@epicenter/whispering' typecheck`
 
 ---
 
@@ -107,12 +107,18 @@ test('empty and punctuation-only input match nothing', () => {
 	expect(matchCommand('   ')).toBeNull();
 	expect(matchCommand('...')).toBeNull();
 });
+
+test('an inherited object key is not a command', () => {
+	expect(matchCommand('constructor')).toBeNull();
+	expect(matchCommand('toString')).toBeNull();
+	expect(matchCommand('__proto__')).toBeNull();
+});
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
 ```bash
-bun run --filter whispering test match-command
+bun run --filter '@epicenter/whispering' test match-command
 ```
 
 Expected: FAIL, "Cannot find module './match-command'".
@@ -142,12 +148,17 @@ export type VoiceCommandId = 'scratchThat' | 'stopListening';
 /**
  * The spoken phrases, already in normalized form. Fixed in code rather than
  * user data: snippets are the user's content, commands are app behavior.
+ *
+ * A Map, not an object literal. An object literal inherits from
+ * `Object.prototype`, so looking up "constructor" would return a function and
+ * the `?? null` below would never fire, handing back something that is not a
+ * command id at all.
  */
-const PHRASES: Record<string, VoiceCommandId> = {
-	'scratch that': 'scratchThat',
-	'undo that': 'scratchThat',
-	'stop listening': 'stopListening',
-};
+const PHRASES = new Map<string, VoiceCommandId>([
+	['scratch that', 'scratchThat'],
+	['undo that', 'scratchThat'],
+	['stop listening', 'stopListening'],
+]);
 
 /** Punctuation and symbols, stripped from the ends of an utterance only. */
 const EDGE_PUNCTUATION = /^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu;
@@ -172,17 +183,17 @@ function normalize(text: string): string {
 export function matchCommand(text: string): VoiceCommandId | null {
 	const normalized = normalize(text);
 	if (normalized === '') return null;
-	return PHRASES[normalized] ?? null;
+	return PHRASES.get(normalized) ?? null;
 }
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
 
 ```bash
-bun run --filter whispering test match-command
+bun run --filter '@epicenter/whispering' test match-command
 ```
 
-Expected: PASS, 5 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -331,7 +342,7 @@ In `apps/whispering/src/lib/services/text/index.tauri.ts`, after
 - [ ] **Step 8: Typecheck**
 
 ```bash
-bun run --filter whispering typecheck
+bun run --filter '@epicenter/whispering' typecheck
 ```
 
 Expected: 0 errors. If the browser build has a second `TextService`
@@ -424,7 +435,7 @@ export type { SinkKind } from '$lib/operations/sink';
 - [ ] **Step 4: Typecheck and run the whole app suite**
 
 ```bash
-bun run --filter whispering typecheck && bun run --filter whispering test
+bun run --filter '@epicenter/whispering' typecheck && bun run --filter '@epicenter/whispering' test
 ```
 
 Expected: 0 type errors, all tests pass. `pipeline-auto-upload.test.ts` stubs
@@ -509,7 +520,7 @@ test('nothing held reads as nothing to undo', () => {
 - [ ] **Step 2: Run the test to verify it fails**
 
 ```bash
-bun run --filter whispering test last-delivery
+bun run --filter '@epicenter/whispering' test last-delivery
 ```
 
 Expected: FAIL, "Cannot find module './last-delivery.svelte'".
@@ -588,7 +599,7 @@ export const lastDelivery = {
 - [ ] **Step 4: Run the test to verify it passes**
 
 ```bash
-bun run --filter whispering test last-delivery
+bun run --filter '@epicenter/whispering' test last-delivery
 ```
 
 Expected: PASS, 5 tests.
@@ -679,7 +690,7 @@ add a third section. Insert it after the Polish `</Field.Set>` and its following
 - [ ] **Step 4: Typecheck**
 
 ```bash
-bun run --filter whispering typecheck
+bun run --filter '@epicenter/whispering' typecheck
 ```
 
 Expected: 0 errors.
@@ -971,7 +982,7 @@ test('a delivered dictation is held for undo, an import is not', async () => {
 - [ ] **Step 4: Run the test to verify it fails**
 
 ```bash
-bun run --filter whispering test command-mode-pipeline
+bun run --filter '@epicenter/whispering' test command-mode-pipeline
 ```
 
 Expected: FAIL. The first test fails because nothing calls `runVoiceCommand`.
@@ -1030,7 +1041,7 @@ Then, after the `deliverTranscriptionResult` call and before the
 - [ ] **Step 6: Run the new test to verify it passes**
 
 ```bash
-bun run --filter whispering test command-mode-pipeline
+bun run --filter '@epicenter/whispering' test command-mode-pipeline
 ```
 
 Expected: PASS, 6 tests.
@@ -1038,7 +1049,7 @@ Expected: PASS, 6 tests.
 - [ ] **Step 7: Run the whole app suite and typecheck**
 
 ```bash
-bun run --filter whispering test && bun run --filter whispering typecheck
+bun run --filter '@epicenter/whispering' test && bun run --filter '@epicenter/whispering' typecheck
 ```
 
 Expected: all tests pass, 0 type errors. `pipeline-auto-upload.test.ts` stubs
