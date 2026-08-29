@@ -20,15 +20,15 @@ import {
 	createWhisperingRecipes,
 	type WhisperingRecipes,
 } from './recipes.svelte';
-import {
-	createWhisperingSnippets,
-	type WhisperingSnippets,
-} from './snippets.svelte';
 import type { WhisperingBlobs } from './recording-audio';
 import {
 	createWhisperingRecordings,
 	type WhisperingRecordings,
 } from './recordings';
+import {
+	createWhisperingSnippets,
+	type WhisperingSnippets,
+} from './snippets.svelte';
 
 export type { WhisperingBlobs } from './recording-audio';
 
@@ -131,6 +131,7 @@ const APPLICATION_DEFAULTS: Partial<WhisperingSettingValues> = {
 	dictionary: null,
 	polishEnabled: true,
 	polishInstructions: 'Fix grammar and punctuation. Keep my wording.',
+	commandModeEnabled: false,
 	analyticsEnabled: true,
 	shortcutPushToTalkModifiers: null,
 	shortcutPushToTalkKeys: null,

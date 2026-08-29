@@ -164,6 +164,7 @@ const settingsKv = {
 	dictionary: field.nullable(field.tags()),
 	polishEnabled: field.boolean(),
 	polishInstructions: field.string(),
+	commandModeEnabled: field.boolean(),
 	analyticsEnabled: field.boolean(),
 
 	shortcutPushToTalkModifiers: shortcut.modifiers,

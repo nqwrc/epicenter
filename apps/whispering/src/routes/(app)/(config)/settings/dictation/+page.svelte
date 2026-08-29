@@ -112,6 +112,37 @@
 		<Field.Separator />
 
 		<Field.Set>
+			<Field.Legend variant="label">Command Mode</Field.Legend>
+			<Field.Description>
+				A short list of spoken phrases that do something instead of being
+				typed. Say one on its own, with nothing else in the same breath.
+			</Field.Description>
+			<Field.Group>
+				<SettingSwitch
+					key="commandModeEnabled"
+					label="Act on spoken commands"
+					description="Off by default, because these phrases stop being text the moment you turn this on."
+				/>
+				{#if app.settings.get('commandModeEnabled')}
+					<ul class="text-muted-foreground space-y-1 text-sm">
+						<li>
+							<span class="text-foreground font-medium">"scratch that"</span>
+							or
+							<span class="text-foreground font-medium">"undo that"</span>
+							removes what was just typed at your cursor.
+						</li>
+						<li>
+							<span class="text-foreground font-medium">"stop listening"</span>
+							ends a voice activated session.
+						</li>
+					</ul>
+				{/if}
+			</Field.Group>
+		</Field.Set>
+
+		<Field.Separator />
+
+		<Field.Set>
 			<Field.Legend variant="label">Dictionary</Field.Legend>
 			<Field.Description>
 				Proper nouns and domain terms Whispering should know: names, jargon,
