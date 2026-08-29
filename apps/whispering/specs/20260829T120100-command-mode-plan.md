@@ -1152,9 +1152,15 @@ Failure table rows: the "nothing to undo" and backspace-failure branches in Task
 Manual verification: Task 7.
 
 **Not covered by an automated test, on purpose.** The keystroke itself and the
-Accessibility grant, both in Task 7. The cap refusal is enforced in Rust and
-checked by hand rather than through a TypeScript test, because the TypeScript
-side never constructs a count above it.
+Accessibility grant, both in Task 7.
+
+The cap is enforced in both languages and tested in TypeScript. An earlier draft
+of this plan said the TypeScript side never constructs a count above the cap and
+so needed no check. That was wrong: `lastDelivery.take()` returns an uncapped
+grapheme count, so a long dictation reaches it. Worse, the host's refusal arrives
+as the same opaque error as any other keystroke failure, so without a check in
+TypeScript an over-long undo reads to the person as an error rather than the calm
+notice the design promises.
 
 **Deferred, per the spec.** pause and resume, text shaping, mid-stream matching.
 No task touches them.
