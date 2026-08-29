@@ -9,7 +9,12 @@
 import { services } from '$lib/services';
 import type { DeliveryReach } from './delivery-reach';
 
-type SinkKind = 'cursor' | 'clipboard' | 'ledger';
+/**
+ * Which destination ran. Part of the delivery outcome rather than a private
+ * detail, because undo has to know whether the text went through a synthetic
+ * paste: the clipboard and ledger sinks never touch the keyboard.
+ */
+export type SinkKind = 'cursor' | 'clipboard' | 'ledger';
 
 /** A pluggable delivery destination, resolved once per capture. */
 export interface Sink {

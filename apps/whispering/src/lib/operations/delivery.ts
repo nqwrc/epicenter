@@ -16,6 +16,7 @@ export type {
 	DeliveryOutcome,
 	DeliveryReach,
 } from '$lib/operations/delivery-reach';
+export type { SinkKind } from '$lib/operations/sink';
 
 /**
  * The output scopes Whispering delivers into. Each has its own
@@ -172,7 +173,7 @@ async function deliverToSink({
 			: `${successCopy}!`;
 
 	return {
-		outcome: { reach },
+		outcome: { reach, sinkKind: sink.kind },
 		notice: { title, description: text, action: recordingsAction },
 	};
 }

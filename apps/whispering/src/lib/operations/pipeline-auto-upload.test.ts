@@ -19,7 +19,7 @@ let autoUpload = true;
 let willPolish = false;
 const uploadAudio = mock(async () => Ok(undefined));
 const deliverTranscriptionResult = mock(async () => ({
-	outcome: { reach: 'output' } as const,
+	outcome: { reach: 'output', sinkKind: 'cursor' } as const,
 	notice: { title: 'done' },
 }));
 const reportInfo = mock();

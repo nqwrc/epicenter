@@ -16,4 +16,6 @@
  */
 export type DeliveryReach = 'output' | 'clipboard';
 
-export type DeliveryOutcome = { reach: DeliveryReach };
+import type { SinkKind } from './sink';
+
+export type DeliveryOutcome = { reach: DeliveryReach; sinkKind: SinkKind };
