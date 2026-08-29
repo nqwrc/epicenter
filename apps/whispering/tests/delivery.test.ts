@@ -77,14 +77,22 @@ describe('transcription delivery', () => {
 
 		const result = await deliverTranscriptionResult(app, { text: 'hello' });
 
-		expect(result.outcome).toEqual({ reach: 'output', sinkKind: 'clipboard', pressedEnter: false });
+		expect(result.outcome).toEqual({
+			reach: 'output',
+			sinkKind: 'clipboard',
+			pressedEnter: false,
+		});
 		expect(delivered).toEqual(['clipboard:hello']);
 	});
 
 	test('cursor off and clipboard off delivers to history only', async () => {
 		const result = await deliverTranscriptionResult(app, { text: 'hello' });
 
-		expect(result.outcome).toEqual({ reach: 'output', sinkKind: 'ledger', pressedEnter: false });
+		expect(result.outcome).toEqual({
+			reach: 'output',
+			sinkKind: 'ledger',
+			pressedEnter: false,
+		});
 		expect(delivered).toEqual(['ledger:hello']);
 	});
 });
