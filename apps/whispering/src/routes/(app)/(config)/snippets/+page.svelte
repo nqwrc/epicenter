@@ -17,6 +17,10 @@
 
 	const app = getWhisperingApp();
 
+	// A snippet delivers verbatim, so nothing downstream truncates or reflows
+	// it. Bounding it here is the only place that happens.
+	const MAX_REPLACEMENT_LENGTH = 2000;
+
 	let editorOpen = $state(false);
 	let isEditing = $state(false);
 	// The snippet being created or edited. A page-owned copy so edits never touch
@@ -60,6 +64,13 @@
 			report.info({
 				title: 'Add a replacement',
 				description: 'The text to deliver when you say the trigger.',
+			});
+			return;
+		}
+		if (replacement.length > MAX_REPLACEMENT_LENGTH) {
+			report.info({
+				title: 'Replacement is too long',
+				description: `Keep it under ${MAX_REPLACEMENT_LENGTH} characters.`,
 			});
 			return;
 		}
@@ -173,8 +184,12 @@
 					id="snippet-replacement"
 					placeholder="123 Main St, Springfield"
 					rows={4}
+					maxlength={MAX_REPLACEMENT_LENGTH}
 					bind:value={working.replacement}
 				/>
+				<p class="text-muted-foreground text-right text-xs">
+					{working.replacement.length} / {MAX_REPLACEMENT_LENGTH}
+				</p>
 			</div>
 		</div>
 		<Modal.Footer>
