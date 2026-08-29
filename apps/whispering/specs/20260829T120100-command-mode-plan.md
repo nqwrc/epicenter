@@ -225,7 +225,10 @@ soon as the bindings regenerate.
 - Modify: `apps/epicenter/src-tauri/src/lib.rs`
 - Modify: `apps/epicenter/src-tauri/capabilities/trusted-whispering-native-development.json`
 - Modify: `apps/epicenter/src-tauri/capabilities/trusted-whispering-native-production.json`
-- Regenerated: `apps/whispering/src/lib/tauri/bindings.gen.ts`
+- Regenerated (BOTH, `tauri_specta` writes the whole API to each and the crate's
+  `generated_bindings_cover_every_declared_command` test asserts every command
+  appears in both): `apps/whispering/src/lib/tauri/bindings.gen.ts` and
+  `apps/epicenter/src/ui/bindings.gen.ts`
 - Modify: `apps/whispering/src/lib/services/text/types.ts`
 - Modify: `apps/whispering/src/lib/services/text/index.tauri.ts`
 
@@ -834,7 +837,7 @@ let transcript = 'scratch that';
 let applies = true;
 const runVoiceCommand = mock(async () => {});
 const deliverTranscriptionResult = mock(async () => ({
-	outcome: { reach: 'output', sinkKind: 'cursor' } as const,
+	outcome: { reach: 'output', sinkKind: 'cursor', pressedEnter: false } as const,
 	notice: { title: 'done' },
 }));
 const playSoundIfEnabled = mock(async () => Ok(undefined));
@@ -971,6 +974,7 @@ test('a delivered dictation is held for undo, an import is not', async () => {
 		text: 'hello world',
 		sinkKind: 'cursor',
 		reach: 'output',
+		pressedEnter: false,
 	});
 
 	recordDelivery.mockClear();
@@ -1027,13 +1031,14 @@ Then, after the `deliverTranscriptionResult` call and before the
 ```ts
 	// Hold what was delivered so "scratch that" has something to take back.
 	// Dictation only: undoing a file import would target a paste the person
-	// never dictated. The outcome carries the sink kind, so the held record can
-	// say whether a backspace can reach it at all.
+	// never dictated. The outcome carries the sink kind and whether an Enter
+	// followed, which is what decides whether a backspace can reach it at all.
 	if (isDictation) {
 		lastDelivery.record({
 			text: deliveredText,
 			sinkKind: transcriptDelivery.sinkKind,
 			reach: transcriptDelivery.reach,
+			pressedEnter: transcriptDelivery.pressedEnter,
 		});
 	}
 ```
