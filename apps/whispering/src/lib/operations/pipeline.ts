@@ -128,6 +128,15 @@ export async function processRecordingPipeline(
 			// `transcribing` marker set on the way in, or the pill spins forever on
 			// work that already finished.
 			dictationLifecycle.reset();
+			// The recordings row is the audit trail for the case that needs one: a
+			// misfire. A command utterance still returns before the row's usual
+			// history-error report at the end of this function, so it needs its own.
+			if (history.error !== null) {
+				report.info({
+					title: 'Transcription delivered, but history may be incomplete',
+					description: history.error.message,
+				});
+			}
 			return;
 		}
 	}

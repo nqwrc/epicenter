@@ -39,13 +39,16 @@ function countGraphemes(text: string): number {
  * Only a clean cursor paste with no Enter after it can be undone. The clipboard
  * and ledger sinks never touch the keyboard; a cursor write that fell back to
  * `clipboard` did not paste; and an Enter may have submitted the text out of the
- * input, so the characters are not reliably still at the cursor.
+ * input, so the characters are not reliably still at the cursor. Empty text is
+ * excluded too: a zero-grapheme "undo" would send no backspaces, report success,
+ * and tell the person nothing, which is its own silent swallow.
  */
 function isUndoable(record: Held): boolean {
 	return (
 		record.sinkKind === 'cursor' &&
 		record.reach === 'output' &&
-		!record.pressedEnter
+		!record.pressedEnter &&
+		record.text !== ''
 	);
 }
 
@@ -65,6 +68,15 @@ export const lastDelivery = {
 		held = null;
 		if (record === null || !isUndoable(record)) return null;
 		return { graphemes: countGraphemes(record.text) };
+	},
+
+	/**
+	 * Whether `take` would return a count, without consuming the record.
+	 * Applicability has to ask this before the pipeline commits to the command
+	 * branch, and asking must not destroy the thing it is asking about.
+	 */
+	canUndo(): boolean {
+		return held !== null && isUndoable(held);
 	},
 
 	/** Drop the held delivery without undoing it. */

@@ -27,18 +27,20 @@ const MAX_BACKSPACES = 2000;
 /**
  * Whether this command has anything to act on right now.
  *
- * A matched phrase is not enough to swallow an utterance. `isDictation` is true
- * in manual mode as well as VAD, so "stop listening" during a manual dictation
- * would otherwise match, do nothing, and eat the words: no text and no action.
- * An inapplicable command falls through and delivers as ordinary text instead.
- *
- * `scratchThat` always applies: it reports its own "nothing to undo" case
- * rather than doing nothing silently.
+ * A matched phrase is not enough to swallow an utterance: a command applies
+ * only when it can actually act. `isDictation` is true in manual mode as well
+ * as VAD, so "stop listening" during a manual dictation would otherwise
+ * match, do nothing, and eat the words: no text and no action. An
+ * inapplicable "stop listening" falls through and delivers as ordinary text
+ * instead, and an inapplicable "scratch that" does the same: on the common
+ * default of clipboard output, or with the Enter toggle on, nothing is ever
+ * undoable, and unconditionally swallowing the utterance there would eat
+ * every "scratch that" forever.
  */
 export function commandApplies(id: VoiceCommandId): boolean {
 	switch (id) {
 		case 'scratchThat':
-			return true;
+			return lastDelivery.canUndo();
 		case 'stopListening':
 			return isVadRecordingActive();
 	}
@@ -60,6 +62,10 @@ export async function runVoiceCommand(
 async function scratchThat(): Promise<void> {
 	const undo = lastDelivery.take();
 	if (undo === null) {
+		// Defensive, not the common case: `commandApplies` already checked
+		// `canUndo()` against this same held state with no `await` in between, so
+		// reaching here would mean the two checks disagreed. Kept as a notice
+		// rather than a silent no-op in case that ever changes.
 		report.info({
 			title: 'Nothing to undo',
 			description:

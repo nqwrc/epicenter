@@ -100,3 +100,32 @@ test('the non-undoable path clears the record too', () => {
 	// Nothing recorded in between, so a still-held record would show up here.
 	expect(lastDelivery.take()).toBeNull();
 });
+
+test('canUndo peeks without consuming the record', () => {
+	expect(lastDelivery.canUndo()).toBe(false);
+
+	lastDelivery.record({
+		text: 'hello',
+		sinkKind: 'cursor',
+		reach: 'output',
+		pressedEnter: false,
+	});
+	// Asking twice must not itself be the thing that clears the record.
+	expect(lastDelivery.canUndo()).toBe(true);
+	expect(lastDelivery.canUndo()).toBe(true);
+	expect(lastDelivery.take()).toEqual({ graphemes: 5 });
+	expect(lastDelivery.canUndo()).toBe(false);
+});
+
+test('an empty transcript is not undoable', () => {
+	// A zero-grapheme "undo" would send no backspaces, report success, and tell
+	// the person nothing: its own silent swallow.
+	lastDelivery.record({
+		text: '',
+		sinkKind: 'cursor',
+		reach: 'output',
+		pressedEnter: false,
+	});
+	expect(lastDelivery.canUndo()).toBe(false);
+	expect(lastDelivery.take()).toBeNull();
+});

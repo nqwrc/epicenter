@@ -9,9 +9,23 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 const delivered: string[] = [];
 const settingsValues = new Map<string, boolean>();
+const clearDelivery = mock();
 
 mock.module('$app/navigation', () => ({
 	goto: mock(),
+}));
+
+// Reached by alias like `$lib/operations/sink` below, so it needs the same
+// explicit registration. The real `deliverToSink` runs in this file, so this
+// mock is where the "every delivery clears the held undo" behavior is
+// actually proven, not just mirrored.
+mock.module('$lib/state/last-delivery.svelte', () => ({
+	lastDelivery: {
+		clear: clearDelivery,
+		take: mock(),
+		record: mock(),
+		canUndo: mock(),
+	},
 }));
 
 mock.module('$lib/constants/urls', () => ({
@@ -70,6 +84,7 @@ describe('transcription delivery', () => {
 		settingsValues.set('outputTranscriptionClipboard', false);
 		settingsValues.set('outputTranscriptionCursor', false);
 		settingsValues.set('outputTranscriptionEnter', false);
+		clearDelivery.mockClear();
 	});
 
 	test('cursor off and clipboard on copies to the clipboard sink', async () => {
@@ -94,5 +109,12 @@ describe('transcription delivery', () => {
 			pressedEnter: false,
 		});
 		expect(delivered).toEqual(['ledger:hello']);
+	});
+
+	test('every delivery clears whatever undo was held before it', async () => {
+		// Any sink, any settings: a delivery this file did not itself hold for
+		// undo must not leave a stale record for "scratch that" to backspace into.
+		await deliverTranscriptionResult(app, { text: 'hello' });
+		expect(clearDelivery).toHaveBeenCalledTimes(1);
 	});
 });

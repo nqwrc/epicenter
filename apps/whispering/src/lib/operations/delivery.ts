@@ -8,6 +8,7 @@ import {
 	type Sink,
 } from '$lib/operations/sink';
 import type { Notice } from '$lib/report';
+import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
 
 // The reach types live in their own `delivery-reach` module next to their ADR
@@ -162,6 +163,13 @@ async function deliverToSink({
 				onClick: () => goto(WHISPERING_RECORDINGS_PATHNAME),
 			}
 		: undefined;
+
+	// Any delivery invalidates the previous one: whatever was held is no longer
+	// the last thing at the cursor. The dictation pipeline records the new one
+	// straight after this returns; every other path (file import, a recordings
+	// row, a recipe) simply leaves nothing held, so "scratch that" refuses
+	// rather than backspacing into text it did not deliver.
+	lastDelivery.clear();
 
 	const { reach, pressedEnter } = await sink.deliver(text);
 

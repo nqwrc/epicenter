@@ -15,15 +15,26 @@ import { matchCommand } from './match-command';
 let commandModeEnabled = true;
 let transcript = 'scratch that';
 let applies = true;
+// Off by default, matching speed mode: most tests want the matcher's input to
+// stay the raw transcript. Flipped on by the one test that proves Polish never
+// gets a look at a phrase Command Mode is going to intercept.
+let willPolish = false;
 const runVoiceCommand = mock(async () => {});
-const deliverTranscriptionResult = mock(async () => ({
-	outcome: {
-		reach: 'output',
-		sinkKind: 'cursor',
-		pressedEnter: false,
-	} as const,
-	notice: { title: 'done' },
-}));
+const clearDelivery = mock();
+const deliverTranscriptionResult = mock(async () => {
+	// Mirrors what the real `deliverToSink` now does: every delivery clears
+	// whatever was held before it, whether or not this call goes on to record a
+	// new one.
+	clearDelivery();
+	return {
+		outcome: {
+			reach: 'output',
+			sinkKind: 'cursor',
+			pressedEnter: false,
+		} as const,
+		notice: { title: 'done' },
+	};
+});
 const playSoundIfEnabled = mock(async () => Ok(undefined));
 const recordDelivery = mock();
 const dictationReset = mock();
@@ -38,8 +49,12 @@ mock.module('$lib/operations/run-voice-command', () => ({
 }));
 mock.module('$lib/operations/delivery', () => ({ deliverTranscriptionResult }));
 mock.module('$lib/operations/run-polish', () => ({
-	polishWillRun: () => false,
-	runPolish: async (_app: unknown, { input }: { input: string }) => Ok(input),
+	polishWillRun: () => willPolish,
+	// Reworded regardless of input, so a test that turns Polish on can tell
+	// whether the matcher ran before this (raw phrase, command fires) or after
+	// (reworded prose, no phrase left to match).
+	runPolish: async (_app: unknown, { input }: { input: string }) =>
+		Ok(willPolish ? 'Scratch that, please.' : input),
 }));
 mock.module('$lib/operations/sound', () => ({ playSoundIfEnabled }));
 mock.module('$lib/operations/transcribe', () => ({
@@ -70,7 +85,7 @@ mock.module('$lib/state/polish-hud.svelte', () => ({
 	polishHud: { begin: mock(), end: mock() },
 }));
 mock.module('$lib/state/last-delivery.svelte', () => ({
-	lastDelivery: { record: recordDelivery, take: mock(), clear: mock() },
+	lastDelivery: { record: recordDelivery, take: mock(), clear: clearDelivery },
 }));
 
 const { processRecordingPipeline } = await import('./pipeline.js');
@@ -104,8 +119,10 @@ afterEach(() => {
 	commandModeEnabled = true;
 	transcript = 'scratch that';
 	applies = true;
+	willPolish = false;
 	runVoiceCommand.mockClear();
 	deliverTranscriptionResult.mockClear();
+	clearDelivery.mockClear();
 	playSoundIfEnabled.mockClear();
 	recordDelivery.mockClear();
 	dictationReset.mockClear();
@@ -157,9 +174,21 @@ test('an imported file never fires a command', async () => {
 	expect(deliverTranscriptionResult).toHaveBeenCalledTimes(1);
 });
 
-test('a delivered dictation is held for undo, an import is not', async () => {
+test('a command still fires even though Polish would have reworded it', async () => {
+	transcript = 'scratch that';
+	willPolish = true;
+	await run();
+	expect(runVoiceCommand).toHaveBeenCalledTimes(1);
+	expect(runVoiceCommand).toHaveBeenLastCalledWith(app, 'scratchThat');
+	// If the matcher ran after Polish, it would see "Scratch that, please." and
+	// never match, so a delivery here would mean the branch moved.
+	expect(deliverTranscriptionResult).not.toHaveBeenCalled();
+});
+
+test('a delivered dictation is held for undo, an import clears without re-holding', async () => {
 	transcript = 'hello world';
 	await run();
+	expect(clearDelivery).toHaveBeenCalledTimes(1);
 	expect(recordDelivery).toHaveBeenCalledTimes(1);
 	expect(recordDelivery).toHaveBeenLastCalledWith({
 		text: 'hello world',
@@ -168,7 +197,12 @@ test('a delivered dictation is held for undo, an import is not', async () => {
 		pressedEnter: false,
 	});
 
+	clearDelivery.mockClear();
 	recordDelivery.mockClear();
 	await run('import');
+	// The seam clears whatever was held on every delivery, and the pipeline only
+	// re-records for a real dictation, so an import leaves nothing held rather
+	// than the stale record from the dictation above.
+	expect(clearDelivery).toHaveBeenCalledTimes(1);
 	expect(recordDelivery).not.toHaveBeenCalled();
 });

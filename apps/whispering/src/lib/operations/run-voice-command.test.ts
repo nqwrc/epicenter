@@ -4,7 +4,8 @@
  * Key behaviors:
  * - `commandApplies` is the single enforcement point for the design's safety
  *   property: a matched but inapplicable command falls through and is typed
- *   as text instead of vanishing.
+ *   as text instead of vanishing. Both commands share it: `stopListening`
+ *   needs a live VAD session, `scratchThat` needs something undoable held.
  * - `scratchThat` never sends a synthetic backspace on the no-op paths
  *   (nothing held, over the undo cap), only on a genuine held record.
  * - A backspace failure reports rather than throwing.
@@ -16,6 +17,7 @@ import type { TextError } from '$lib/services/text/types';
 import type { WhisperingApp } from '$lib/whispering/app';
 
 let vadActive = false;
+let canUndo = false;
 const simulateBackspaces = mock(
 	async (): Promise<Result<void, TextError>> => Ok(undefined),
 );
@@ -32,7 +34,7 @@ mock.module('$lib/services', () => ({
 	services: { text: { simulateBackspaces } },
 }));
 mock.module('$lib/state/last-delivery.svelte', () => ({
-	lastDelivery: { take, record: mock(), clear: mock() },
+	lastDelivery: { take, canUndo: () => canUndo, record: mock(), clear: mock() },
 }));
 mock.module('$lib/report', () => ({
 	report: { info: reportInfo, error: reportError },
@@ -52,12 +54,17 @@ test("commandApplies('stopListening') follows whether VAD is live", () => {
 	vadActive = false;
 });
 
-test("commandApplies('scratchThat') is true regardless of VAD state", () => {
+test("commandApplies('scratchThat') follows whether something undoable is held, regardless of VAD state", () => {
+	canUndo = false;
 	vadActive = false;
-	expect(commandApplies('scratchThat')).toBe(true);
+	expect(commandApplies('scratchThat')).toBe(false);
 	vadActive = true;
-	expect(commandApplies('scratchThat')).toBe(true);
+	expect(commandApplies('scratchThat')).toBe(false);
 	vadActive = false;
+
+	canUndo = true;
+	expect(commandApplies('scratchThat')).toBe(true);
+	canUndo = false;
 });
 
 test('scratchThat with nothing held sends no backspaces and reports an info notice', async () => {
