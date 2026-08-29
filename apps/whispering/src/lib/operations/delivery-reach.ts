@@ -18,4 +18,8 @@ export type DeliveryReach = 'output' | 'clipboard';
 
 import type { SinkKind } from './sink';
 
-export type DeliveryOutcome = { reach: DeliveryReach; sinkKind: SinkKind };
+export type DeliveryOutcome = {
+	reach: DeliveryReach;
+	sinkKind: SinkKind;
+	pressedEnter: boolean;
+};

@@ -23,14 +23,14 @@ mock.module('$lib/operations/sink', () => ({
 		kind: 'clipboard',
 		async deliver(text: string) {
 			delivered.push(`clipboard:${text}`);
-			return 'output';
+			return { reach: 'output', pressedEnter: false };
 		},
 	},
 	ledgerSink: {
 		kind: 'ledger',
 		async deliver(text: string) {
 			delivered.push(`ledger:${text}`);
-			return 'output';
+			return { reach: 'output', pressedEnter: false };
 		},
 	},
 	createCursorSink({
@@ -44,7 +44,7 @@ mock.module('$lib/operations/sink', () => ({
 			kind: 'cursor',
 			async deliver(text: string) {
 				delivered.push(`cursor:${text}:${keepOnClipboard}:${pressEnter}`);
-				return 'output';
+				return { reach: 'output', pressedEnter: pressEnter };
 			},
 		};
 	},
@@ -77,14 +77,14 @@ describe('transcription delivery', () => {
 
 		const result = await deliverTranscriptionResult(app, { text: 'hello' });
 
-		expect(result.outcome).toEqual({ reach: 'output', sinkKind: 'clipboard' });
+		expect(result.outcome).toEqual({ reach: 'output', sinkKind: 'clipboard', pressedEnter: false });
 		expect(delivered).toEqual(['clipboard:hello']);
 	});
 
 	test('cursor off and clipboard off delivers to history only', async () => {
 		const result = await deliverTranscriptionResult(app, { text: 'hello' });
 
-		expect(result.outcome).toEqual({ reach: 'output', sinkKind: 'ledger' });
+		expect(result.outcome).toEqual({ reach: 'output', sinkKind: 'ledger', pressedEnter: false });
 		expect(delivered).toEqual(['ledger:hello']);
 	});
 });

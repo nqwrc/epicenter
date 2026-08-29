@@ -12,7 +12,12 @@
 import type { DeliveryReach } from '$lib/operations/delivery-reach';
 import type { SinkKind } from '$lib/operations/sink';
 
-type Held = { text: string; sinkKind: SinkKind; reach: DeliveryReach };
+type Held = {
+	text: string;
+	sinkKind: SinkKind;
+	reach: DeliveryReach;
+	pressedEnter: boolean;
+};
 
 let held: Held | null = null;
 
@@ -31,12 +36,17 @@ function countGraphemes(text: string): number {
 }
 
 /**
- * Only a clean cursor paste can be undone. The clipboard and ledger sinks never
- * touch the keyboard, and a cursor write that fell back to `clipboard` did not
- * paste either, so there is nothing at the cursor to remove.
+ * Only a clean cursor paste with no Enter after it can be undone. The clipboard
+ * and ledger sinks never touch the keyboard; a cursor write that fell back to
+ * `clipboard` did not paste; and an Enter may have submitted the text out of the
+ * input, so the characters are not reliably still at the cursor.
  */
 function isUndoable(record: Held): boolean {
-	return record.sinkKind === 'cursor' && record.reach === 'output';
+	return (
+		record.sinkKind === 'cursor' &&
+		record.reach === 'output' &&
+		!record.pressedEnter
+	);
 }
 
 export const lastDelivery = {

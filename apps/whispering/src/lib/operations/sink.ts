@@ -16,10 +16,17 @@ import type { DeliveryReach } from './delivery-reach';
  */
 export type SinkKind = 'cursor' | 'clipboard' | 'ledger';
 
+/**
+ * What a sink did with the text. `pressedEnter` is not decoration: an Enter
+ * keystroke may have submitted the text out of the input entirely, so an undo
+ * cannot assume the characters are still sitting at the cursor.
+ */
+export type SinkOutcome = { reach: DeliveryReach; pressedEnter: boolean };
+
 /** A pluggable delivery destination, resolved once per capture. */
 export interface Sink {
 	kind: SinkKind;
-	deliver(text: string): Promise<DeliveryReach>;
+	deliver(text: string): Promise<SinkOutcome>;
 }
 
 /**
@@ -31,7 +38,7 @@ export const clipboardSink: Sink = {
 	kind: 'clipboard',
 	async deliver(text) {
 		await services.text.copyToClipboard(text);
-		return 'output';
+		return { reach: 'output', pressedEnter: false };
 	},
 };
 
@@ -43,7 +50,7 @@ export const clipboardSink: Sink = {
 export const ledgerSink: Sink = {
 	kind: 'ledger',
 	async deliver() {
-		return 'output';
+		return { reach: 'output', pressedEnter: false };
 	},
 };
 
@@ -76,19 +83,26 @@ export function createCursorSink({
 				// The write failed outright (rare). Ensure the text is at least on
 				// the clipboard, and report the reduced reach.
 				await services.text.copyToClipboard(text);
-				return 'clipboard';
+				return { reach: 'clipboard', pressedEnter: false };
 			}
 
+			let pressedEnter = false;
 			if (writeOutcome === 'pasted' && pressEnter) {
-				// The Enter keystroke is a nicety on top of a successful write; a
-				// failure here does not change the delivery outcome.
+				// The Enter keystroke is a nicety on top of a successful write, and a
+				// failure here still does not change where the text landed. It does
+				// change whether an undo can reach it, so the attempt is what counts:
+				// a submit may already have taken the text out of the input.
 				await services.text.simulateEnterKeystroke();
+				pressedEnter = true;
 			}
 
 			// A clean `pasted` reached the configured output; a `leftOnClipboard`
 			// fallback is a reduced (but recoverable) reach (see DeliveryReach and
 			// ADR-0039/0040).
-			return writeOutcome === 'pasted' ? 'output' : 'clipboard';
+			return {
+				reach: writeOutcome === 'pasted' ? 'output' : 'clipboard',
+				pressedEnter,
+			};
 		},
 	};
 }

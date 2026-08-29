@@ -163,7 +163,7 @@ async function deliverToSink({
 			}
 		: undefined;
 
-	const reach = await sink.deliver(text);
+	const { reach, pressedEnter } = await sink.deliver(text);
 
 	const title =
 		sink.kind === 'cursor'
@@ -173,7 +173,7 @@ async function deliverToSink({
 			: `${successCopy}!`;
 
 	return {
-		outcome: { reach, sinkKind: sink.kind },
+		outcome: { reach, sinkKind: sink.kind, pressedEnter },
 		notice: { title, description: text, action: recordingsAction },
 	};
 }
