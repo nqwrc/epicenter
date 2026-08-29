@@ -7,12 +7,16 @@
 	import * as Modal from '@epicenter/ui/modal';
 	import * as SectionHeader from '@epicenter/ui/section-header';
 	import { Textarea } from '@epicenter/ui/textarea';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TrashIcon from '@lucide/svelte/icons/trash';
+	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { report } from '$lib/report';
 	import { generateDefaultSnippet } from '$lib/state/snippets.svelte';
 	import type { Snippet } from '$lib/workspace';
+	import { exportSnippets } from '$lib/whispering/snippets-export';
+	import { importSnippets } from '$lib/whispering/snippets-import';
 	import { getWhisperingApp } from '$lib/whispering/context';
 
 	const app = getWhisperingApp();
@@ -90,6 +94,50 @@
 			},
 		});
 	}
+
+	async function exportLibrary() {
+		const { data, error } = await exportSnippets(app);
+		if (error) {
+			report.error({ title: 'Export failed', cause: error });
+			return;
+		}
+		if (data.written === 0) {
+			report.info({ title: 'Nothing to export', description: 'Add a snippet first.' });
+			return;
+		}
+		report.success({ title: `Exported ${data.written} snippet${data.written === 1 ? '' : 's'}` });
+	}
+
+	let importInput = $state<HTMLInputElement>();
+
+	async function onImportFileChosen(
+		event: Event & { currentTarget: HTMLInputElement },
+	) {
+		const [file] = Array.from(event.currentTarget.files ?? []);
+		// Reset so picking the same file again still fires `change`.
+		event.currentTarget.value = '';
+		if (!file) return;
+
+		const text = await file.text();
+		const { data, error } = importSnippets(app, text);
+		if (error) {
+			report.info({
+				title: 'Import failed',
+				description:
+					error.type === 'NotJson'
+						? 'That file is not valid JSON.'
+						: 'Expected a JSON array of snippets.',
+			});
+			return;
+		}
+		report.success({
+			title: `Imported ${data.created} snippet${data.created === 1 ? '' : 's'}`,
+			description:
+				data.skippedDuplicate || data.rejected
+					? `Skipped ${data.skippedDuplicate} duplicate trigger${data.skippedDuplicate === 1 ? '' : 's'}, rejected ${data.rejected} invalid ${data.rejected === 1 ? 'entry' : 'entries'}.`
+					: undefined,
+		});
+	}
 </script>
 
 <svelte:head> <title>Snippets</title> </svelte:head>
@@ -111,10 +159,30 @@
 	<Card class="flex flex-col gap-4 p-6">
 		<div class="flex items-center justify-between gap-2">
 			<h2 class="text-lg font-semibold">Your library</h2>
-			<Button variant="outline" onclick={openNew}>
-				<PlusIcon class="size-4" /> New snippet
-			</Button>
+			<div class="flex items-center gap-1">
+				<Button tooltip="Export snippets as JSON" variant="ghost" size="icon" onclick={exportLibrary}>
+					<DownloadIcon class="size-4" />
+				</Button>
+				<Button
+					tooltip="Import snippets from JSON"
+					variant="ghost"
+					size="icon"
+					onclick={() => importInput?.click()}
+				>
+					<UploadIcon class="size-4" />
+				</Button>
+				<Button variant="outline" onclick={openNew}>
+					<PlusIcon class="size-4" /> New snippet
+				</Button>
+			</div>
 		</div>
+		<input
+			bind:this={importInput}
+			type="file"
+			accept="application/json"
+			class="hidden"
+			onchange={onImportFileChosen}
+		/>
 
 		{#if app.snippets.count === 0}
 			<p class="text-muted-foreground text-sm">
