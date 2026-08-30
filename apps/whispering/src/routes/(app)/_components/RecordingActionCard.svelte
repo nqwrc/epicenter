@@ -14,7 +14,7 @@
 		controller,
 		header,
 		footer,
-		blocker = null,
+		blocked = false,
 		iconViewTransitionName,
 	}: {
 		controller: RecordingActionController;
@@ -22,12 +22,14 @@
 		header?: Snippet;
 		footer?: Snippet;
 		/**
-		 * Why capture cannot start, or `null` when it can. Set, the action is
-		 * disabled and says so in place of its usual description: the fix is
-		 * offered in the footer, so the card reports the block rather than
-		 * disappearing and taking the whole screen with it.
+		 * Capture cannot start yet. The action is disabled and says so in place of
+		 * its usual description, and its shortcut chip is withheld so the card does
+		 * not advertise a key that will not produce a transcript. The reason and
+		 * the fix belong to the footer, which is why only the fact is stated here:
+		 * the card reports the block rather than disappearing and taking the whole
+		 * screen with it.
 		 */
-		blocker?: string | null;
+		blocked?: boolean;
 		/**
 		 * When set, names the action glyph for a cross-page view transition while
 		 * the card is at rest. Suppressed automatically while `active`, because the
@@ -38,11 +40,15 @@
 		iconViewTransitionName?: string;
 	} = $props();
 
-	const accessibleLabel = $derived(
-		controller.shortcutLabel
+	// A disabled control cannot show a tooltip, so the reason it is disabled has
+	// to live in the accessible name or it is not reported at all.
+	const accessibleLabel = $derived.by(() => {
+		if (blocked)
+			return `${controller.label} (unavailable, set up transcription first)`;
+		return controller.shortcutLabel
 			? `${controller.label} (${controller.shortcutLabel})`
-			: controller.label,
-	);
+			: controller.label;
+	});
 </script>
 
 <CaptureShell active={controller.active} {header} {footer}>
@@ -50,8 +56,8 @@
 		aria-label={accessibleLabel}
 		aria-pressed={controller.active}
 		aria-busy={controller.pending}
-		tooltip={blocker ?? controller.tooltip}
-		disabled={controller.pending || Boolean(blocker)}
+		tooltip={blocked ? undefined : controller.tooltip}
+		disabled={controller.pending || blocked}
 		onclick={controller.toggle}
 		variant="ghost"
 		class={cn(
@@ -97,10 +103,10 @@
 				{controller.label}
 			</span>
 			<span class="truncate text-xs font-medium text-muted-foreground sm:text-sm">
-				{blocker ?? controller.description}
+				{blocked ? 'Setup required to record.' : controller.description}
 			</span>
 		</span>
-		{#if controller.shortcutLabel}
+		{#if controller.shortcutLabel && !blocked}
 			<Kbd.Root
 				class="h-7 max-w-28 shrink-0 rounded-md bg-muted/75 px-2 text-xs text-muted-foreground shadow-none"
 			>

@@ -38,7 +38,8 @@
 </script>
 
 <div class="flex w-full flex-col gap-2">
-	<p class="text-sm font-medium">
+	<h2 class="text-base font-semibold">Set up transcription</h2>
+	<p class="text-muted-foreground text-sm">
 		{readiness.primaryIssue ??
 			'Choose how Whispering turns your speech into text.'}
 	</p>

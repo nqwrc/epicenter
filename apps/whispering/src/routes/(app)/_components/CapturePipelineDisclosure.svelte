@@ -10,19 +10,21 @@
 		getTranscriptionReadiness,
 	} from '$lib/settings/transcription-validation';
 	import { getWhisperingApp } from '$lib/whispering/context';
+	import { capturePipelineDisclosure } from './capture-pipeline-disclosure.svelte';
 	import TranscriptionSetup from './TranscriptionSetup.svelte';
 
 	// One line at rest, the whole pipeline when opened. The screen is looked at
 	// least of the surfaces Whispering owns, so the settled pipeline states its
 	// result in a sentence and keeps its four controls one press away.
 	//
-	// An unresolved stage is the exception: it marks itself, opens on mount, and
-	// carries the fix inline. That is what replaces the separate setup screen
-	// this page used to branch into, so setup and steady state are one layout.
+	// An unresolved blocker is the exception: it marks the row, opens it, and
+	// carries the fix inline instead of the pipeline controls, which would
+	// otherwise offer a second way to change the very setting being set up. That
+	// is what replaces the separate setup screen this page used to branch into.
 	let {
 		children,
 	}: {
-		/** The pipeline controls, revealed when the row is open. */
+		/** The pipeline controls, revealed when the row is open and usable. */
 		children: Snippet;
 	} = $props();
 
@@ -30,11 +32,13 @@
 
 	const readiness = $derived(getTranscriptionReadiness(app));
 	const polish = $derived(polishStatus(app));
+	const disclosure = capturePipelineDisclosure;
 
 	const summary = $derived.by(() => {
-		if (!readiness.isReady) {
-			return readiness.primaryIssue ?? 'Transcription needs setup';
-		}
+		// Short and fixed while blocked: the sentence that explains the blocker is
+		// the setup panel's to say, and saying it here too would print it twice in
+		// one card.
+		if (!readiness.isReady) return 'Set up transcription';
 		const provider = getSelectedTranscriptionProvider(app);
 		const polishLabel =
 			polish === 'on'
@@ -45,11 +49,9 @@
 		return [provider?.label, polishLabel].filter(Boolean).join(', ');
 	});
 
-	// Opened by the person, or forced open by a blocker they have to clear. The
-	// override is one-way on purpose: closing a row that still cannot record
-	// would hide the only thing standing between them and a transcript.
-	let openedByUser = $state(false);
-	const open = $derived(openedByUser || !readiness.isReady);
+	$effect(() => {
+		if (!readiness.isReady) disclosure.openForBlocker();
+	});
 </script>
 
 <div class="flex w-full flex-col gap-2">
@@ -66,25 +68,30 @@
 			{summary}
 		</span>
 		<Button
-			tooltip={open ? 'Hide capture pipeline' : 'Show capture pipeline'}
-			aria-label={open ? 'Hide capture pipeline' : 'Show capture pipeline'}
-			aria-expanded={open}
-			disabled={!readiness.isReady}
+			tooltip={disclosure.open ? 'Hide capture pipeline' : 'Show capture pipeline'}
+			aria-label={disclosure.open
+				? 'Hide capture pipeline'
+				: 'Show capture pipeline'}
+			aria-expanded={disclosure.open}
 			variant="ghost"
 			size="icon"
 			class="size-7 shrink-0"
-			onclick={() => (openedByUser = !openedByUser)}
+			onclick={() => disclosure.toggle()}
 		>
 			<ChevronDownIcon
-				class={cn('size-4 transition-transform duration-200', open && 'rotate-180')}
+				class={cn(
+					'size-4 transition-transform duration-200',
+					disclosure.open && 'rotate-180',
+				)}
 			/>
 		</Button>
 	</div>
 
-	{#if open}
-		{#if !readiness.isReady}
+	{#if disclosure.open}
+		{#if readiness.isReady}
+			{@render children()}
+		{:else}
 			<TranscriptionSetup />
 		{/if}
-		{@render children()}
 	{/if}
 </div>

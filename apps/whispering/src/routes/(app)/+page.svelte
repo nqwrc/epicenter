@@ -51,11 +51,7 @@
 
 	const latestRecording = $derived(app.recordings.sorted[0]);
 	const transcriptionReadiness = $derived(getTranscriptionReadiness(app));
-	const blocker = $derived(
-		transcriptionReadiness.isReady
-			? null
-			: (transcriptionReadiness.primaryIssue ?? 'Set up transcription first.'),
-	);
+	const blocked = $derived(!transcriptionReadiness.isReady);
 	const hasActiveShortcut = $derived.by(() => {
 		const surface = captureSurface.current(app);
 		if (surface === 'import') return false;
@@ -169,7 +165,7 @@
 	<DictationCapabilityNotice />
 
 	{#if captureSurface.current(app) === 'manual'}
-		<ManualRecordingAction header={surfaceSwitch} {blocker}>
+		<ManualRecordingAction header={surfaceSwitch} {blocked}>
 			{#snippet footer()}
 				<CapturePipelineDisclosure>
 					<CapturePipeline>
@@ -187,7 +183,7 @@
 			{/snippet}
 		</ManualRecordingAction>
 	{:else if captureSurface.current(app) === 'vad'}
-		<VadRecordingAction header={surfaceSwitch} {blocker}>
+		<VadRecordingAction header={surfaceSwitch} {blocked}>
 			{#snippet footer()}
 				<CapturePipelineDisclosure>
 					<CapturePipeline>
@@ -207,11 +203,13 @@
 	{:else if captureSurface.current(app) === 'import'}
 		<CaptureShell header={surfaceSwitch}>
 			<div class="px-3 pt-2 pb-3">
-				{#if blocker}
+				{#if blocked}
+					<!-- Deliberately not the dashed drop target: a dashed box invites a
+					drop that cannot be transcribed yet. -->
 					<div
-						class="border-border text-muted-foreground flex h-32 w-full items-center justify-center rounded-lg border border-dashed px-4 text-center text-sm sm:h-36"
+						class="bg-muted/40 text-muted-foreground flex h-32 w-full items-center justify-center rounded-lg px-4 text-center text-sm sm:h-36"
 					>
-						{blocker}
+						Set up transcription to import files.
 					</div>
 				{:else}
 					<FileDropZone
@@ -262,7 +260,7 @@
 		/>
 	{/if}
 
-	{#if captureSurface.current(app) !== 'import'}
+	{#if !blocked && captureSurface.current(app) !== 'import'}
 		<p class="text-muted-foreground w-full text-sm">
 			{#if hasActiveShortcut}
 				Your shortcut works
@@ -275,7 +273,7 @@
 		</p>
 	{/if}
 
-	{#if !tauri}
+	{#if !blocked && !tauri}
 		<p class="text-muted-foreground w-full text-sm font-light">
 			Tired of switching tabs?
 			<Link

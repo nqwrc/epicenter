@@ -10,11 +10,11 @@
 	let {
 		header,
 		footer,
-		blocker = null,
+		blocked = false,
 	}: {
 		header?: Snippet;
 		footer: Snippet;
-		blocker?: string | null;
+		blocked?: boolean;
 	} = $props();
 
 	const rec = createVadRecordingController(app);
@@ -24,6 +24,6 @@
 	controller={rec}
 	{header}
 	{footer}
-	{blocker}
+	{blocked}
 	iconViewTransitionName={viewTransition.recordingMode('vad')}
 />

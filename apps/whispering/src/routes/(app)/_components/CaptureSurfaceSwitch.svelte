@@ -34,7 +34,7 @@
 			value={option.value}
 			title={option.label}
 			aria-label="Switch to {option.label.toLowerCase()}"
-			class="size-8 min-w-0 px-0"
+			class="size-8 flex-none px-0"
 		>
 			<SurfaceIcon class="size-4" />
 		</ToggleGroup.Item>
