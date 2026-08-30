@@ -22,6 +22,7 @@
 		{ title: 'Sound', href: whisperingPath('/settings/sound') },
 		{ title: 'Analytics', href: whisperingPath('/settings/analytics') },
 		{ title: 'Account', href: whisperingPath('/settings/account') },
+		{ title: 'Import & Export', href: whisperingPath('/settings/data') },
 	] satisfies {
 		title: string;
 		href: string;
