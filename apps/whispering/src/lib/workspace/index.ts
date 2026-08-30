@@ -125,6 +125,16 @@ const settingsKv = {
 	recordingPausePlayback: field.boolean(),
 	recordingAutoUpload: field.boolean(),
 
+	/**
+	 * Where the floating recording pill sits, as a 3x3 anchor grid with a margin
+	 * per axis rather than one hardcoded formula. The defaults reproduce the
+	 * formula this replaced: centered, 72px above the usable bottom edge.
+	 */
+	recordingOverlayXAnchor: field.select(['left', 'center', 'right']),
+	recordingOverlayXMarginPx: field.number(),
+	recordingOverlayYAnchor: field.select(['top', 'center', 'bottom']),
+	recordingOverlayYMarginPx: field.number(),
+
 	transcriptionService: field.select([
 		'epicenter',
 		'OpenAI',
