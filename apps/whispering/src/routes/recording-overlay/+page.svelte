@@ -229,6 +229,21 @@
 		}
 	}
 
+	/**
+	 * A press on the backdrop leaves the session.
+	 *
+	 * The session covers the screen and takes its clicks, so the way out has to
+	 * live inside it: a control drawn anywhere else cannot be reached while it
+	 * runs. Cancelling rather than saving because a stray press is far likelier
+	 * than a deliberate one, and cancel is the outcome that loses nothing.
+	 */
+	function handleBackdropPointerDown(event: PointerEvent): void {
+		// Only a press on the surface itself. Presses inside the pill bubble up
+		// here too, and those are a drag starting, not a request to leave.
+		if (event.target !== event.currentTarget) return;
+		runRepositionStep(finishSession({ type: 'cancel' }, startingAnchor));
+	}
+
 	onMount(() => {
 		void (async () => {
 			trackUnlistener(
@@ -276,7 +291,8 @@
 	<!-- For the length of the session this window IS the work area, so these
 	     coordinates are both CSS pixels and the logical pixels the anchor math
 	     speaks in. Nothing here converts between the two. -->
-	<div class="reposition-surface">
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="reposition-surface" onpointerdown={handleBackdropPointerDown}>
 		{#if xSnapped}
 			<div class="guide guide-vertical" style="left: {guides.x}px"></div>
 		{/if}
@@ -314,6 +330,11 @@
 					runRepositionStep(finishSession({ type: 'cancel' }, startingAnchor))}
 			/>
 		</div>
+
+		<p class="reposition-hint">
+			Drag the pill where you want it, then save. Click anywhere else to
+			cancel.
+		</p>
 	</div>
 {:else}
 	<!-- The pill hugs its content, so center it within the fixed overlay window (the
@@ -339,6 +360,22 @@
 		position: fixed;
 		inset: 0;
 		background: rgba(8, 8, 10, 0.22);
+	}
+
+	/* The only instruction on screen, so it sits where the eye lands first and
+	   never under the pill, wherever the pill has been dragged to. */
+	.reposition-hint {
+		position: absolute;
+		top: 24px;
+		left: 0;
+		right: 0;
+		margin: 0;
+		text-align: center;
+		font-size: 12px;
+		letter-spacing: 0.01em;
+		color: rgba(255, 255, 255, 0.72);
+		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+		pointer-events: none;
 	}
 
 	.pill-slot {

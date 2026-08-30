@@ -349,5 +349,6 @@ Each option and the one reason it lost. Terse. This is not the spec.
 | [0264](0264-the-recording-overlays-position-is-a-snapped-anchor-not-a-pixel-pair.md) | The recording overlay's position is a snapped anchor, not a pixel pair | Accepted |
 | [0265](0265-a-reposition-session-grows-the-overlay-into-the-work-area.md) | A reposition session grows the overlay into the work area | Accepted |
 | [0266](0266-a-settings-bundle-overwrites-preferences-and-appends-tables.md) | A settings bundle overwrites preferences and appends tables | Accepted |
+| [0267](0267-leaving-a-reposition-session-is-a-press-on-its-own-backdrop.md) | Leaving a reposition session is a press on its own backdrop | Accepted (amends 0265 at its escape hatch) |
 
 When you add an ADR, add its row here.

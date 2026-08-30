@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-30
 - **Relates:** [ADR-0264](0264-the-recording-overlays-position-is-a-snapped-anchor-not-a-pixel-pair.md)
+- **Amended by:** [ADR-0267](0267-leaving-a-reposition-session-is-a-press-on-its-own-backdrop.md) at its escape hatch: the Settings control it named cannot be reached while a session runs, so leaving is a press on the session's own backdrop.
 
 ## Context
 
