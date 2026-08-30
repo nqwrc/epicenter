@@ -19,7 +19,12 @@ export type RecordingPillStatus =
 	  }
 	| { phase: 'transcribing' }
 	| { phase: 'polishing' }
-	| { phase: 'delivered'; reach: DeliveryReach }
+	| {
+			phase: 'delivered';
+			reach: DeliveryReach;
+			/** Word count of the delivered text, for the pill's "N words" label. */
+			wordCount?: number;
+	  }
 	| { phase: 'failed'; tier: DictationFailureTier };
 
 /** A control gesture emitted by either mount of the shared recording pill. */

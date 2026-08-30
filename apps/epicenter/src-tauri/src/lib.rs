@@ -78,7 +78,7 @@ use shell::{
 #[cfg(desktop)]
 pub mod keyboard;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub mod overlay;
 
 #[cfg(target_os = "macos")]
@@ -785,10 +785,10 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to build Epicenter")
         .run(|app, event| match event {
-            // `RunEvent::Reopen` is the NSApplicationDelegate's
-            // applicationShouldHandleReopen, so Tauri declares the variant
-            // `#[cfg(target_os = "macos")]`. Matching it unconditionally does not
-            // compile anywhere else.
+            // `Reopen` is a macOS-only variant (the Dock-icon click that asks a
+            // still-running app for a window back). It is absent from `RunEvent`
+            // on every other platform, so matching on it unconditionally fails
+            // to compile off macOS; gate the arm rather than the whole match.
             #[cfg(target_os = "macos")]
             RunEvent::Reopen { .. } => request_window(app, BuiltInApp::Home),
             RunEvent::Exit => shutdown_host(app),
@@ -1057,6 +1057,23 @@ fn launch_host(app: &DesktopAppHandle, port: u16) -> Result<LaunchedHost> {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::from(log.try_clone()?));
+
+    // The bundled host is a console-subsystem executable, because `bun build
+    // --compile` produces one and it stays runnable from a terminal that way.
+    // The desktop binary is a GUI one, so it owns no console to lend the child,
+    // and Windows answers by allocating a fresh one: a command prompt opened
+    // beside the app and sat there for as long as the host lived. Say the child
+    // gets no console instead. This does not touch the pipes above, which is
+    // the whole protocol with the host (the boot frame, the auth frames, and
+    // stderr into the log file); a console is only ever where a console
+    // program's output goes when nobody has redirected it, and everything here
+    // is redirected.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
 
     let mut child = command
         .spawn()
@@ -1395,7 +1412,7 @@ fn create_windows_on_main_thread(
     let token = token.to_string();
     app.clone().run_on_main_thread(move || {
         let result = (|| {
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             create_recording_overlay(&app, port, &token)?;
 
             ensure_window(&app, BuiltInApp::Whispering, port, &token, false)?;
@@ -1411,7 +1428,7 @@ fn create_windows_on_main_thread(
         .context("the main thread stopped before creating Epicenter windows")?
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn create_recording_overlay(app: &DesktopAppHandle, port: u16, token: &str) -> Result<()> {
     let origin = origin(port);
     let url: tauri::Url = format!("{origin}/apps/whispering/recording-overlay/").parse()?;
@@ -1492,7 +1509,7 @@ fn invalidate_windows(app: &DesktopAppHandle) {
                 let _ = window.hide();
             }
         }
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
         if let Some(window) = app.get_webview_window(overlay::WINDOW_LABEL) {
             if window.destroy().is_err() {
                 let _ = window.hide();

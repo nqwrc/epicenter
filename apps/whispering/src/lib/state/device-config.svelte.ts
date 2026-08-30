@@ -31,8 +31,16 @@ const globalBinding = type({
 //
 // Toggle recording is the out-of-the-box gesture: press once to start and again
 // to stop. A chord is the right tool for a toggle; its press effort resists
-// accidental triggers. Push-to-talk ships unbound: bind a chord for it in
-// settings if you want a held key (Fn and modifier-only holds are not supported).
+// accidental triggers. Push-to-talk ships bound to Ctrl+Alt+Space, hold to
+// talk, release to stop (a plain literal chord, not platform-varied like
+// toggle/cancel below): the plugin's ShortcutState carries both Pressed and
+// Released, so the hold gesture works globally with no local-shortcut
+// fallback needed (`operations/push-to-talk.ts`, `operations/hands-free.ts`
+// for the double-tap hands-free lock on top of it). Not checked against
+// `reserved-shortcuts.ts` beyond the shared table: it is not a reload/undo/
+// clipboard chord, but on macOS Ctrl+Option+Space collides with the system
+// "select next input source" gesture, which this app does not detect or
+// route around.
 //
 //   macOS:   Cmd + Shift + Space  = toggle,  Cmd + .          = cancel
 //   Windows: Ctrl + Shift + Space = toggle,  Ctrl + Shift + . = cancel
@@ -51,7 +59,7 @@ const CANCEL_MODIFIERS: KeyBinding['modifiers'] = os.isApple
 	: ['ctrl', 'shift'];
 
 export const DEFAULT_GLOBAL_BINDINGS = {
-	pushToTalk: null,
+	pushToTalk: { modifiers: ['ctrl', 'alt'], keys: ['space'] },
 	toggleManualRecording: { modifiers: TOGGLE_MODIFIERS, keys: ['space'] },
 	cancelRecording: { modifiers: CANCEL_MODIFIERS, keys: ['dot'] },
 	toggleVadRecording: null,

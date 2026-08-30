@@ -304,8 +304,13 @@ fn open_windows_microphone_settings() -> Result<(), String> {
     use std::process::Command;
     // `ms-settings:` URIs are launched by the shell, not run directly; go
     // through `cmd /C start` so the OS resolves the privacy-microphone page.
+    // `cmd` is a console program and this app is a GUI one, so a plain spawn
+    // pops a console window in the user's face on the way to the settings page.
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     Command::new("cmd")
         .args(["/C", "start", "", "ms-settings:privacy-microphone"])
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map_err(|e| format!("Failed to open microphone privacy settings: {e}"))?;
     Ok(())

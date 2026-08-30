@@ -7,6 +7,7 @@
 	// tints the bars via `barClass` when speech latches.
 	let {
 		level,
+		bars = 11,
 		minPx = 3,
 		maxPx = 18,
 		barClass,
@@ -14,6 +15,8 @@
 	}: {
 		/** Smoothed mic loudness, 0 (silent) to 1 (loud). */
 		level: number;
+		/** Bar count. Defaults to the original 11-bar meter. */
+		bars?: number;
 		/** Bar height floor (silent) and ceiling (loud), in px. */
 		minPx?: number;
 		maxPx?: number;
@@ -25,9 +28,16 @@
 
 	// Per-bar height envelope (taller in the middle) scaled by `level`. Reacting
 	// the same amplitude through a fixed shape reads as a meter, not a flat block.
-	const ENVELOPE = [
-		0.35, 0.5, 0.68, 0.84, 0.95, 1, 0.95, 0.84, 0.68, 0.5, 0.35,
-	];
+	// Generated rather than hardcoded so callers can pick any bar count (the
+	// desktop overlay's 7-bar waveform vs. this file's original 11-bar meter) and
+	// still get the same quieter-at-the-edges silhouette.
+	const ENVELOPE = $derived.by((): number[] => {
+		const mid = (bars - 1) / 2 || 1;
+		return Array.from({ length: bars }, (_, i) => {
+			const distance = Math.abs(i - mid) / mid;
+			return 0.35 + 0.65 * (1 - distance) ** 1.15;
+		});
+	});
 
 	function barHeight(envelope: number): number {
 		return minPx + envelope * level * (maxPx - minPx);

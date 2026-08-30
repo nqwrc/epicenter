@@ -112,6 +112,35 @@ export async function processRecordingPipeline(
 	const { text: transcribedText } = transcription;
 	let history = transcription.history;
 
+	// Nothing was said, so nothing is delivered.
+	//
+	// An empty transcript is a real outcome, not a degenerate success: the
+	// recognizer was skipped because the recording held no speech
+	// (`operations/transcribe.ts`), or a provider genuinely heard nothing. The
+	// rest of this function assumes there are words to hand over, and running it
+	// on none does active harm. Delivery writes the transcript to the sink, and
+	// writing an empty string to the clipboard destroys whatever the user had
+	// copied: tapping push-to-talk by accident would silently cost them their
+	// clipboard. The completion chime is a receipt for text that landed, so
+	// sounding it for no text is a lie the ear believes. Polish has nothing to
+	// polish.
+	//
+	// The pill retires instead of reporting, because there is nothing to report:
+	// the outcome track goes back to `none` and the overlay hides, which is what
+	// a person who said nothing expects to see. The recording row is still
+	// written, so the attempt stays visible where the durable record lives.
+	if (transcribedText.trim() === '') {
+		if (isDictation) {
+			dictationLifecycle.reset();
+		} else {
+			transcribeLoading?.resolve({
+				title: 'No speech detected',
+				description: 'The recording had nothing to transcribe.',
+			});
+		}
+		return;
+	}
+
 	// Command Mode intercepts here, before Polish: Polish would reword "scratch
 	// that" into prose, so a matcher downstream of it would only ever see the
 	// phrase destroyed. A match ends the pipeline, so nothing below runs: no
@@ -223,8 +252,10 @@ export async function processRecordingPipeline(
 		// The delivered transcript is the dictation receipt. Every reach is a success,
 		// even when history could not be confirmed, so this is always `delivered`; the reach decides
 		// whether the pill flashes (clean `output`) or persists (a reduced
-		// `clipboard`).
-		dictationLifecycle.markDelivered(transcriptDelivery.reach);
+		// `clipboard`). The word count rides the same event so the pill can show
+		// "N words" without a second round trip for the delivered text.
+		const wordCount = deliveredText.trim().split(/\s+/).filter(Boolean).length;
+		dictationLifecycle.markDelivered(transcriptDelivery.reach, wordCount);
 	} else {
 		transcribeLoading?.resolve(transcribeNotice);
 	}

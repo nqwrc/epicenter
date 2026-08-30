@@ -28,10 +28,15 @@ const RecordingOverlayError = defineErrors({
 	}),
 });
 
-// Fixed size in logical pixels. The width is the pill's max width (the cap in
-// RecordingPill); the transparent window centers the narrower states inside it.
-const OVERLAY_WIDTH = 224;
-const OVERLAY_HEIGHT = 40;
+// Fixed size in logical pixels. The window must fit the pill's widest state
+// (260px, `listening` in RecordingPill) plus bleed room for the deep drop
+// shadow and the recording dot's radial glow, both painted as CSS inside the
+// webview: the window itself sets `shadow: false`, so anything that overflows
+// the window rect is clipped, not just visually cropped. ~20px of bleed on
+// each side keeps the glow intact without making the (always-on-top,
+// click-swallowing) window much bigger than the pill it hosts.
+const OVERLAY_WIDTH = 300;
+const OVERLAY_HEIGHT = 72;
 // Distance from the bottom edge of the monitor, in logical pixels.
 const OVERLAY_BOTTOM_MARGIN = 72;
 
@@ -43,10 +48,12 @@ async function computeOverlayPosition(): Promise<LogicalPosition | null> {
 	if (!monitor) return null;
 
 	const scale = monitor.scaleFactor;
-	const monitorX = monitor.position.x / scale;
-	const monitorY = monitor.position.y / scale;
-	const monitorWidth = monitor.size.width / scale;
-	const monitorHeight = monitor.size.height / scale;
+	// Work area excludes the taskbar/dock, so the bottom margin is measured from
+	// the usable desktop edge rather than the raw monitor edge.
+	const monitorX = monitor.workArea.position.x / scale;
+	const monitorY = monitor.workArea.position.y / scale;
+	const monitorWidth = monitor.workArea.size.width / scale;
+	const monitorHeight = monitor.workArea.size.height / scale;
 
 	const x = monitorX + (monitorWidth - OVERLAY_WIDTH) / 2;
 	const y = monitorY + monitorHeight - OVERLAY_HEIGHT - OVERLAY_BOTTOM_MARGIN;

@@ -5,10 +5,12 @@ import {
 	transcribe,
 } from '@epicenter/client';
 import { API_ROUTES } from '@epicenter/constants/api-routes';
+import { containsSpeech } from '@epicenter/recorder';
 import { type AnyTaggedError, defineErrors } from 'wellcrafted/error';
 import { createLogger } from 'wellcrafted/logger';
 import { Err, Ok, type Result } from 'wellcrafted/result';
 import { auth } from '#platform/auth';
+import { WHISPERING_BASE_PATHNAME } from '#platform/base-path';
 import { customFetch } from '#platform/http';
 import { tauri } from '#platform/tauri';
 import {
@@ -259,6 +261,34 @@ export async function transcribeAudio(
 		provider: selectedService,
 	});
 
+	// Silence never reaches a recognizer, whichever one is selected.
+	//
+	// Whisper cannot decline to answer: given a clip with no speech in it, the
+	// decoder still emits its highest-prior caption, which is why a tap of
+	// push-to-talk with nothing said pastes "Thank you." at the cursor. The
+	// on-device route already refused to run a model on empty audio and reported
+	// `empty-audio`; the upload route had no equivalent and posted the clip
+	// anyway. That made one policy two implementations, and only the route
+	// nobody was using was protected.
+	//
+	// So the gate sits above the fork, in the one place that already decides
+	// on-device-ness, and both arms inherit it. An empty transcript is the same
+	// honest answer `empty-audio` gives, so this adds no new outcome for callers
+	// to learn. `containsSpeech` answers `true` whenever it cannot tell, so a
+	// broken gate transcribes rather than discards.
+	//
+	// The cost is that the on-device arm now reads the blob here to be asked the
+	// question and Rust reads it again to transcribe. That is the price of one
+	// gate instead of two, and it is worth naming rather than discovering.
+	if (await isSilent(app, audioBlobId)) {
+		void logAnalyticsEvent(app, {
+			type: 'transcription_completed',
+			provider: selectedService,
+			duration: Date.now() - startTime,
+		});
+		return Ok('');
+	}
+
 	// The one place on-device-ness is decided. The type guard narrows `selectedService`
 	// to `OnDeviceProviderId` in one arm and `UploadProviderId` in the other, so each
 	// helper receives an already-narrowed id and neither re-checks.
@@ -283,6 +313,33 @@ export async function transcribeAudio(
 	}
 
 	return transcriptionResult;
+}
+
+/**
+ * Whether a saved recording has no speech in it.
+ *
+ * Reads the raw local blob rather than the upload-encoded bytes: the question is
+ * about the audio, not about what a provider is willing to accept, and going
+ * through the opus encode would make the answer depend on which route was
+ * selected. A blob that cannot be read is not evidence of silence, so it
+ * transcribes, matching `containsSpeech`'s own refusal to fail closed.
+ */
+async function isSilent(
+	app: WhisperingApp,
+	audioBlobId: BlobId,
+): Promise<boolean> {
+	const { data: audio, error } = await services.blobs.local.get(audioBlobId);
+	if (error) return false;
+	const speech = await containsSpeech({
+		audio,
+		assetBaseUrl: `${WHISPERING_BASE_PATHNAME}/vad/`,
+	});
+	if (!speech) {
+		log.info('Skipped transcription: the recording contains no speech', {
+			audioBlobId,
+		});
+	}
+	return !speech;
 }
 
 /**
