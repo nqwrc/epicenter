@@ -8,9 +8,13 @@
 	const app = getWhisperingApp();
 
 	let {
+		header,
 		footer,
+		blocker = null,
 	}: {
+		header?: Snippet;
 		footer: Snippet;
+		blocker?: string | null;
 	} = $props();
 
 	const rec = createVadRecordingController(app);
@@ -18,6 +22,8 @@
 
 <RecordingActionCard
 	controller={rec}
+	{header}
 	{footer}
+	{blocker}
 	iconViewTransitionName={viewTransition.recordingMode('vad')}
 />
