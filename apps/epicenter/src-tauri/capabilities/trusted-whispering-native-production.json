@@ -47,6 +47,8 @@
 		"clipboard-manager:allow-write-text",
 		"dialog:allow-open",
 		"dialog:allow-save",
+		"fs:allow-read-file",
+		"fs:allow-write-file",
 		"deep-link:default",
 		"log:default",
 		"notification:default",
