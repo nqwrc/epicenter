@@ -346,5 +346,7 @@ Each option and the one reason it lost. Terse. This is not the spec.
 | [0261](0261-a-local-account-replica-is-addressed-by-its-application-server-url-and-verified-principal.md) | A local account replica is addressed by its application, server URL, and verified principal | Accepted (supersedes 0259; refuses minted profile ids; amends 0233 at the retained replica address) |
 | [0262](0262-the-desktop-host-owns-one-active-connection-and-no-connection-registry.md) | The desktop host owns one active connection and no connection registry | Accepted (supersedes 0260; amends 0155 at the selected connection) |
 | [0263](0263-a-connection-is-one-server-at-a-time-and-a-replica-is-derived-from-it.md) | A connection is one server at a time and a replica is derived from it | Accepted (restates 0075, 0092, 0261, and 0262 as one reader-facing contract) |
+| [0264](0264-the-recording-overlays-position-is-a-snapped-anchor-not-a-pixel-pair.md) | The recording overlay's position is a snapped anchor, not a pixel pair | Accepted |
+| [0265](0265-a-reposition-session-grows-the-overlay-into-the-work-area.md) | A reposition session grows the overlay into the work area | Accepted |
 
 When you add an ADR, add its row here.
