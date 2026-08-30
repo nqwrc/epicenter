@@ -1,3 +1,21 @@
+<script lang="ts" module>
+	import { defineErrors } from 'wellcrafted/error';
+
+	/**
+	 * The reposition session runs on window verbs the overlay's Tauri capability
+	 * has to grant one by one, so a denied permission shows up here as a rejected
+	 * promise rather than a visible failure. Logged rather than swallowed: a
+	 * silent no-op is exactly what a missing capability looked like the first
+	 * time, and it cost a live debugging session to find.
+	 */
+	const RecordingOverlayPageError = defineErrors({
+		RepositionFailed: ({ cause }: { cause: unknown }) => ({
+			message: 'Recording overlay reposition step failed',
+			cause,
+		}),
+	});
+</script>
+
 <script lang="ts">
 	import type { UnlistenFn } from '@tauri-apps/api/event';
 	import {
@@ -6,6 +24,7 @@
 		LogicalPosition,
 	} from '@tauri-apps/api/window';
 	import { onDestroy, onMount } from 'svelte';
+	import { createLogger } from 'wellcrafted/logger';
 	import {
 		DEFAULT_OVERLAY_ANCHOR,
 		formatAnchorLabel,
@@ -48,6 +67,15 @@
 	// the perceptual curve and smoothing (shared with the web pill) so the bars
 	// react to the actual voice rather than looping on a timer.
 	let level = $state(0);
+
+	const log = createLogger('whispering/recording-overlay-page');
+
+	/** Run one reposition step, reporting a denied window verb instead of hiding it. */
+	function runRepositionStep(step: Promise<void>): void {
+		void step.catch((cause) => {
+			log.warn(RecordingOverlayPageError.RepositionFailed({ cause }));
+		});
+	}
 
 	const unlisteners: UnlistenFn[] = [];
 	let isDestroyed = false;
@@ -138,7 +166,7 @@
 
 	function scheduleSettle(): void {
 		clearTimeout(settleTimer);
-		settleTimer = setTimeout(() => void settle(), SETTLE_DELAY_MS);
+		settleTimer = setTimeout(() => runRepositionStep(settle()), SETTLE_DELAY_MS);
 	}
 
 	async function beginRepositioning(anchor: OverlayAnchor): Promise<void> {
@@ -225,7 +253,7 @@
 			);
 			trackUnlistener(
 				await recordingOverlayEnterReposition.listen((event) => {
-					void beginRepositioning(event.payload.anchor);
+					runRepositionStep(beginRepositioning(event.payload.anchor));
 				}),
 			);
 			// Tell the main window we are ready so it re-sends the latest status.
@@ -254,9 +282,9 @@
 		<RecordingPillReposition
 			label={formatAnchorLabel(pendingAnchor)}
 			onDragStart={handleDragStart}
-			onSave={() => void handleSave()}
-			onReset={() => void handleReset()}
-			onCancel={() => void handleCancel()}
+			onSave={() => runRepositionStep(handleSave())}
+			onReset={() => runRepositionStep(handleReset())}
+			onCancel={() => runRepositionStep(handleCancel())}
 		/>
 	{:else}
 		<RecordingPill
