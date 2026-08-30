@@ -22,22 +22,25 @@
 		currentMonitor,
 		getCurrentWindow,
 		LogicalPosition,
+		LogicalSize,
 	} from '@tauri-apps/api/window';
 	import { onDestroy, onMount } from 'svelte';
 	import { createLogger } from 'wellcrafted/logger';
 	import {
 		DEFAULT_OVERLAY_ANCHOR,
 		formatAnchorLabel,
+		guideLineOffsets,
 		type LogicalRect,
-		nearestAnchorFromRect,
 		type OverlayAnchor,
 		resolveAnchorPosition,
+		snapRectToAnchor,
 	} from '$lib/recording-overlay/anchor-position';
 	import {
 		OVERLAY_HEIGHT,
 		OVERLAY_WIDTH,
 	} from '$lib/recording-overlay/constants';
 	import {
+		type OverlayRepositionResult,
 		recordingOverlayAction,
 		recordingOverlayEnterReposition,
 		recordingOverlayMicLevel,
@@ -86,157 +89,143 @@
 
 	// ── Reposition session ──────────────────────────────────────────────────
 	//
-	// The main window puts this webview into a placement preview: the pill
-	// becomes draggable and reports back where it landed. `pendingAnchor` is the
-	// only thing a save reads, and it is maintained from the window's own
-	// `onMoved` events rather than from the drag call, because `startDragging`
-	// hands the window to the OS move loop and resolves at drag START, not at
-	// drag end (tao posts WM_NCLBUTTONDOWN and returns). There is no drag-end
-	// signal in the Tauri API, so the visible snap runs off a settle timer: if
-	// it ever fires while a drag is still going, the OS move loop simply moves
-	// the window again and the next `onMoved` restarts the timer.
-	let repositioning = $state(false);
+	// For the length of a session this window stops being a 300x72 chip and
+	// becomes the whole work area, with the pill drawn inside it as an ordinary
+	// absolutely positioned element. That is what makes guide lines possible at
+	// all: a chip-sized window cannot paint a line across the screen, and the
+	// only alternative was a second monitor-sized window to draw them in.
+	//
+	// It also makes the drag exact. Dragging the OS window means `startDragging`,
+	// which hands control to the platform move loop and reports nothing back when
+	// it ends, so the placement had to be inferred from window-move events and a
+	// settle timer. Inside one webview it is just pointer capture: pointerdown,
+	// pointermove, pointerup, with the snapped position rendered on every move so
+	// the pill visibly locks into place under the cursor.
+
+	const OVERLAY_SIZE = { width: OVERLAY_WIDTH, height: OVERLAY_HEIGHT };
+
+	type RepositionSession = {
+		/** Work area origin in screen logical px. The window sits exactly here. */
+		origin: { x: number; y: number };
+		/** The work area in window-local coordinates, so its origin is 0,0. */
+		area: LogicalRect;
+	};
+
+	let session = $state.raw<RepositionSession | null>(null);
 	let startingAnchor = $state.raw<OverlayAnchor>(DEFAULT_OVERLAY_ANCHOR);
 	let pendingAnchor = $state.raw<OverlayAnchor>(DEFAULT_OVERLAY_ANCHOR);
+	let xSnapped = $state(false);
+	let ySnapped = $state(false);
+	/** Where in the pill the drag was grabbed, so it does not jump to the cursor. */
+	let grabOffset: { x: number; y: number } | null = null;
 
-	/** How long the window has to hold still before the pill snaps into place. */
-	const SETTLE_DELAY_MS = 250;
-
-	/**
-	 * The monitor as of the last refresh, in logical pixels plus the scale that
-	 * converts a `PhysicalPosition` into them. Cached because `onMoved` fires far
-	 * too often to ask Tauri for monitor geometry each time; refreshed on every
-	 * settle, which is what keeps a drag onto a second display correct.
-	 */
-	let monitor = $state.raw<{ scale: number; workArea: LogicalRect } | null>(
-		null,
+	const pillPosition = $derived(
+		session
+			? resolveAnchorPosition(pendingAnchor, session.area, OVERLAY_SIZE)
+			: { x: 0, y: 0 },
 	);
-	let settleTimer: ReturnType<typeof setTimeout> | undefined;
-	let unlistenMoved: UnlistenFn | undefined;
+	const guides = $derived(
+		guideLineOffsets(pendingAnchor, pillPosition, OVERLAY_SIZE),
+	);
 
-	async function refreshMonitor(): Promise<void> {
-		const current = await currentMonitor();
-		if (!current) return;
-		const scale = current.scaleFactor;
-		monitor = {
-			scale,
-			workArea: {
-				x: current.workArea.position.x / scale,
-				y: current.workArea.position.y / scale,
-				width: current.workArea.size.width / scale,
-				height: current.workArea.size.height / scale,
-			},
-		};
-	}
-
-	function logicalRectAt(x: number, y: number, scale: number): LogicalRect {
-		return {
-			x: x / scale,
-			y: y / scale,
-			width: OVERLAY_WIDTH,
-			height: OVERLAY_HEIGHT,
-		};
-	}
-
-	/**
-	 * Re-resolve the anchor from where the window actually is, then move it
-	 * there. Idempotent on purpose: the move it performs fires another `onMoved`,
-	 * and the run that follows finds the window already in place and stops.
-	 */
-	async function settle(): Promise<void> {
-		await refreshMonitor();
-		const snapshot = monitor;
-		if (!snapshot) return;
-
-		const window = getCurrentWindow();
-		const physical = await window.outerPosition();
-		const rect = logicalRectAt(physical.x, physical.y, snapshot.scale);
-		const anchor = nearestAnchorFromRect(rect, snapshot.workArea);
-		pendingAnchor = anchor;
-
-		const target = resolveAnchorPosition(anchor, snapshot.workArea, {
-			width: OVERLAY_WIDTH,
-			height: OVERLAY_HEIGHT,
-		});
-		if (Math.abs(target.x - rect.x) < 1 && Math.abs(target.y - rect.y) < 1) {
-			return;
-		}
-		await window.setPosition(new LogicalPosition(target.x, target.y));
-	}
-
-	function scheduleSettle(): void {
-		clearTimeout(settleTimer);
-		settleTimer = setTimeout(() => runRepositionStep(settle()), SETTLE_DELAY_MS);
+	function clamp(value: number, low: number, high: number): number {
+		return Math.min(Math.max(value, low), high);
 	}
 
 	async function beginRepositioning(anchor: OverlayAnchor): Promise<void> {
+		const monitor = await currentMonitor();
+		if (!monitor || isDestroyed) return;
+
+		const scale = monitor.scaleFactor;
+		const origin = {
+			x: monitor.workArea.position.x / scale,
+			y: monitor.workArea.position.y / scale,
+		};
+		const area: LogicalRect = {
+			x: 0,
+			y: 0,
+			width: monitor.workArea.size.width / scale,
+			height: monitor.workArea.size.height / scale,
+		};
+
 		startingAnchor = anchor;
 		pendingAnchor = anchor;
-		await refreshMonitor();
+		// The stored anchor may be a free margin, so ask rather than assume.
+		const start = resolveAnchorPosition(anchor, area, OVERLAY_SIZE);
+		const opening = snapRectToAnchor({ ...start, ...OVERLAY_SIZE }, area);
+		xSnapped = opening.xSnapped;
+		ySnapped = opening.ySnapped;
 
-		unlistenMoved?.();
-		unlistenMoved = await getCurrentWindow().onMoved((event) => {
-			const snapshot = monitor;
-			if (!snapshot) return;
-			pendingAnchor = nearestAnchorFromRect(
-				logicalRectAt(event.payload.x, event.payload.y, snapshot.scale),
-				snapshot.workArea,
+		const overlayWindow = getCurrentWindow();
+		await overlayWindow.setPosition(new LogicalPosition(origin.x, origin.y));
+		await overlayWindow.setSize(new LogicalSize(area.width, area.height));
+		session = { origin, area };
+	}
+
+	/**
+	 * Shrink back to a chip at `restoreTo`, then report the outcome.
+	 *
+	 * The report goes out in a `finally` because the main window is awaiting it:
+	 * a window verb that fails here must not leave that session hanging forever.
+	 */
+	async function finishSession(
+		result: OverlayRepositionResult,
+		restoreTo: OverlayAnchor,
+	): Promise<void> {
+		const ending = session;
+		session = null;
+		grabOffset = null;
+		try {
+			if (!ending) return;
+			const overlayWindow = getCurrentWindow();
+			await overlayWindow.setSize(
+				new LogicalSize(OVERLAY_WIDTH, OVERLAY_HEIGHT),
 			);
-			scheduleSettle();
-		});
-		if (isDestroyed) {
-			unlistenMoved();
-			return;
+			const { x, y } = resolveAnchorPosition(
+				restoreTo,
+				{ ...ending.area, x: ending.origin.x, y: ending.origin.y },
+				OVERLAY_SIZE,
+			);
+			await overlayWindow.setPosition(new LogicalPosition(x, y));
+		} finally {
+			await recordingOverlayRepositionResult.emit(result);
 		}
-		repositioning = true;
 	}
 
-	function endRepositioning(): void {
-		clearTimeout(settleTimer);
-		settleTimer = undefined;
-		unlistenMoved?.();
-		unlistenMoved = undefined;
-		repositioning = false;
+	function handlePointerDown(event: PointerEvent): void {
+		if (!session) return;
+		const slot = event.currentTarget as HTMLElement;
+		slot.setPointerCapture(event.pointerId);
+		grabOffset = {
+			x: event.clientX - pillPosition.x,
+			y: event.clientY - pillPosition.y,
+		};
+		event.preventDefault();
 	}
 
-	async function moveToAnchor(anchor: OverlayAnchor): Promise<void> {
-		const snapshot = monitor;
-		if (!snapshot) return;
-		const { x, y } = resolveAnchorPosition(anchor, snapshot.workArea, {
-			width: OVERLAY_WIDTH,
-			height: OVERLAY_HEIGHT,
-		});
-		await getCurrentWindow().setPosition(new LogicalPosition(x, y));
+	function handlePointerMove(event: PointerEvent): void {
+		const active = session;
+		const grab = grabOffset;
+		if (!active || !grab) return;
+		const snap = snapRectToAnchor(
+			{
+				x: clamp(event.clientX - grab.x, 0, active.area.width - OVERLAY_WIDTH),
+				y: clamp(event.clientY - grab.y, 0, active.area.height - OVERLAY_HEIGHT),
+				...OVERLAY_SIZE,
+			},
+			active.area,
+		);
+		pendingAnchor = snap.anchor;
+		xSnapped = snap.xSnapped;
+		ySnapped = snap.ySnapped;
 	}
 
-	function handleDragStart(): void {
-		// Resolves as soon as the OS takes over, so nothing is awaited on it.
-		void getCurrentWindow().startDragging();
-	}
-
-	async function handleSave(): Promise<void> {
-		const anchor = pendingAnchor;
-		endRepositioning();
-		await moveToAnchor(anchor);
-		await recordingOverlayRepositionResult.emit({ type: 'save', anchor });
-	}
-
-	async function handleReset(): Promise<void> {
-		endRepositioning();
-		pendingAnchor = DEFAULT_OVERLAY_ANCHOR;
-		await moveToAnchor(DEFAULT_OVERLAY_ANCHOR);
-		await recordingOverlayRepositionResult.emit({
-			type: 'save',
-			anchor: DEFAULT_OVERLAY_ANCHOR,
-		});
-	}
-
-	async function handleCancel(): Promise<void> {
-		const anchor = startingAnchor;
-		endRepositioning();
-		pendingAnchor = anchor;
-		await moveToAnchor(anchor);
-		await recordingOverlayRepositionResult.emit({ type: 'cancel' });
+	function handlePointerUp(event: PointerEvent): void {
+		grabOffset = null;
+		const slot = event.currentTarget as HTMLElement;
+		if (slot.hasPointerCapture(event.pointerId)) {
+			slot.releasePointerCapture(event.pointerId);
+		}
 	}
 
 	onMount(() => {
@@ -265,7 +254,6 @@
 
 	onDestroy(() => {
 		isDestroyed = true;
-		endRepositioning();
 		for (const unlisten of unlisteners) unlisten();
 	});
 
@@ -274,19 +262,54 @@
 	}
 </script>
 
-<!-- The pill hugs its content, so center it within the fixed overlay window (the
-     web host centers its own copy). A fixed full-window flex box centers the chip
-     regardless of how the layout nests the route. -->
-<div class="fixed inset-0 flex items-center justify-center">
-	{#if repositioning}
-		<RecordingPillReposition
-			label={formatAnchorLabel(pendingAnchor)}
-			onDragStart={handleDragStart}
-			onSave={() => runRepositionStep(handleSave())}
-			onReset={() => runRepositionStep(handleReset())}
-			onCancel={() => runRepositionStep(handleCancel())}
-		/>
-	{:else}
+{#if session}
+	<!-- For the length of the session this window IS the work area, so these
+	     coordinates are both CSS pixels and the logical pixels the anchor math
+	     speaks in. Nothing here converts between the two. -->
+	<div class="reposition-surface">
+		{#if xSnapped}
+			<div class="guide guide-vertical" style="left: {guides.x}px"></div>
+		{/if}
+		{#if ySnapped}
+			<div class="guide guide-horizontal" style="top: {guides.y}px"></div>
+		{/if}
+
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="pill-slot"
+			style="left: {pillPosition.x}px; top: {pillPosition.y}px; width: {OVERLAY_WIDTH}px; height: {OVERLAY_HEIGHT}px;"
+			onpointerdown={handlePointerDown}
+			onpointermove={handlePointerMove}
+			onpointerup={handlePointerUp}
+			onpointercancel={handlePointerUp}
+		>
+			<RecordingPillReposition
+				label={formatAnchorLabel(pendingAnchor)}
+				locked={xSnapped && ySnapped}
+				onSave={() =>
+					runRepositionStep(
+						finishSession(
+							{ type: 'save', anchor: pendingAnchor },
+							pendingAnchor,
+						),
+					)}
+				onReset={() =>
+					runRepositionStep(
+						finishSession(
+							{ type: 'save', anchor: DEFAULT_OVERLAY_ANCHOR },
+							DEFAULT_OVERLAY_ANCHOR,
+						),
+					)}
+				onCancel={() =>
+					runRepositionStep(finishSession({ type: 'cancel' }, startingAnchor))}
+			/>
+		</div>
+	</div>
+{:else}
+	<!-- The pill hugs its content, so center it within the fixed overlay window (the
+	     web host centers its own copy). A fixed full-window flex box centers the chip
+	     regardless of how the layout nests the route. -->
+	<div class="fixed inset-0 flex items-center justify-center">
 		<RecordingPill
 			{status}
 			{level}
@@ -295,10 +318,57 @@
 			onShipRaw={() => sendAction('ship-raw')}
 			onReveal={() => void revealMainWindow.emit()}
 		/>
-	{/if}
-</div>
+	</div>
+{/if}
 
 <style>
+	/* A light scrim, so a session reads as a placement mode rather than a pill
+	   that happened to grow. Light enough to keep the desktop underneath legible
+	   while you decide where the pill belongs. */
+	.reposition-surface {
+		position: fixed;
+		inset: 0;
+		background: rgba(8, 8, 10, 0.22);
+	}
+
+	.pill-slot {
+		position: absolute;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: grab;
+		/* Pointer capture only behaves if the browser is not also panning. */
+		touch-action: none;
+	}
+
+	.pill-slot:active {
+		cursor: grabbing;
+	}
+
+	/* Drawn only while the matching axis is locked, so the line appearing IS the
+	   confirmation that the placement is exact. No transition: a guide that fades
+	   in reads as "nearly aligned", which is the opposite of what it means. */
+	.guide {
+		position: absolute;
+		background: #faa2ca;
+		box-shadow: 0 0 6px rgba(250, 162, 202, 0.9);
+		pointer-events: none;
+	}
+
+	.guide-vertical {
+		top: 0;
+		bottom: 0;
+		width: 1px;
+		transform: translateX(-0.5px);
+	}
+
+	.guide-horizontal {
+		left: 0;
+		right: 0;
+		height: 1px;
+		transform: translateY(-0.5px);
+	}
+
 	/* The document-level resets below stay as `:global` CSS: a component cannot
 	   apply utilities to `html`/`body` or to the dev-injected inspector host, so
 	   these have no Tailwind equivalent. They belong to the overlay webview, not the

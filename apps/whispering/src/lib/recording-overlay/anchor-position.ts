@@ -3,8 +3,7 @@
  * "centered, 72px above the bottom" formula into a 3x3 anchor grid with a
  * margin per axis. Pure and platform-free: the `.tauri.ts` window manager
  * converts monitor geometry to logical px before calling in here, and the
- * overlay page converts a dragged window rect the same way before asking
- * `nearestAnchorFromRect` what it resolves to.
+ * overlay page asks `snapRectToAnchor` what a dragged rect resolves to.
  *
  * See `specs/20260830T124813-repositionable-recording-pill.md`.
  */
@@ -35,8 +34,17 @@ export const DEFAULT_OVERLAY_ANCHOR: OverlayAnchor = {
 	yMarginPx: 72,
 };
 
-/** How close a drag has to land, in logical px, before it snaps to something. */
-export const SNAP_THRESHOLD_PX = 12;
+/**
+ * How close a drag has to land, in logical px, before it locks onto a
+ * canonical placement.
+ *
+ * Generous on purpose. A tight threshold means most drops keep whatever margin
+ * the hand happened to stop at, so finding a good spot is fiddly rather than
+ * decisive. At 40 the nine canonical placements are what a drag falls into by
+ * default, and free placement is the deliberate exception rather than the
+ * common accident.
+ */
+export const SNAP_THRESHOLD_PX = 40;
 
 /**
  * The one "comfortable distance from an edge" every edge snaps to. Reused
@@ -89,20 +97,32 @@ function resolveAxisPosition(
 	}
 }
 
+/** An anchor plus whether each axis locked onto a canonical placement. */
+export type SnapResult = {
+	anchor: OverlayAnchor;
+	/** True when the x axis sits on a canonical placement, not a free margin. */
+	xSnapped: boolean;
+	ySnapped: boolean;
+};
+
 /**
- * Reduce a dragged window's final rect to the nearest anchor+margin.
+ * Reduce a dragged rect to a placement, preferring the canonical ones.
  *
- * Every rect resolves to something: a rect nowhere near center or a standard
- * margin still gets an anchor (whichever edge it is closer to) and keeps its
- * literal measured margin. Snapping only decides whether that margin gets
- * rounded to 0-at-center or to the standard edge margin; it never leaves a
- * rect un-anchored.
+ * Each axis has three canonical targets: the standard margin from the near
+ * edge, centered, and the standard margin from the far edge. Land within
+ * `SNAP_THRESHOLD_PX` of one and the axis locks onto it, which is what the
+ * guide lines draw and what makes a drop feel decisive. Land outside every
+ * target and the axis keeps its literal measured margin, so free placement
+ * still exists; it is just no longer what an ordinary drag produces.
+ *
+ * The axes resolve independently, so every corner and edge midpoint is
+ * reachable without having to satisfy both at once.
  */
-export function nearestAnchorFromRect(
+export function snapRectToAnchor(
 	windowRect: LogicalRect,
 	monitorWorkArea: LogicalRect,
-): OverlayAnchor {
-	const x = resolveAxisAnchor(
+): SnapResult {
+	const x = snapAxis(
 		windowRect.x,
 		windowRect.width,
 		monitorWorkArea.x,
@@ -110,7 +130,7 @@ export function nearestAnchorFromRect(
 		'left',
 		'right',
 	);
-	const y = resolveAxisAnchor(
+	const y = snapAxis(
 		windowRect.y,
 		windowRect.height,
 		monitorWorkArea.y,
@@ -119,38 +139,101 @@ export function nearestAnchorFromRect(
 		'bottom',
 	);
 	return {
-		xAnchor: x.anchor,
-		xMarginPx: x.marginPx,
-		yAnchor: y.anchor,
-		yMarginPx: y.marginPx,
+		anchor: {
+			xAnchor: x.anchor,
+			xMarginPx: x.marginPx,
+			yAnchor: y.anchor,
+			yMarginPx: y.marginPx,
+		},
+		xSnapped: x.snapped,
+		ySnapped: y.snapped,
 	};
 }
 
-function resolveAxisAnchor<TSide extends string>(
+function snapAxis<TSide extends string>(
 	pos: number,
 	size: number,
 	monitorPos: number,
 	monitorSize: number,
 	nearSide: TSide,
 	farSide: TSide,
-): { anchor: TSide | 'center'; marginPx: number } {
-	const center = pos + size / 2;
-	const monitorCenter = monitorPos + monitorSize / 2;
-	if (Math.abs(center - monitorCenter) <= SNAP_THRESHOLD_PX) {
-		return { anchor: 'center', marginPx: 0 };
+): { anchor: TSide | 'center'; marginPx: number; snapped: boolean } {
+	type AxisTarget = {
+		anchor: TSide | 'center';
+		marginPx: number;
+		position: number;
+	};
+	// A fixed triple rather than an array, so the reduce below has a definite
+	// starting target and no index can be undefined.
+	const targets: [AxisTarget, AxisTarget, AxisTarget] = [
+		{
+			anchor: nearSide,
+			marginPx: EDGE_SNAP_MARGIN_PX,
+			position: monitorPos + EDGE_SNAP_MARGIN_PX,
+		},
+		{
+			anchor: 'center',
+			marginPx: 0,
+			position: monitorPos + (monitorSize - size) / 2,
+		},
+		{
+			anchor: farSide,
+			marginPx: EDGE_SNAP_MARGIN_PX,
+			position: monitorPos + monitorSize - size - EDGE_SNAP_MARGIN_PX,
+		},
+	];
+
+	const nearest = targets.reduce((best, target) =>
+		Math.abs(target.position - pos) < Math.abs(best.position - pos)
+			? target
+			: best,
+	);
+	const nearestDistance = Math.abs(nearest.position - pos);
+	if (nearestDistance <= SNAP_THRESHOLD_PX) {
+		return {
+			anchor: nearest.anchor,
+			marginPx: nearest.marginPx,
+			snapped: true,
+		};
 	}
 
 	const distanceFromNear = pos - monitorPos;
 	const distanceFromFar = monitorPos + monitorSize - (pos + size);
 	const isNearer = distanceFromNear <= distanceFromFar;
-	const anchor = isNearer ? nearSide : farSide;
-	const distance = isNearer ? distanceFromNear : distanceFromFar;
+	return {
+		anchor: isNearer ? nearSide : farSide,
+		marginPx: Math.max(
+			0,
+			Math.round(isNearer ? distanceFromNear : distanceFromFar),
+		),
+		snapped: false,
+	};
+}
 
-	const marginPx =
-		Math.abs(distance - EDGE_SNAP_MARGIN_PX) <= SNAP_THRESHOLD_PX
-			? EDGE_SNAP_MARGIN_PX
-			: Math.max(0, Math.round(distance));
-	return { anchor, marginPx };
+/**
+ * Where each axis's guide line belongs, in the same space `position` is in:
+ * along the pill's centre when that axis is centred, and along the edge the
+ * anchor measures from otherwise. This is the line the eye reads as "aligned".
+ */
+export function guideLineOffsets(
+	anchor: OverlayAnchor,
+	position: { x: number; y: number },
+	size: LogicalSize,
+): { x: number; y: number } {
+	return {
+		x:
+			anchor.xAnchor === 'center'
+				? position.x + size.width / 2
+				: anchor.xAnchor === 'left'
+					? position.x
+					: position.x + size.width,
+		y:
+			anchor.yAnchor === 'center'
+				? position.y + size.height / 2
+				: anchor.yAnchor === 'top'
+					? position.y
+					: position.y + size.height,
+	};
 }
 
 /** A human label for the placement, for the Settings field and the drag label. */

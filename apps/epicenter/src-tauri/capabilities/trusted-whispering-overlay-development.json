@@ -11,9 +11,8 @@
 		"core:event:allow-emit",
 		"core:event:allow-listen",
 		"core:window:allow-current-monitor",
-		"core:window:allow-outer-position",
 		"core:window:allow-set-position",
-		"core:window:allow-start-dragging",
+		"core:window:allow-set-size",
 		"log:default"
 	]
 }
