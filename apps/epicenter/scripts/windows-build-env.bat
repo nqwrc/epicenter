@@ -89,8 +89,13 @@ if not defined CARGO_TARGET_DIR set "CARGO_TARGET_DIR=%~d0\ct"
 set "CMAKE_POLICY_VERSION_MINIMUM=3.5"
 
 cd /d "%REPO_ROOT%\apps\epicenter"
-if "%~1"=="" (
-	bun run dev
-) else (
-	%*
-)
+
+REM Branch with goto rather than if/else. With no arguments `%*` is empty, and an
+REM empty parenthesised block is a cmd syntax error, so the else form fails on
+REM exactly the no-argument path this script is normally used for.
+if "%~1"=="" goto :dev
+%*
+exit /b %errorlevel%
+
+:dev
+bun run dev
