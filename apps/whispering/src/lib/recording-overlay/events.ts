@@ -8,6 +8,7 @@
  * module only binds those payloads to transport channels.
  */
 import { defineWindowEvent, defineWindowSignal } from '#platform/window-events';
+import type { OverlayAnchor } from '$lib/recording-overlay/anchor-position';
 import type {
 	RecordingPillAction,
 	RecordingPillStatus,
@@ -42,3 +43,22 @@ export const recordingOverlayReady = defineWindowSignal(
  * name is shared with the Rust recorder's `MIC_LEVEL_EVENT`.
  */
 export const recordingOverlayMicLevel = defineWindowEvent<number>('mic-level');
+
+/**
+ * main -> overlay: enter the draggable reposition preview, starting at
+ * `anchor`. The overlay renders a placement preview instead of the dictation
+ * pill until it reports a result back.
+ */
+export const recordingOverlayEnterReposition = defineWindowEvent<{
+	anchor: OverlayAnchor;
+}>('recording-overlay:enter-reposition');
+
+/** overlay -> main: the reposition session ended, saved or not. */
+export type OverlayRepositionResult =
+	| { type: 'save'; anchor: OverlayAnchor }
+	| { type: 'cancel' };
+
+export const recordingOverlayRepositionResult =
+	defineWindowEvent<OverlayRepositionResult>(
+		'recording-overlay:reposition-result',
+	);

@@ -4,9 +4,10 @@ import {
 	LogicalPosition,
 	primaryMonitor,
 } from '@tauri-apps/api/window';
-import { defineErrors } from 'wellcrafted/error';
+import { defineErrors, type InferErrors } from 'wellcrafted/error';
 import { once } from 'wellcrafted/function';
 import { createLogger } from 'wellcrafted/logger';
+import { Ok, type Result } from 'wellcrafted/result';
 import { whisperingPath } from '$lib/constants/urls';
 import {
 	type LogicalRect,
@@ -18,8 +19,11 @@ import {
 	OVERLAY_WIDTH,
 } from '$lib/recording-overlay/constants';
 import {
+	type OverlayRepositionResult,
 	RECORDING_OVERLAY_WINDOW_LABEL,
+	recordingOverlayEnterReposition,
 	recordingOverlayReady,
+	recordingOverlayRepositionResult,
 	recordingOverlayStatus,
 } from '$lib/recording-overlay/events';
 import type { RecordingPillStatus } from '$lib/recording-pill/model';
@@ -37,9 +41,27 @@ const RecordingOverlayError = defineErrors({
 		cause,
 	}),
 });
+export type RecordingOverlayError = InferErrors<typeof RecordingOverlayError>;
 
 let latestStatus: RecordingPillStatus | null = null;
 let queue: Promise<void> = Promise.resolve();
+
+/**
+ * Whether a reposition session owns the overlay window right now.
+ *
+ * While it does, dictation status changes are still recorded in `latestStatus`
+ * but not applied: the session is showing the pill as a placement preview, and
+ * moving or hiding it underneath the person mid-drag is the one thing they did
+ * not ask for. Whatever status accumulated is applied when the session ends.
+ */
+let repositionActive = false;
+
+/**
+ * The anchor a reposition session is waiting to hand to the overlay, or null
+ * outside a session. A session that had to create the overlay window emits its
+ * enter event before the page mounts, so the ready handshake re-sends it.
+ */
+let pendingRepositionAnchor: OverlayAnchor | null = null;
 
 /**
  * The current monitor's usable work area, already in logical pixels.
@@ -88,6 +110,11 @@ const ensureReadyListener = once(
 		recordingOverlayReady
 			.listen(() => {
 				if (latestStatus) void recordingOverlayStatus.emit(latestStatus);
+				if (pendingRepositionAnchor) {
+					void recordingOverlayEnterReposition.emit({
+						anchor: pendingRepositionAnchor,
+					});
+				}
 			})
 			.then(() => undefined),
 );
@@ -142,7 +169,7 @@ async function applyOverlayStatus(
 	app: WhisperingApp,
 	status: RecordingPillStatus | null,
 ) {
-	const isSuperseded = () => status !== latestStatus;
+	const isSuperseded = () => status !== latestStatus || repositionActive;
 	if (isSuperseded()) return;
 
 	if (!status) {
@@ -163,7 +190,9 @@ async function applyOverlayStatus(
 
 	await overlay.show();
 	if (isSuperseded()) {
-		if (!latestStatus) await overlay.hide();
+		// A reposition session that started mid-flight owns the window now, so
+		// leave it up even with no dictation behind it.
+		if (!latestStatus && !repositionActive) await overlay.hide();
 		return;
 	}
 
@@ -181,4 +210,64 @@ export function synchronizeRecordingOverlayWindow(
 		.catch((cause) => {
 			log.warn(RecordingOverlayError.SynchronizeFailed({ cause }));
 		});
+}
+
+function writeOverlayAnchor(app: WhisperingApp, anchor: OverlayAnchor): void {
+	app.settings.set('recordingOverlayXAnchor', anchor.xAnchor);
+	app.settings.set('recordingOverlayXMarginPx', anchor.xMarginPx);
+	app.settings.set('recordingOverlayYAnchor', anchor.yAnchor);
+	app.settings.set('recordingOverlayYMarginPx', anchor.yMarginPx);
+}
+
+/**
+ * Drive one reposition session, start to finish.
+ *
+ * Shows the overlay (creating it if no dictation ever has), switches it into
+ * the draggable placement preview, and waits for the person to save, reset, or
+ * cancel. A save is persisted here rather than in the overlay because settings
+ * belong to the main window's app; the overlay only reports where it landed.
+ *
+ * The session is one at a time: a second call while one is in flight is a
+ * no-op rather than a second listener over the same window.
+ */
+export async function startOverlayRepositionSession(
+	app: WhisperingApp,
+): Promise<Result<void, RecordingOverlayError>> {
+	if (repositionActive) return Ok(undefined);
+
+	const anchor = readOverlayAnchor(app);
+	repositionActive = true;
+	pendingRepositionAnchor = anchor;
+	let unlisten: (() => void) | undefined;
+
+	try {
+		let reportResult: (result: OverlayRepositionResult) => void = () => {};
+		const settled = new Promise<OverlayRepositionResult>((resolve) => {
+			reportResult = resolve;
+		});
+		// Listen before the overlay can answer: a window that already exists
+		// renders the preview and could report back within the same tick.
+		unlisten = await recordingOverlayRepositionResult.listen((event) =>
+			reportResult(event.payload),
+		);
+
+		const overlay = await getOrCreateOverlayWindow();
+		if (!overlay) {
+			return RecordingOverlayError.WindowCreateFailed({ payload: null });
+		}
+
+		await overlay.show();
+		await recordingOverlayEnterReposition.emit({ anchor });
+
+		const result = await settled;
+		if (result.type === 'save') writeOverlayAnchor(app, result.anchor);
+		return Ok(undefined);
+	} finally {
+		unlisten?.();
+		pendingRepositionAnchor = null;
+		repositionActive = false;
+		// Hand the window back to whatever dictation is doing now, which may
+		// have started or ended while the session held it.
+		synchronizeRecordingOverlayWindow(app, latestStatus);
+	}
 }
