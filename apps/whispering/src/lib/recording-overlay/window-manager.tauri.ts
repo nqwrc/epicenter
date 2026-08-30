@@ -9,11 +9,21 @@ import { once } from 'wellcrafted/function';
 import { createLogger } from 'wellcrafted/logger';
 import { whisperingPath } from '$lib/constants/urls';
 import {
+	type LogicalRect,
+	type OverlayAnchor,
+	resolveAnchorPosition,
+} from '$lib/recording-overlay/anchor-position';
+import {
+	OVERLAY_HEIGHT,
+	OVERLAY_WIDTH,
+} from '$lib/recording-overlay/constants';
+import {
 	RECORDING_OVERLAY_WINDOW_LABEL,
 	recordingOverlayReady,
 	recordingOverlayStatus,
 } from '$lib/recording-overlay/events';
 import type { RecordingPillStatus } from '$lib/recording-pill/model';
+import type { WhisperingApp } from '$lib/whispering/app';
 
 const log = createLogger('whispering/recording-overlay');
 
@@ -28,35 +38,47 @@ const RecordingOverlayError = defineErrors({
 	}),
 });
 
-// Fixed size in logical pixels. The window must fit the pill's widest state
-// (260px, `listening` in RecordingPill) plus bleed room for the deep drop
-// shadow and the recording dot's radial glow, both painted as CSS inside the
-// webview: the window itself sets `shadow: false`, so anything that overflows
-// the window rect is clipped, not just visually cropped. ~20px of bleed on
-// each side keeps the glow intact without making the (always-on-top,
-// click-swallowing) window much bigger than the pill it hosts.
-const OVERLAY_WIDTH = 300;
-const OVERLAY_HEIGHT = 72;
-// Distance from the bottom edge of the monitor, in logical pixels.
-const OVERLAY_BOTTOM_MARGIN = 72;
-
 let latestStatus: RecordingPillStatus | null = null;
 let queue: Promise<void> = Promise.resolve();
 
-async function computeOverlayPosition(): Promise<LogicalPosition | null> {
+/**
+ * The current monitor's usable work area, already in logical pixels.
+ *
+ * Work area excludes the taskbar/dock, so every margin is measured from the
+ * usable desktop edge rather than the raw monitor edge.
+ */
+async function currentMonitorWorkArea(): Promise<LogicalRect | null> {
 	const monitor = (await currentMonitor()) ?? (await primaryMonitor());
 	if (!monitor) return null;
 
 	const scale = monitor.scaleFactor;
-	// Work area excludes the taskbar/dock, so the bottom margin is measured from
-	// the usable desktop edge rather than the raw monitor edge.
-	const monitorX = monitor.workArea.position.x / scale;
-	const monitorY = monitor.workArea.position.y / scale;
-	const monitorWidth = monitor.workArea.size.width / scale;
-	const monitorHeight = monitor.workArea.size.height / scale;
+	return {
+		x: monitor.workArea.position.x / scale,
+		y: monitor.workArea.position.y / scale,
+		width: monitor.workArea.size.width / scale,
+		height: monitor.workArea.size.height / scale,
+	};
+}
 
-	const x = monitorX + (monitorWidth - OVERLAY_WIDTH) / 2;
-	const y = monitorY + monitorHeight - OVERLAY_HEIGHT - OVERLAY_BOTTOM_MARGIN;
+function readOverlayAnchor(app: WhisperingApp): OverlayAnchor {
+	return {
+		xAnchor: app.settings.get('recordingOverlayXAnchor'),
+		xMarginPx: app.settings.get('recordingOverlayXMarginPx'),
+		yAnchor: app.settings.get('recordingOverlayYAnchor'),
+		yMarginPx: app.settings.get('recordingOverlayYMarginPx'),
+	};
+}
+
+async function computeOverlayPosition(
+	app: WhisperingApp,
+): Promise<LogicalPosition | null> {
+	const workArea = await currentMonitorWorkArea();
+	if (!workArea) return null;
+
+	const { x, y } = resolveAnchorPosition(readOverlayAnchor(app), workArea, {
+		width: OVERLAY_WIDTH,
+		height: OVERLAY_HEIGHT,
+	});
 	return new LogicalPosition(x, y);
 }
 
@@ -116,7 +138,10 @@ async function getOrCreateOverlayWindow(): Promise<WebviewWindow | null> {
 	return createOverlayWindow();
 }
 
-async function applyOverlayStatus(status: RecordingPillStatus | null) {
+async function applyOverlayStatus(
+	app: WhisperingApp,
+	status: RecordingPillStatus | null,
+) {
 	const isSuperseded = () => status !== latestStatus;
 	if (isSuperseded()) return;
 
@@ -131,7 +156,7 @@ async function applyOverlayStatus(status: RecordingPillStatus | null) {
 	const overlay = await getOrCreateOverlayWindow();
 	if (!overlay || isSuperseded()) return;
 
-	const position = await computeOverlayPosition();
+	const position = await computeOverlayPosition(app);
 	if (isSuperseded()) return;
 	if (position) await overlay.setPosition(position);
 	if (isSuperseded()) return;
@@ -147,11 +172,12 @@ async function applyOverlayStatus(status: RecordingPillStatus | null) {
 
 /** Synchronize the native overlay without letting cosmetic failures stop capture. */
 export function synchronizeRecordingOverlayWindow(
+	app: WhisperingApp,
 	status: RecordingPillStatus | null,
 ): void {
 	latestStatus = status;
 	queue = queue
-		.then(() => applyOverlayStatus(status))
+		.then(() => applyOverlayStatus(app, status))
 		.catch((cause) => {
 			log.warn(RecordingOverlayError.SynchronizeFailed({ cause }));
 		});
