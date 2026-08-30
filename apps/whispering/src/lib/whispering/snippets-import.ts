@@ -2,8 +2,9 @@
  * Import parsing, kept pure and separate from the app-level side effects
  * (`app.snippets.set`) so the validation rules are testable without a store.
  */
-import { Err, Ok, type Result } from 'wellcrafted/result';
+
 import { nanoid } from 'nanoid/non-secure';
+import { Err, Ok, type Result } from 'wellcrafted/result';
 import type { WhisperingApp } from '$lib/whispering/app';
 
 /** Matches the export shape: no id, since ids are minted (ADR-0206) and not portable. */
@@ -11,25 +12,21 @@ export type ImportedSnippet = { trigger: string; replacement: string };
 
 const MAX_REPLACEMENT_LENGTH = 2000;
 
-export type ImportParseError =
-	| { type: 'NotJson' }
-	| { type: 'NotAnArray' };
+export type ImportParseError = { type: 'NotJson' } | { type: 'NotAnArray' };
 
 /**
- * Validates the raw JSON into a list of well-formed snippets. Silently drops
- * individual malformed entries rather than failing the whole import: a file
- * hand-edited or exported from a future version may carry one bad row, and
+ * Validates already-parsed JSON into a list of well-formed snippets. Silently
+ * drops individual malformed entries rather than failing the whole import: a
+ * file hand-edited or exported from a future version may carry one bad row, and
  * that shouldn't block the rest.
+ *
+ * Separate from `parseSnippetsImport` so the settings bundle importer, which
+ * receives a `snippets` array already parsed as part of a larger document, can
+ * validate it without a stringify-then-reparse round trip.
  */
-export function parseSnippetsImport(
-	text: string,
+export function validateSnippetsArray(
+	parsed: unknown,
 ): Result<{ valid: ImportedSnippet[]; rejected: number }, ImportParseError> {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(text);
-	} catch {
-		return Err({ type: 'NotJson' });
-	}
 	if (!Array.isArray(parsed)) return Err({ type: 'NotAnArray' });
 
 	const valid: ImportedSnippet[] = [];
@@ -53,6 +50,19 @@ export function parseSnippetsImport(
 		valid.push({ trigger: trigger.trim(), replacement: replacement.trim() });
 	}
 	return Ok({ valid, rejected });
+}
+
+/** Parses the raw text of a standalone `snippets.json`, then validates it. */
+export function parseSnippetsImport(
+	text: string,
+): Result<{ valid: ImportedSnippet[]; rejected: number }, ImportParseError> {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(text);
+	} catch {
+		return Err({ type: 'NotJson' });
+	}
+	return validateSnippetsArray(parsed);
 }
 
 /**

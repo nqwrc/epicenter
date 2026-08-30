@@ -47,6 +47,16 @@ export function createWhisperingRecipes({
 				...rows.toSorted((left, right) => left.name.localeCompare(right.name)),
 			];
 		},
+		/**
+		 * The person's own recipes, ordered by name for a stable export file.
+		 * The built-ins are shipped in code and are deliberately not here:
+		 * exporting them would be handing the app its own source data back.
+		 */
+		get all(): Recipe[] {
+			return rows.toSorted((left, right) =>
+				left.name.localeCompare(right.name),
+			);
+		},
 		/** How many the person wrote. The built-in ones are not theirs. */
 		get count(): number {
 			return rows.length;
