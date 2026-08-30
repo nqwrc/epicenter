@@ -4,7 +4,6 @@
 	import { Spinner } from '@epicenter/ui/spinner';
 	import { cn } from '@epicenter/ui/utils';
 	import type { Snippet } from 'svelte';
-	import CaptureShell from './CaptureShell.svelte';
 	import type { RecordingActionController } from './recording-action-controller';
 
 	// The controller owns the state machine and every derived label/icon. The card
@@ -12,24 +11,11 @@
 	// while active, and the recording setup footer below the toggle.
 	let {
 		controller,
-		header,
 		footer,
-		blocked = false,
 		iconViewTransitionName,
 	}: {
 		controller: RecordingActionController;
-		/** Right-aligned strip above the action. The surface switcher lives here. */
-		header?: Snippet;
 		footer?: Snippet;
-		/**
-		 * Capture cannot start yet. The action is disabled and says so in place of
-		 * its usual description, and its shortcut chip is withheld so the card does
-		 * not advertise a key that will not produce a transcript. The reason and
-		 * the fix belong to the footer, which is why only the fact is stated here:
-		 * the card reports the block rather than disappearing and taking the whole
-		 * screen with it.
-		 */
-		blocked?: boolean;
 		/**
 		 * When set, names the action glyph for a cross-page view transition while
 		 * the card is at rest. Suppressed automatically while `active`, because the
@@ -40,24 +26,25 @@
 		iconViewTransitionName?: string;
 	} = $props();
 
-	// A disabled control cannot show a tooltip, so the reason it is disabled has
-	// to live in the accessible name or it is not reported at all.
-	const accessibleLabel = $derived.by(() => {
-		if (blocked)
-			return `${controller.label} (unavailable, set up transcription first)`;
-		return controller.shortcutLabel
+	const accessibleLabel = $derived(
+		controller.shortcutLabel
 			? `${controller.label} (${controller.shortcutLabel})`
-			: controller.label;
-	});
+			: controller.label,
+	);
 </script>
 
-<CaptureShell active={controller.active} {header} {footer}>
+<div
+	class={cn(
+		'w-full overflow-hidden rounded-xl bg-card text-foreground shadow-sm transition-[box-shadow] duration-200',
+		controller.active && 'shadow-md ring-1 ring-destructive/25',
+	)}
+>
 	<Button
 		aria-label={accessibleLabel}
 		aria-pressed={controller.active}
 		aria-busy={controller.pending}
-		tooltip={blocked ? undefined : controller.tooltip}
-		disabled={controller.pending || blocked}
+		tooltip={controller.tooltip}
+		disabled={controller.pending}
 		onclick={controller.toggle}
 		variant="ghost"
 		class={cn(
@@ -103,10 +90,10 @@
 				{controller.label}
 			</span>
 			<span class="truncate text-xs font-medium text-muted-foreground sm:text-sm">
-				{blocked ? 'Setup required to record.' : controller.description}
+				{controller.description}
 			</span>
 		</span>
-		{#if controller.shortcutLabel && !blocked}
+		{#if controller.shortcutLabel}
 			<Kbd.Root
 				class="h-7 max-w-28 shrink-0 rounded-md bg-muted/75 px-2 text-xs text-muted-foreground shadow-none"
 			>
@@ -114,4 +101,13 @@
 			</Kbd.Root>
 		{/if}
 	</Button>
-</CaptureShell>
+
+	<!-- The setup stays put across start/stop, so there is no height jump by
+	construction. It exposes the few inputs worth checking before recording while
+	deeper configuration remains in Settings. -->
+	{#if footer}
+		<div class="border-border/60 border-t px-3 py-2">
+			{@render footer()}
+		</div>
+	{/if}
+</div>
