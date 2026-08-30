@@ -23,7 +23,7 @@
 	</Link>
 {:else if status === 'on'}
 	<Link
-		href={whisperingPath('/settings/dictation')}
+		href={whisperingPath('/dictation')}
 		tooltip="Polish is on"
 		class="{triggerClass} text-muted-foreground hover:text-foreground"
 	>
@@ -32,7 +32,7 @@
 	</Link>
 {:else}
 	<Link
-		href={whisperingPath('/settings/dictation')}
+		href={whisperingPath('/dictation')}
 		tooltip="Polish is off"
 		class="{triggerClass} text-muted-foreground hover:text-foreground"
 	>

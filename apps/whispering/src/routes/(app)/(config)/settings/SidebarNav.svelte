@@ -13,7 +13,6 @@
 			title: 'Privacy & Processing',
 			href: whisperingPath('/settings/processing'),
 		},
-		{ title: 'Dictation', href: whisperingPath('/settings/dictation') },
 		{
 			title: 'Shortcuts',
 			href: whisperingPath('/settings/shortcuts'),

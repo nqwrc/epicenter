@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { Button } from '@epicenter/ui/button';
+	import { Card } from '@epicenter/ui/card';
 	import * as Field from '@epicenter/ui/field';
 	import { Input } from '@epicenter/ui/input';
 	import { Link } from '@epicenter/ui/link';
+	import * as SectionHeader from '@epicenter/ui/section-header';
 	import { Textarea } from '@epicenter/ui/textarea';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -43,15 +45,24 @@
 	}
 </script>
 
-<svelte:head> <title>Dictation Settings - Whispering</title> </svelte:head>
+<svelte:head> <title>Dictation</title> </svelte:head>
 
-<Field.Set>
-	<Field.Legend>Dictation</Field.Legend>
-	<Field.Description>
-		Control how Whispering polishes and spells your transcripts.
-	</Field.Description>
-	<Field.Separator />
-	<Field.Group>
+<main class="mx-auto flex w-full flex-1 flex-col gap-2 px-4 py-4 sm:px-8">
+	<SectionHeader.Root>
+		<SectionHeader.Title
+			level={1}
+			class="scroll-m-20 text-4xl tracking-tight lg:text-5xl"
+		>
+			Dictation
+		</SectionHeader.Title>
+		<SectionHeader.Description>
+			What happens to your words between the transcript and your cursor:
+			the cleanup pass, the phrases that act instead of typing, and the
+			spellings Whispering should already know.
+		</SectionHeader.Description>
+	</SectionHeader.Root>
+
+	<Card class="flex flex-col gap-4 p-6">
 		<Field.Set>
 			<Field.Legend variant="label">Polish</Field.Legend>
 			<Field.Description>
@@ -75,7 +86,8 @@
 						<KeyRoundIcon class="mt-0.5 size-4 shrink-0 text-amber-500" />
 						<p>
 							Polish is on, but the completion provider is not ready, so
-							transcripts still ship raw. <Link href={whisperingPath('/settings/processing')}
+							transcripts still ship raw. <Link
+								href={whisperingPath('/settings/processing')}
 								>Check completion settings</Link
 							> to start cleaning them up.
 						</p>
@@ -108,9 +120,9 @@
 				{/if}
 			</Field.Group>
 		</Field.Set>
+	</Card>
 
-		<Field.Separator />
-
+	<Card class="flex flex-col gap-4 p-6">
 		<Field.Set>
 			<Field.Legend variant="label">Command Mode</Field.Legend>
 			<Field.Description>
@@ -139,9 +151,9 @@
 				{/if}
 			</Field.Group>
 		</Field.Set>
+	</Card>
 
-		<Field.Separator />
-
+	<Card class="flex flex-col gap-4 p-6">
 		<Field.Set>
 			<Field.Legend variant="label">Dictionary</Field.Legend>
 			<Field.Description>
@@ -189,5 +201,5 @@
 				{/if}
 			</Field.Group>
 		</Field.Set>
-	</Field.Group>
-</Field.Set>
+	</Card>
+</main>
