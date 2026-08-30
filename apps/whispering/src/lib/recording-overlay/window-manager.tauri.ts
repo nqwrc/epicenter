@@ -2,6 +2,7 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import {
 	currentMonitor,
 	LogicalPosition,
+	LogicalSize,
 	primaryMonitor,
 } from '@tauri-apps/api/window';
 import { defineErrors, type InferErrors } from 'wellcrafted/error';
@@ -21,6 +22,7 @@ import {
 import {
 	type OverlayRepositionResult,
 	RECORDING_OVERLAY_WINDOW_LABEL,
+	recordingOverlayCancelReposition,
 	recordingOverlayEnterReposition,
 	recordingOverlayReady,
 	recordingOverlayRepositionResult,
@@ -62,6 +64,16 @@ let repositionActive = false;
  * enter event before the page mounts, so the ready handshake re-sends it.
  */
 let pendingRepositionAnchor: OverlayAnchor | null = null;
+
+/**
+ * Settles the in-flight session, or null when none is running.
+ *
+ * Held here so a cancel can end the session locally even if the overlay webview
+ * never answers. Without it the only way out of a session is a control drawn by
+ * the very window that would be wedged.
+ */
+let resolveActiveSession: ((result: OverlayRepositionResult) => void) | null =
+	null;
 
 /**
  * The current monitor's usable work area, already in logical pixels.
@@ -239,19 +251,19 @@ export async function startOverlayRepositionSession(
 	repositionActive = true;
 	pendingRepositionAnchor = anchor;
 	let unlisten: (() => void) | undefined;
+	let overlay: WebviewWindow | null = null;
 
 	try {
-		let reportResult: (result: OverlayRepositionResult) => void = () => {};
 		const settled = new Promise<OverlayRepositionResult>((resolve) => {
-			reportResult = resolve;
+			resolveActiveSession = resolve;
 		});
 		// Listen before the overlay can answer: a window that already exists
 		// renders the preview and could report back within the same tick.
 		unlisten = await recordingOverlayRepositionResult.listen((event) =>
-			reportResult(event.payload),
+			resolveActiveSession?.(event.payload),
 		);
 
-		const overlay = await getOrCreateOverlayWindow();
+		overlay = await getOrCreateOverlayWindow();
 		if (!overlay) {
 			return RecordingOverlayError.WindowCreateFailed({ payload: null });
 		}
@@ -264,10 +276,31 @@ export async function startOverlayRepositionSession(
 		return Ok(undefined);
 	} finally {
 		unlisten?.();
+		resolveActiveSession = null;
 		pendingRepositionAnchor = null;
 		repositionActive = false;
+		// A session leaves the overlay filling the work area, and the overlay
+		// shrinks itself on the way out. Setting the size again here is a no-op
+		// when that worked and the recovery when it did not, so a cancel always
+		// gets a chip-sized window back rather than a screen-sized one.
+		if (overlay) {
+			await overlay.setSize(new LogicalSize(OVERLAY_WIDTH, OVERLAY_HEIGHT));
+		}
 		// Hand the window back to whatever dictation is doing now, which may
 		// have started or ended while the session held it.
 		synchronizeRecordingOverlayWindow(app, latestStatus);
 	}
+}
+
+/**
+ * End the in-flight session without saving, from the main window.
+ *
+ * The escape hatch for a session whose own controls cannot be reached: the
+ * overlay is asked to leave first, so it restores its geometry the normal way,
+ * and the session is then settled locally whether or not it answered.
+ */
+export async function cancelOverlayRepositionSession(): Promise<void> {
+	if (!repositionActive) return;
+	await recordingOverlayCancelReposition.emit();
+	resolveActiveSession?.({ type: 'cancel' });
 }

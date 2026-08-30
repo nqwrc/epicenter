@@ -42,6 +42,7 @@
 	import {
 		type OverlayRepositionResult,
 		recordingOverlayAction,
+		recordingOverlayCancelReposition,
 		recordingOverlayEnterReposition,
 		recordingOverlayMicLevel,
 		recordingOverlayReady,
@@ -243,6 +244,15 @@
 			trackUnlistener(
 				await recordingOverlayEnterReposition.listen((event) => {
 					runRepositionStep(beginRepositioning(event.payload.anchor));
+				}),
+			);
+			// Settings can end a session too, for when this window's own controls
+			// cannot be reached. Same path as the pill's own cancel button.
+			trackUnlistener(
+				await recordingOverlayCancelReposition.listen(() => {
+					runRepositionStep(
+						finishSession({ type: 'cancel' }, startingAnchor),
+					);
 				}),
 			);
 			// Tell the main window we are ready so it re-sends the latest status.

@@ -4,7 +4,10 @@
 	import OutputDeliveryControls from '$lib/components/OutputDeliveryControls.svelte';
 	import { tauri } from '#platform/tauri';
 	import { formatAnchorLabel } from '$lib/recording-overlay/anchor-position';
-	import { startOverlayRepositionSession } from '$lib/recording-overlay/window-manager.tauri';
+	import {
+		cancelOverlayRepositionSession,
+		startOverlayRepositionSession,
+	} from '$lib/recording-overlay/window-manager.tauri';
 	import { report } from '$lib/report';
 	import { getWhisperingApp } from '$lib/whispering/context';
 	import AutostartSwitch from './AutostartSwitch.svelte';
@@ -20,11 +23,16 @@
 		}),
 	);
 
-	// The session runs on the overlay window, so this page has nothing to show
-	// while it is open beyond saying where to look.
+	// A session fills the screen with the overlay window and takes its clicks, so
+	// this button doubles as the way out: while one is running it cancels rather
+	// than going dead, and that path does not depend on the overlay answering.
 	let repositioning = $state(false);
 
-	async function reposition() {
+	async function toggleReposition() {
+		if (repositioning) {
+			await cancelOverlayRepositionSession();
+			return;
+		}
 		repositioning = true;
 		const { error } = await startOverlayRepositionSession(app);
 		repositioning = false;
@@ -73,14 +81,18 @@
 				<Field.Group>
 					<div class="flex gap-2">
 						<Button
-							variant="outline"
+							variant={repositioning ? 'secondary' : 'outline'}
 							size="sm"
-							disabled={repositioning}
-							onclick={reposition}
+							onclick={toggleReposition}
 						>
-							{repositioning ? 'Drag the pill on your screen...' : 'Reposition'}
+							{repositioning ? 'Cancel repositioning' : 'Reposition'}
 						</Button>
 					</div>
+					{#if repositioning}
+						<p class="text-muted-foreground text-sm">
+							Drag the pill on your screen, then save it there.
+						</p>
+					{/if}
 				</Field.Group>
 			</Field.Set>
 		{/if}

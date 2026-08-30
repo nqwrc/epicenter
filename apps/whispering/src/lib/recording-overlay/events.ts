@@ -53,6 +53,17 @@ export const recordingOverlayEnterReposition = defineWindowEvent<{
 	anchor: OverlayAnchor;
 }>('recording-overlay:enter-reposition');
 
+/**
+ * main -> overlay: leave the reposition session without saving.
+ *
+ * The session grows the overlay to fill the work area, so only the overlay can
+ * shrink it back. Settings therefore asks rather than tears the session down
+ * itself, and gets a normal `cancel` result back through the channel below.
+ */
+export const recordingOverlayCancelReposition = defineWindowSignal(
+	'recording-overlay:cancel-reposition',
+);
+
 /** overlay -> main: the reposition session ended, saved or not. */
 export type OverlayRepositionResult =
 	| { type: 'save'; anchor: OverlayAnchor }
