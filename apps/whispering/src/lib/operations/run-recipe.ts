@@ -36,9 +36,17 @@ export async function runRecipe(
 	{
 		input,
 		recipe,
+		signal,
 	}: {
 		input: string;
 		recipe: Recipe;
+		/**
+		 * Cancels the in-flight AI call. The auto-run path passes the pill
+		 * HUD's signal so "ship raw" also skips a rule's recipe; the caller
+		 * decides what an abort means (the pipeline treats it as "ship the
+		 * un-reshaped text", a clean outcome rather than a failure).
+		 */
+		signal?: AbortSignal;
 	},
 ): Promise<Result<string, RunRecipeError>> {
 	if (!input.trim()) {
@@ -58,6 +66,7 @@ export async function runRecipe(
 			app.settings.get('dictionary'),
 		),
 		userPrompt: input,
+		signal,
 	});
 
 	if (isErr(result)) {

@@ -30,6 +30,7 @@
 			preferences: PREFERENCE_CATEGORIES.filter((key) => keys.has(key)),
 			snippets: keys.has('snippets'),
 			recipes: keys.has('recipes'),
+			appRules: keys.has('appRules'),
 		};
 	}
 
@@ -42,11 +43,12 @@
 		})),
 		{ key: 'snippets', label: `Snippets (${app.snippets.count})` },
 		{ key: 'recipes', label: `Recipes (${app.recipes.count})` },
+		{ key: 'appRules', label: `App rules (${app.appRules.count})` },
 	]);
 
 	// Everything checked to start: the common case is a full backup.
 	let exportSelected = $state(
-		new Set<string>([...PREFERENCE_CATEGORIES, 'snippets', 'recipes']),
+		new Set<string>([...PREFERENCE_CATEGORIES, 'snippets', 'recipes', 'appRules']),
 	);
 
 	async function handleExport() {
@@ -101,6 +103,14 @@
 						},
 					]
 				: []),
+			...(available.appRules
+				? [
+						{
+							key: 'appRules',
+							label: `App rules (${importFile.appRules?.length ?? 0})`,
+						},
+					]
+				: []),
 		];
 	});
 
@@ -132,6 +142,7 @@
 			...available.preferences,
 			...(available.snippets ? ['snippets'] : []),
 			...(available.recipes ? ['recipes'] : []),
+			...(available.appRules ? ['appRules'] : []),
 		]);
 	}
 
@@ -148,6 +159,8 @@
 				`${summary.snippets.created} snippet${summary.snippets.created === 1 ? '' : 's'} added`,
 			summary.recipes &&
 				`${summary.recipes.created} recipe${summary.recipes.created === 1 ? '' : 's'} added`,
+			summary.appRules &&
+				`${summary.appRules.created} app rule${summary.appRules.created === 1 ? '' : 's'} added`,
 			summary.skippedFields > 0 &&
 				`${summary.skippedFields} unreadable ${summary.skippedFields === 1 ? 'value' : 'values'} skipped`,
 		].filter((part): part is string => Boolean(part));

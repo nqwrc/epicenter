@@ -8,9 +8,9 @@ import {
 	type Sink,
 } from '$lib/operations/sink';
 import type { Notice } from '$lib/report';
-import { services } from '$lib/services';
 import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { probeFocusedField } from './focused-field';
 import { decideSecureFieldGuard } from './secure-field-guard';
 
 // The reach types live in their own `delivery-reach` module next to their ADR
@@ -189,7 +189,7 @@ async function deliverToSink(
 		if (sink.kind === 'ledger') return { sink, withheld: false };
 		if (!app.settings.get('secureFieldGuardEnabled'))
 			return { sink, withheld: false };
-		const { focusedField } = await services.context.getForegroundContext();
+		const focusedField = await probeFocusedField();
 		const decision = decideSecureFieldGuard({ focusedField, enabled: true });
 		return decision === 'withhold'
 			? { sink: ledgerSink, withheld: true }

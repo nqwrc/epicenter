@@ -242,6 +242,11 @@ export async function processRecordingPipeline(
 	// failed AI call degrades to the polished text with a notice, never a
 	// failed dictation. This is a second AI call, so it only ever happens
 	// because the user named a recipe on the rule.
+	//
+	// The pill keeps its "Flowing…" HUD and ship-raw control armed for this
+	// call too: a person who hits the X during a rule's recipe means "ship
+	// without further AI", so an abort delivers the un-reshaped text as a
+	// clean outcome, exactly like aborting Polish ships the raw transcript.
 	let recipeReshaped = false;
 	if (appRule?.recipeId != null) {
 		const recipe = app.recipes.pickable.find(
@@ -253,12 +258,24 @@ export async function processRecordingPipeline(
 				description: `The "${appRule.name}" rule names a recipe that no longer exists, so the text shipped un-reshaped.`,
 			});
 		} else {
-			const reshaped = await runRecipe(app, { input: polishOutput, recipe });
+			let recipeSignal: AbortSignal | undefined;
+			if (isDictation) {
+				dictationLifecycle.markPolishing();
+				recipeSignal = polishHud.begin();
+			}
+			const reshaped = await runRecipe(app, {
+				input: polishOutput,
+				recipe,
+				signal: recipeSignal,
+			});
+			if (isDictation) polishHud.end();
 			if (reshaped.error !== null) {
-				report.info({
-					title: 'Recipe skipped',
-					description: reshaped.error.message,
-				});
+				if (!recipeSignal?.aborted) {
+					report.info({
+						title: 'Recipe skipped',
+						description: reshaped.error.message,
+					});
+				}
 			} else {
 				polishOutput = reshaped.data;
 				recipeReshaped = true;

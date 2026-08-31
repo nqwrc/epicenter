@@ -7,6 +7,7 @@ import { goto } from '$app/navigation';
 import type { CaptureSurface } from '$lib/constants/audio';
 import { whisperingPath } from '$lib/constants/urls';
 import { logAnalyticsEvent } from '$lib/operations/analytics';
+import { probeFocusedField } from '$lib/operations/focused-field';
 import {
 	captureForegroundSnapshot,
 	type ForegroundSnapshot,
@@ -17,7 +18,6 @@ import { decideSecureFieldGuard } from '$lib/operations/secure-field-guard';
 import { playSoundIfEnabled } from '$lib/operations/sound';
 import { prewarmOnDeviceModel } from '$lib/operations/transcribe';
 import { report } from '$lib/report';
-import { services } from '$lib/services';
 import {
 	RecorderError,
 	type RecordingEndedReason,
@@ -122,25 +122,39 @@ export function watchManualRecordingEnded(app: WhisperingApp): void {
 }
 
 /**
- * The foreground snapshot for the capture in flight, taken at recording start
- * (manual) or speech start (VAD) and consumed when that capture's pipeline
- * runs. A promise so the probe overlaps the recording instead of delaying its
+ * The foreground snapshots for captures in flight, taken at recording start
+ * (manual) or speech start (VAD) and consumed when each capture's pipeline
+ * runs. Promises so the probe overlaps the recording instead of delaying its
  * start; a probe failure resolves to null and routing simply does not apply.
  * Skipped entirely while no rules exist, so the zero-rule case costs nothing.
+ *
+ * A FIFO, not a single slot: VAD speech events arrive in order (start 1,
+ * end 1, start 2, ...), but utterance 1's async end handler can still be
+ * storing audio when utterance 2's start fires. A slot would let utterance 1
+ * consume utterance 2's snapshot; pairing begins to takes in order cannot.
+ * Every path that begins must also take or discard, so a capture that never
+ * reaches a pipeline (a failed start, a cancel, a VAD misfire) cannot leave
+ * an entry behind for the next capture to inherit; consumers shift
+ * synchronously, before their first await, to keep the pairing.
  */
-let pendingForeground: Promise<ForegroundSnapshot | null> | null = null;
+const pendingForeground: Promise<ForegroundSnapshot | null>[] = [];
 
 function beginForegroundSnapshot(app: WhisperingApp): void {
-	pendingForeground =
+	pendingForeground.push(
 		app.appRules.count > 0
 			? captureForegroundSnapshot().catch(() => null)
-			: null;
+			: Promise.resolve(null),
+	);
 }
 
 async function takeForegroundSnapshot(): Promise<ForegroundSnapshot | null> {
-	const pending = pendingForeground;
-	pendingForeground = null;
-	return pending;
+	return pendingForeground.shift() ?? null;
+}
+
+/** Drop a capture's entry when it will never reach a pipeline (a failed
+ * start, a cancel, a VAD misfire), so the next capture cannot inherit it. */
+function discardForegroundSnapshot(): void {
+	pendingForeground.shift();
 }
 
 /** True while a VAD session is armed, whether or not speech is being heard. */
@@ -168,7 +182,7 @@ export async function startManualRecording(
 	// only: a VAD session is armed once and speaks much later, so a
 	// field-focus check at arming time would attest to nothing.
 	if (app.settings.get('secureFieldCaptureGateEnabled')) {
-		const { focusedField } = await services.context.getForegroundContext();
+		const focusedField = await probeFocusedField();
 		const decision = decideSecureFieldGuard({ focusedField, enabled: true });
 		if (decision === 'withhold') {
 			report.info({
@@ -205,6 +219,7 @@ export async function startManualRecording(
 
 	if (error) {
 		void recordingMedia.resume();
+		discardForegroundSnapshot();
 		// The recording never started, so there is no blob to recover: the
 		// loudest tier. The pill glances it and the OS notification always fires, so
 		// there is no toast.
@@ -231,6 +246,7 @@ export async function stopManualRecording(app: WhisperingApp) {
 
 	if (error) {
 		void recordingMedia.resume();
+		discardForegroundSnapshot();
 		// Finalizing failed, so the captured audio never reached a row: treat it
 		// as a silent loss rather than a retryable transcription.
 		dictationLifecycle.markFailed({ tier: 'silent-loss', error });
@@ -306,6 +322,7 @@ export async function cancelRecording(app: WhisperingApp) {
 	}
 	if (data.status === 'cancelled') {
 		void recordingMedia.resume();
+		discardForegroundSnapshot();
 		// The pill vanishing plus the cancel sound is the confirmation; no toast.
 		void playSoundIfEnabled(app, 'manual-cancel');
 		log.info('Recording cancelled');
@@ -387,6 +404,10 @@ export async function startVadRecording(app: WhisperingApp) {
 			pausePlaybackForSpeech(app);
 		},
 		onSpeechEnd: async (blob) => {
+			// Claim this utterance's snapshot before the first await: speech
+			// events are ordered, so a synchronous shift here pairs each end
+			// with its own start even while audio storage is still in flight.
+			const foregroundApp = takeForegroundSnapshot();
 			// Speaking window closed: resume after a short debounce so a quick
 			// next utterance does not flutter the music.
 			scheduleResumeAfterSpeech();
@@ -409,12 +430,14 @@ export async function startVadRecording(app: WhisperingApp) {
 			await processRecordingPipeline(app, {
 				audioBlobId: finalized.data.audioBlobId,
 				durationMs: null,
-				foregroundApp: await takeForegroundSnapshot(),
+				foregroundApp: await foregroundApp,
 			});
 		},
 		onVADMisfire: () => {
 			// False start: schedule the same debounced resume as a real speech
-			// end, so an immediate retry does not flutter the music.
+			// end, so an immediate retry does not flutter the music. The
+			// utterance never reaches a pipeline, so its snapshot goes too.
+			discardForegroundSnapshot();
 			scheduleResumeAfterSpeech();
 		},
 	});

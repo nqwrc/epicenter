@@ -113,12 +113,13 @@ export const PREFERENCE_CATEGORY_KEYS: Record<
  * categories because they behave differently on import: a preference category
  * overwrites, a table category is appended to.
  */
-export const TABLE_CATEGORIES = ['snippets', 'recipes'] as const;
+export const TABLE_CATEGORIES = ['snippets', 'recipes', 'appRules'] as const;
 export type TableCategory = (typeof TABLE_CATEGORIES)[number];
 
 export const TABLE_CATEGORY_LABELS: Record<TableCategory, string> = {
 	snippets: 'Snippets',
 	recipes: 'Recipes',
+	appRules: 'App rules',
 };
 
 export type SettingsCategory = PreferenceCategory | TableCategory;

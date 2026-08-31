@@ -13,6 +13,7 @@
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TrashIcon from '@lucide/svelte/icons/trash';
+	import type { AnyTaggedError } from 'wellcrafted/error';
 	import { os } from '#platform/os';
 	import { report } from '$lib/report';
 	import { services } from '$lib/services';
@@ -58,12 +59,14 @@
 	});
 
 	function openNew() {
+		cancelCapture();
 		working = generateDefaultAppRule();
 		isEditing = false;
 		editorOpen = true;
 	}
 
 	function openEdit(rule: AppRule) {
+		cancelCapture();
 		working = { ...rule };
 		isEditing = true;
 		editorOpen = true;
@@ -71,9 +74,22 @@
 
 	// "Use current app": a short countdown so the person can focus the target
 	// window, then one foreground probe fills this platform's identifier and,
-	// when the name is still blank, the display name.
+	// when the name is still blank, the display name. The countdown belongs to
+	// one editing session: closing the editor or opening another rule cancels
+	// it, so a stale timer can never write into a rule it was not started for.
 	let captureCountdown = $state(0);
 	let captureTimer: ReturnType<typeof setInterval> | undefined;
+
+	function cancelCapture() {
+		clearInterval(captureTimer);
+		captureTimer = undefined;
+		captureCountdown = 0;
+	}
+
+	$effect(() => {
+		if (!editorOpen) cancelCapture();
+		return cancelCapture;
+	});
 
 	function useCurrentApp() {
 		if (captureTimer !== undefined) return;
@@ -81,9 +97,10 @@
 		captureTimer = setInterval(async () => {
 			captureCountdown -= 1;
 			if (captureCountdown > 0) return;
-			clearInterval(captureTimer);
-			captureTimer = undefined;
-			const { appId, appName } = await services.context.getForegroundContext();
+			cancelCapture();
+			const { appId, appName } = await services.context
+				.getForegroundContext()
+				.catch(() => ({ appId: null, appName: null }));
 			if (appId === null) {
 				report.info({
 					title: "Couldn't identify the app",
@@ -127,13 +144,24 @@
 			});
 			return;
 		}
-		await app.appRules.set({
-			...$state.snapshot(working),
-			name,
-			matchWindowsExe: exe,
-			matchMacosBundleId: bundle,
-			polishInstructions: working.polishInstructions?.trim() || null,
-		});
+		try {
+			app.appRules.set({
+				...$state.snapshot(working),
+				name,
+				matchWindowsExe: exe,
+				matchMacosBundleId: bundle,
+				polishInstructions: working.polishInstructions?.trim() || null,
+			});
+		} catch (cause) {
+			// The row can vanish under the editor (deleted on another device,
+			// synced in mid-edit); the store then refuses the update. The store
+			// only ever throws the table's own tagged error.
+			report.error({
+				title: "Couldn't save the rule",
+				cause: cause as AnyTaggedError,
+			});
+			return;
+		}
 		editorOpen = false;
 		report.success({ title: isEditing ? 'Rule updated' : 'Rule created' });
 	}
@@ -316,6 +344,8 @@
 				/>
 				<p class="text-muted-foreground text-xs">
 					Replaces your global Polish directive while dictating into this app.
+					It runs through Polish, so it does nothing while Polish is off or
+					has no working provider.
 				</p>
 			</div>
 			<div class="grid gap-2">

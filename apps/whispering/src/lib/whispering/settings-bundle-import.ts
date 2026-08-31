@@ -15,6 +15,10 @@ import { Err, Ok, type Result } from 'wellcrafted/result';
 import type { WhisperingSettingValues } from '../workspace';
 import type { WhisperingApp } from './app';
 import {
+	dedupeAppRulesAgainstExisting,
+	validateAppRulesArray,
+} from './app-rules-import';
+import {
 	dedupeRecipesAgainstExisting,
 	validateRecipesArray,
 } from './recipes-import';
@@ -61,6 +65,7 @@ export function availableCategoriesIn(file: SettingsBundleFile): {
 	preferences: PreferenceCategory[];
 	snippets: boolean;
 	recipes: boolean;
+	appRules: boolean;
 } {
 	return {
 		preferences: PREFERENCE_CATEGORIES.filter(
@@ -68,6 +73,7 @@ export function availableCategoriesIn(file: SettingsBundleFile): {
 		),
 		snippets: Array.isArray(file.snippets),
 		recipes: Array.isArray(file.recipes),
+		appRules: Array.isArray(file.appRules),
 	};
 }
 
@@ -76,6 +82,7 @@ export type SettingsBundleImportSummary = {
 	skippedFields: number;
 	snippets?: { created: number; skippedDuplicate: number; rejected: number };
 	recipes?: { created: number; skippedDuplicate: number; rejected: number };
+	appRules?: { created: number; skippedDuplicate: number; rejected: number };
 };
 
 /**
@@ -152,6 +159,24 @@ export function applySettingsBundle(
 				app.recipes.set({ id: nanoid(), name, instructions, icon });
 			}
 			summary.recipes = {
+				created: toCreate.length,
+				skippedDuplicate,
+				rejected: validated.data.rejected,
+			};
+		}
+	}
+
+	if (selection.appRules && file.appRules) {
+		const validated = validateAppRulesArray(file.appRules);
+		if (validated.data) {
+			const { toCreate, skippedDuplicate } = dedupeAppRulesAgainstExisting(
+				validated.data.valid,
+				app.appRules.all,
+			);
+			for (const rule of toCreate) {
+				app.appRules.set({ id: nanoid(), ...rule });
+			}
+			summary.appRules = {
 				created: toCreate.length,
 				skippedDuplicate,
 				rejected: validated.data.rejected,

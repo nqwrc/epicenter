@@ -20,6 +20,19 @@ export type SettingsBundleFile = {
 	preferences: Partial<Record<PreferenceCategory, Record<string, unknown>>>;
 	snippets?: { trigger: string; replacement: string }[];
 	recipes?: { name: string; instructions: string; icon: string | null }[];
+	/**
+	 * `recipeId` travels only for built-in recipes: a user recipe's identity is
+	 * its minted row id (ADR-0206), which names nothing on another device, so
+	 * export nulls it rather than shipping a permanently dangling reference.
+	 */
+	appRules?: {
+		name: string;
+		matchWindowsExe: string | null;
+		matchMacosBundleId: string | null;
+		polishInstructions: string | null;
+		recipeId: string | null;
+		enabled: boolean;
+	}[];
 };
 
 /** What the person checked, in either direction. */
@@ -27,4 +40,5 @@ export type SettingsBundleSelection = {
 	preferences: PreferenceCategory[];
 	snippets: boolean;
 	recipes: boolean;
+	appRules: boolean;
 };

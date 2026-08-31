@@ -24,6 +24,15 @@ function makeApp() {
 		instructions: string;
 		icon: string | null;
 	}[] = [];
+	const appRuleRows: {
+		id: string;
+		name: string;
+		matchWindowsExe: string | null;
+		matchMacosBundleId: string | null;
+		polishInstructions: string | null;
+		recipeId: string | null;
+		enabled: boolean;
+	}[] = [];
 
 	return {
 		settings: {
@@ -44,6 +53,12 @@ function makeApp() {
 				return recipeRows;
 			},
 			set: (row: (typeof recipeRows)[number]) => recipeRows.push(row),
+		},
+		appRules: {
+			get all() {
+				return appRuleRows;
+			},
+			set: (row: (typeof appRuleRows)[number]) => appRuleRows.push(row),
 		},
 	} as unknown as WhisperingApp;
 }
@@ -79,6 +94,7 @@ test('availableCategoriesIn reports only what the file actually has', () => {
 		preferences: ['sounds'],
 		snippets: true,
 		recipes: false,
+		appRules: false,
 	});
 });
 
@@ -96,6 +112,7 @@ test('applies only checked-and-present categories, leaves the rest untouched', (
 		preferences: ['sounds'],
 		snippets: false,
 		recipes: false,
+		appRules: false,
 	});
 	expect(summary.appliedPreferenceCategories).toEqual(['sounds']);
 	expect(app.settings.get('soundManualStart')).toBe(true);
@@ -117,6 +134,7 @@ test('skips one malformed field without dropping the rest of its category', () =
 		preferences: ['sounds'],
 		snippets: false,
 		recipes: false,
+		appRules: false,
 	});
 	expect(summary.skippedFields).toBe(1);
 	expect(summary.appliedPreferenceCategories).toEqual(['sounds']);
@@ -135,6 +153,7 @@ test('a checked category the file does not carry is reported as not applied', ()
 		preferences: ['sounds', 'commandMode'],
 		snippets: false,
 		recipes: false,
+		appRules: false,
 	});
 	expect(summary.appliedPreferenceCategories).toEqual(['sounds']);
 });
@@ -155,6 +174,7 @@ test('snippets import dedupes against the live table', () => {
 		preferences: [],
 		snippets: true,
 		recipes: false,
+		appRules: false,
 	});
 	expect(summary.snippets).toEqual({
 		created: 1,
@@ -181,6 +201,7 @@ test('recipes import appends the new ones and counts the rejected', () => {
 		preferences: [],
 		snippets: false,
 		recipes: true,
+		appRules: false,
 	});
 	expect(summary.recipes).toEqual({
 		created: 1,
@@ -188,6 +209,67 @@ test('recipes import appends the new ones and counts the rejected', () => {
 		rejected: 1,
 	});
 	expect(app.recipes.all.map((row) => row.name)).toEqual(['Email']);
+});
+
+test('app rules import dedupes by identifier and validates shape', () => {
+	const app = makeApp();
+	app.appRules.set({
+		id: 'existing',
+		name: 'Terminal',
+		matchWindowsExe: 'wt.exe',
+		matchMacosBundleId: null,
+		polishInstructions: null,
+		recipeId: null,
+		enabled: true,
+	});
+	const file: SettingsBundleFile = {
+		version: 1,
+		exportedAt: 'now',
+		preferences: {},
+		appRules: [
+			{
+				// Same identifier as the live rule (case differs): skipped.
+				name: 'Terminal again',
+				matchWindowsExe: 'WT.EXE',
+				matchMacosBundleId: null,
+				polishInstructions: null,
+				recipeId: null,
+				enabled: true,
+			},
+			{
+				name: 'Email',
+				matchWindowsExe: 'olk.exe',
+				matchMacosBundleId: 'com.microsoft.Outlook',
+				polishInstructions: 'Formal tone.',
+				recipeId: 'builtin:email',
+				enabled: true,
+			},
+			{
+				// No identifier at all: rejected.
+				name: 'Broken',
+				matchWindowsExe: null,
+				matchMacosBundleId: null,
+				polishInstructions: null,
+				recipeId: null,
+				enabled: true,
+			},
+		],
+	};
+	const summary = applySettingsBundle(app, file, {
+		preferences: [],
+		snippets: false,
+		recipes: false,
+		appRules: true,
+	});
+	expect(summary.appRules).toEqual({
+		created: 1,
+		skippedDuplicate: 1,
+		rejected: 1,
+	});
+	expect(app.appRules.all.map((row) => row.name)).toEqual([
+		'Terminal',
+		'Email',
+	]);
 });
 
 test('an unchecked table category is left alone even when the file has it', () => {
@@ -202,6 +284,7 @@ test('an unchecked table category is left alone even when the file has it', () =
 		preferences: [],
 		snippets: false,
 		recipes: false,
+		appRules: false,
 	});
 	expect(summary.snippets).toBeUndefined();
 	expect(app.snippets.all).toEqual([]);

@@ -69,13 +69,13 @@ pub async fn get_foreground_context(app: tauri::AppHandle) -> ForegroundContext 
     }
     #[cfg(target_os = "macos")]
     {
-        // The AX probe needs the same Accessibility trust the paste path
-        // gates on; without it, only identity (which needs no grant) is
-        // reported and the field stays `Unknown`.
-        let ax_trusted = {
-            use crate::keyboard::{DictationCapability, TapController};
-            app.state::<TapController>().capability() == DictationCapability::Active
-        };
+        let _ = app;
+        // The AX probe needs Accessibility trust; without it, only identity
+        // (which needs no grant) is reported and the field stays `Unknown`.
+        // Bare TCC trust, deliberately not the paste path's tap-liveness
+        // capability: the tap only runs while auto-paste is enabled, and the
+        // secure-field guard must work in clipboard-only configurations too.
+        let ax_trusted = crate::keyboard::is_trusted();
         tauri::async_runtime::spawn_blocking(move || macos_impl::probe(ax_trusted))
             .await
             .unwrap_or_else(|_| ForegroundContext::unknown())

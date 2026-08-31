@@ -8,6 +8,8 @@
  *
  * See `specs/20260830T130918-settings-import-export.md`.
  */
+
+import { isBuiltinRecipeId } from '../state/builtin-recipes';
 import type { WhisperingSettingValues } from '../workspace';
 import type { WhisperingApp } from './app';
 import type {
@@ -45,6 +47,28 @@ export function buildSettingsBundle(
 			icon,
 		}));
 	}
+	if (selection.appRules) {
+		bundle.appRules = app.appRules.all.map(
+			({
+				name,
+				matchWindowsExe,
+				matchMacosBundleId,
+				polishInstructions,
+				recipeId,
+				enabled,
+			}) => ({
+				name,
+				matchWindowsExe,
+				matchMacosBundleId,
+				polishInstructions,
+				// A user recipe's minted id names nothing on another device, so
+				// only built-in references travel (see SettingsBundleFile).
+				recipeId:
+					recipeId !== null && isBuiltinRecipeId(recipeId) ? recipeId : null,
+				enabled,
+			}),
+		);
+	}
 	return bundle;
 }
 
@@ -53,6 +77,7 @@ export function countBundleCategories(bundle: SettingsBundleFile): number {
 	return (
 		Object.keys(bundle.preferences).length +
 		(bundle.snippets ? 1 : 0) +
-		(bundle.recipes ? 1 : 0)
+		(bundle.recipes ? 1 : 0) +
+		(bundle.appRules ? 1 : 0)
 	);
 }
