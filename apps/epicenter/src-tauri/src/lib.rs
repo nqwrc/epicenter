@@ -61,6 +61,9 @@ use delivery::{
     simulate_backspaces, simulate_copy_keystroke, simulate_enter_keystroke, write_text,
 };
 
+mod foreground;
+use foreground::get_foreground_context;
+
 mod keyring_storage;
 use keyring_storage::{read_auth_cell, write_auth_cell};
 
@@ -374,6 +377,7 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             resume_playback,
             keyboard::commands::set_auto_paste_enabled,
             keyboard::commands::get_dictation_capability,
+            get_foreground_context,
             replace_global_shortcuts,
             is_autostart_enabled,
             set_autostart_enabled,

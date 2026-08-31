@@ -40,6 +40,7 @@
 		"allow-resume-playback",
 		"allow-set-auto-paste-enabled",
 		"allow-get-dictation-capability",
+		"allow-get-foreground-context",
 		"allow-replace-global-shortcuts",
 		"allow-is-autostart-enabled",
 		"allow-set-autostart-enabled",
