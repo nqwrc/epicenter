@@ -54,6 +54,8 @@ export function projectLifecycleToStatus(
 				reach: outcome.reach,
 				wordCount: outcome.wordCount,
 			};
+		case 'withheld':
+			return { phase: 'withheld' };
 		case 'failed':
 			return { phase: 'failed', tier: outcome.tier };
 		default:

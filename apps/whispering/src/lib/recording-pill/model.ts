@@ -25,6 +25,13 @@ export type RecordingPillStatus =
 			/** Word count of the delivered text, for the pill's "N words" label. */
 			wordCount?: number;
 	  }
+	| {
+			/**
+			 * The secure-field guard withheld delivery: the transcript is only in
+			 * history because a password field had focus at paste time.
+			 */
+			phase: 'withheld';
+	  }
 	| { phase: 'failed'; tier: DictationFailureTier };
 
 /** A control gesture emitted by either mount of the shared recording pill. */

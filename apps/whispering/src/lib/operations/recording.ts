@@ -7,11 +7,17 @@ import { goto } from '$app/navigation';
 import type { CaptureSurface } from '$lib/constants/audio';
 import { whisperingPath } from '$lib/constants/urls';
 import { logAnalyticsEvent } from '$lib/operations/analytics';
+import {
+	captureForegroundSnapshot,
+	type ForegroundSnapshot,
+} from '$lib/operations/foreground-context';
 import { recordingMedia } from '$lib/operations/media';
 import { processRecordingPipeline } from '$lib/operations/pipeline';
+import { decideSecureFieldGuard } from '$lib/operations/secure-field-guard';
 import { playSoundIfEnabled } from '$lib/operations/sound';
 import { prewarmOnDeviceModel } from '$lib/operations/transcribe';
 import { report } from '$lib/report';
+import { services } from '$lib/services';
 import {
 	RecorderError,
 	type RecordingEndedReason,
@@ -115,6 +121,28 @@ export function watchManualRecordingEnded(app: WhisperingApp): void {
 	});
 }
 
+/**
+ * The foreground snapshot for the capture in flight, taken at recording start
+ * (manual) or speech start (VAD) and consumed when that capture's pipeline
+ * runs. A promise so the probe overlaps the recording instead of delaying its
+ * start; a probe failure resolves to null and routing simply does not apply.
+ * Skipped entirely while no rules exist, so the zero-rule case costs nothing.
+ */
+let pendingForeground: Promise<ForegroundSnapshot | null> | null = null;
+
+function beginForegroundSnapshot(app: WhisperingApp): void {
+	pendingForeground =
+		app.appRules.count > 0
+			? captureForegroundSnapshot().catch(() => null)
+			: null;
+}
+
+async function takeForegroundSnapshot(): Promise<ForegroundSnapshot | null> {
+	const pending = pendingForeground;
+	pendingForeground = null;
+	return pending;
+}
+
 /** True while a VAD session is armed, whether or not speech is being heard. */
 export function isVadRecordingActive() {
 	return (
@@ -131,7 +159,31 @@ export function isVadRecordingActive() {
 export async function startManualRecording(
 	app: WhisperingApp,
 ): Promise<BlobId | null> {
+	// The opt-in secure-field capture gate: refuse to start while a detected
+	// password field has focus, before any audio exists. This is the only gate
+	// that keeps a dictated secret from reaching a cloud transcription or
+	// Polish provider; the always-available delivery withhold only stops the
+	// paste. Fail-open like the rest of the guard, so an `unknown` verdict
+	// (no grant, elevated target) never refuses a recording. Manual capture
+	// only: a VAD session is armed once and speaks much later, so a
+	// field-focus check at arming time would attest to nothing.
+	if (app.settings.get('secureFieldCaptureGateEnabled')) {
+		const { focusedField } = await services.context.getForegroundContext();
+		const decision = decideSecureFieldGuard({ focusedField, enabled: true });
+		if (decision === 'withhold') {
+			report.info({
+				title: 'Recording not started',
+				description:
+					'A password field has focus. Move focus elsewhere and try again, or turn the capture gate off in Privacy & Processing.',
+			});
+			return null;
+		}
+	}
+
 	app.settings.set('recordingTrigger', 'manual');
+	// The app in front right now is what this dictation is aimed at; the probe
+	// runs alongside the recorder bring-up and is consumed at stop.
+	beginForegroundSnapshot(app);
 	// A new dictation is starting: clear any lingering failed/delivered state so
 	// the pill follows this attempt, not the last one.
 	dictationLifecycle.reset();
@@ -202,6 +254,7 @@ export async function stopManualRecording(app: WhisperingApp) {
 	await processRecordingPipeline(app, {
 		audioBlobId,
 		durationMs,
+		foregroundApp: await takeForegroundSnapshot(),
 	});
 }
 
@@ -328,7 +381,9 @@ export async function startVadRecording(app: WhisperingApp) {
 		onLevel: reportRecordingMicLevel,
 		onSpeechStart: () => {
 			// Speaking window opened: pause whatever is playing. The pill's meter
-			// tint shows speech was detected, so there is no toast.
+			// tint shows speech was detected, so there is no toast. Each utterance
+			// is its own pipeline run, so each gets its own foreground snapshot.
+			beginForegroundSnapshot(app);
 			pausePlaybackForSpeech(app);
 		},
 		onSpeechEnd: async (blob) => {
@@ -354,6 +409,7 @@ export async function startVadRecording(app: WhisperingApp) {
 			await processRecordingPipeline(app, {
 				audioBlobId: finalized.data.audioBlobId,
 				durationMs: null,
+				foregroundApp: await takeForegroundSnapshot(),
 			});
 		},
 		onVADMisfire: () => {

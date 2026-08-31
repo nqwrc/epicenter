@@ -17,6 +17,10 @@ import {
 	whisperingDefinition,
 } from '../workspace';
 import {
+	createWhisperingAppRules,
+	type WhisperingAppRules,
+} from './app-rules.svelte';
+import {
 	createWhisperingRecipes,
 	type WhisperingRecipes,
 } from './recipes.svelte';
@@ -136,6 +140,8 @@ const APPLICATION_DEFAULTS: Partial<WhisperingSettingValues> = {
 	polishEnabled: true,
 	polishInstructions: 'Fix grammar and punctuation. Keep my wording.',
 	commandModeEnabled: false,
+	secureFieldGuardEnabled: true,
+	secureFieldCaptureGateEnabled: false,
 	analyticsEnabled: true,
 	shortcutPushToTalkModifiers: null,
 	shortcutPushToTalkKeys: null,
@@ -158,6 +164,7 @@ export type WhisperingApp = {
 	readonly recordings: WhisperingRecordings;
 	readonly recipes: WhisperingRecipes;
 	readonly snippets: WhisperingSnippets;
+	readonly appRules: WhisperingAppRules;
 	/**
 	 * What sync is doing, or undefined when this generation has no account or
 	 * its dials were permanently denied. A denied bound replica works offline
@@ -230,6 +237,9 @@ export async function openWhisperingApp(
 	const snippetsDomain = createWhisperingSnippets({
 		table: work.tables.snippets,
 	});
+	const appRulesDomain = createWhisperingAppRules({
+		table: work.tables.appRules,
+	});
 
 	let disposed = false;
 	return Object.freeze({
@@ -237,10 +247,12 @@ export async function openWhisperingApp(
 		recordings: recordingsDomain.recordings,
 		recipes: recipesDomain,
 		snippets: snippetsDomain,
+		appRules: appRulesDomain,
 		syncStatus: () => account?.syncStatus(),
 		async [Symbol.asyncDispose]() {
 			if (disposed) return;
 			disposed = true;
+			appRulesDomain[Symbol.dispose]();
 			snippetsDomain[Symbol.dispose]();
 			recipesDomain[Symbol.dispose]();
 			recordingsDomain[Symbol.dispose]();

@@ -350,5 +350,7 @@ Each option and the one reason it lost. Terse. This is not the spec.
 | [0265](0265-a-reposition-session-grows-the-overlay-into-the-work-area.md) | A reposition session grows the overlay into the work area | Accepted |
 | [0266](0266-a-settings-bundle-overwrites-preferences-and-appends-tables.md) | A settings bundle overwrites preferences and appends tables | Accepted |
 | [0267](0267-leaving-a-reposition-session-is-a-press-on-its-own-backdrop.md) | Leaving a reposition session is a press on its own backdrop | Accepted (amends 0265 at its escape hatch) |
+| [0268](0268-a-detected-password-field-withholds-delivery-to-history.md) | A detected password field withholds delivery to history | Accepted (amends 0040 at its no-history-only rule) |
+| [0269](0269-a-per-app-rule-reshapes-polish-and-may-auto-run-one-recipe.md) | A per-app rule reshapes Polish and may auto-run one recipe | Accepted (amends 0099 at its ordering and auto-run deferral) |
 
 When you add an ADR, add its row here.

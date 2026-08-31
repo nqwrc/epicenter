@@ -40,6 +40,9 @@ mock.module('$lib/operations/expand-snippets', () => ({ expandSnippets }));
 mock.module('$lib/operations/delivery', () => ({
 	deliverTranscriptionResult,
 }));
+mock.module('$lib/operations/run-recipe', () => ({
+	runRecipe: mock(),
+}));
 mock.module('$lib/operations/run-polish', () => ({
 	polishWillRun: () => willPolish,
 	runPolish: async (_app: unknown, { input }: { input: string }) =>

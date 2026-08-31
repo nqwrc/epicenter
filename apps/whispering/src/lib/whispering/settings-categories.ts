@@ -80,7 +80,12 @@ export const PREFERENCE_CATEGORY_KEYS: Record<
 		'transcriptionLanguage',
 		'transcriptionPrompt',
 	],
-	processing: ['completionProvider', 'completionModel'],
+	processing: [
+		'completionProvider',
+		'completionModel',
+		'secureFieldGuardEnabled',
+		'secureFieldCaptureGateEnabled',
+	],
 	dictationPolish: ['polishEnabled', 'polishInstructions'],
 	commandMode: ['commandModeEnabled'],
 	dictionary: ['dictionary'],

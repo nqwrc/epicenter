@@ -36,6 +36,7 @@ export type DictationOutcome =
 	| { kind: 'transcribing' }
 	| { kind: 'polishing' }
 	| { kind: 'delivered'; reach: DeliveryReach; wordCount?: number }
+	| { kind: 'withheld' }
 	| ({ kind: 'failed' } & DictationFailure);
 
 export type DictationLifecycle = {
@@ -190,6 +191,18 @@ function createDictationLifecycle() {
 			// Only the clean reach auto-retires; a reduced reach stays put.
 			if (reach !== 'output') return;
 			retireAfter(DELIVERED_FLASH_MS, 'delivered');
+		},
+
+		/**
+		 * The secure-field guard withheld delivery: a password field had focus at
+		 * paste time, so the transcript went only to history, with nothing at the
+		 * cursor and nothing on the clipboard. Persists until the next dictation,
+		 * like a reduced reach: no landed text corroborates this outcome, so the
+		 * pill tag is the only explanation the user gets.
+		 */
+		markWithheld(): void {
+			clearRetireTimer();
+			outcome = { kind: 'withheld' };
 		},
 
 		/** A dictation failed: glance the failure, then retire to `none`.

@@ -48,6 +48,9 @@ mock.module('$lib/operations/run-voice-command', () => ({
 	runVoiceCommand,
 }));
 mock.module('$lib/operations/delivery', () => ({ deliverTranscriptionResult }));
+mock.module('$lib/operations/run-recipe', () => ({
+	runRecipe: mock(),
+}));
 mock.module('$lib/operations/run-polish', () => ({
 	polishWillRun: () => willPolish,
 	// Reworded regardless of input, so a test that turns Polish on can tell

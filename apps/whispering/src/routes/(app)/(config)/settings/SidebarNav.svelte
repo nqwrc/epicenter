@@ -9,6 +9,7 @@
 	const items = [
 		{ title: 'General', href: whisperingPath('/settings') },
 		{ title: 'Recording', href: whisperingPath('/settings/recording') },
+		{ title: 'App rules', href: whisperingPath('/settings/apps') },
 		{
 			title: 'Privacy & Processing',
 			href: whisperingPath('/settings/processing'),

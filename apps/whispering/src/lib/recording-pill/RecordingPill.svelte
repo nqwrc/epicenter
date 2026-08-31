@@ -87,6 +87,7 @@
 				return { w: 190, h: 44 };
 			case 'delivered':
 				return { w: 200, h: 44 };
+			case 'withheld':
 			case 'failed':
 				return { w: 220, h: 44 };
 			default:
@@ -241,6 +242,15 @@
 		/>
 		<span class="min-w-0 truncate text-[13px] font-medium tracking-tight text-white/90"
 			>{deliveredLabel}</span
+		>
+	{:else if status.phase === 'withheld'}
+		<!-- The secure-field guard refused the configured output: a password field
+		     had focus at paste time, so the transcript went only to history.
+		     Amber like a reduced reach, and it persists the same way, because no
+		     landed text corroborates this outcome. -->
+		<TriangleAlertIcon class="size-4 shrink-0 text-amber-400" />
+		<span class="min-w-0 truncate text-[13px] font-medium tracking-tight text-white/90"
+			>Kept in history · Secure field</span
 		>
 	{:else if status.phase === 'failed'}
 		<TriangleAlertIcon class="size-4 shrink-0 text-amber-400" />

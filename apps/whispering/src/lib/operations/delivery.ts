@@ -8,8 +8,10 @@ import {
 	type Sink,
 } from '$lib/operations/sink';
 import type { Notice } from '$lib/report';
+import { services } from '$lib/services';
 import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { decideSecureFieldGuard } from './secure-field-guard';
 
 // The reach types live in their own `delivery-reach` module next to their ADR
 // docstrings; re-exported here so callers keep one delivery import.
@@ -94,7 +96,7 @@ export async function deliverTranscriptionResult(
 		source?: TranscriptionSource;
 	},
 ): Promise<DeliveryResult> {
-	return deliverToSink({
+	return deliverToSink(app, {
 		text,
 		successCopy: TRANSCRIPTION_SUCCESS_COPY[source],
 		sink: resolveSettingsSink(app, 'transcription'),
@@ -120,7 +122,7 @@ export async function deliverRecipeResult(
 		recordingId: string | null;
 	},
 ): Promise<DeliveryResult> {
-	return deliverToSink({
+	return deliverToSink(app, {
 		text,
 		successCopy: '🔄 Recipe complete',
 		sink: resolveSettingsSink(app, 'recipe'),
@@ -146,17 +148,20 @@ function resolveSettingsSink(
 			: ledgerSink;
 }
 
-async function deliverToSink({
-	text,
-	successCopy,
-	sink,
-	linkedRecording,
-}: {
-	text: string;
-	successCopy: string;
-	sink: Sink;
-	linkedRecording: boolean;
-}): Promise<DeliveryResult> {
+async function deliverToSink(
+	app: WhisperingApp,
+	{
+		text,
+		successCopy,
+		sink,
+		linkedRecording,
+	}: {
+		text: string;
+		successCopy: string;
+		sink: Sink;
+		linkedRecording: boolean;
+	},
+): Promise<DeliveryResult> {
 	const recordingsAction = linkedRecording
 		? {
 				label: 'Go to recordings',
@@ -171,17 +176,43 @@ async function deliverToSink({
 	// rather than backspacing into text it did not deliver.
 	lastDelivery.clear();
 
-	const { reach, pressedEnter } = await sink.deliver(text);
+	// The secure-field guard, re-sampled at paste time because the paste lands
+	// wherever focus is now, not where it was at capture. Only a cursor or
+	// clipboard sink can put text somewhere dangerous, and blocking the
+	// clipboard too is deliberate: "copied" next to a password field invites
+	// the exact wrong paste. On a withhold the ledger sink substitutes, so the
+	// text survives in history and nothing else changes hands.
+	const effectiveSink = await (async (): Promise<{
+		sink: Sink;
+		withheld: boolean;
+	}> => {
+		if (sink.kind === 'ledger') return { sink, withheld: false };
+		if (!app.settings.get('secureFieldGuardEnabled'))
+			return { sink, withheld: false };
+		const { focusedField } = await services.context.getForegroundContext();
+		const decision = decideSecureFieldGuard({ focusedField, enabled: true });
+		return decision === 'withhold'
+			? { sink: ledgerSink, withheld: true }
+			: { sink, withheld: false };
+	})();
 
-	const title =
-		sink.kind === 'cursor'
+	const { reach, pressedEnter } = await effectiveSink.sink.deliver(text);
+
+	const title = effectiveSink.withheld
+		? `${successCopy}, kept in history (a password field has focus)`
+		: effectiveSink.sink.kind === 'cursor'
 			? reach === 'output'
 				? `${successCopy} and written to cursor!`
 				: `${successCopy}, copied to clipboard (couldn't write to cursor)`
 			: `${successCopy}!`;
 
 	return {
-		outcome: { reach, sinkKind: sink.kind, pressedEnter },
+		outcome: {
+			reach,
+			sinkKind: effectiveSink.sink.kind,
+			pressedEnter,
+			withheld: effectiveSink.withheld,
+		},
 		notice: { title, description: text, action: recordingsAction },
 	};
 }

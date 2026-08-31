@@ -32,6 +32,21 @@ mock.module('$lib/constants/urls', () => ({
 	WHISPERING_RECORDINGS_PATHNAME: '/apps/whispering/recordings',
 }));
 
+// The secure-field guard asks the context service for the focused-field
+// verdict at paste time; each test sets what the probe reports.
+let focusedField: 'secure' | 'notSecure' | 'unknown' = 'unknown';
+mock.module('$lib/services', () => ({
+	services: {
+		context: {
+			getForegroundContext: async () => ({
+				appId: null,
+				appName: null,
+				focusedField,
+			}),
+		},
+	},
+}));
+
 mock.module('$lib/operations/sink', () => ({
 	clipboardSink: {
 		kind: 'clipboard',
@@ -84,6 +99,7 @@ describe('transcription delivery', () => {
 		settingsValues.set('outputTranscriptionClipboard', false);
 		settingsValues.set('outputTranscriptionCursor', false);
 		settingsValues.set('outputTranscriptionEnter', false);
+		focusedField = 'unknown';
 		clearDelivery.mockClear();
 	});
 
@@ -96,6 +112,7 @@ describe('transcription delivery', () => {
 			reach: 'output',
 			sinkKind: 'clipboard',
 			pressedEnter: false,
+			withheld: false,
 		});
 		expect(delivered).toEqual(['clipboard:hello']);
 	});
@@ -107,8 +124,47 @@ describe('transcription delivery', () => {
 			reach: 'output',
 			sinkKind: 'ledger',
 			pressedEnter: false,
+			withheld: false,
 		});
 		expect(delivered).toEqual(['ledger:hello']);
+	});
+
+	test('a secure field at paste time withholds to the ledger sink', async () => {
+		settingsValues.set('outputTranscriptionClipboard', true);
+		settingsValues.set('secureFieldGuardEnabled', true);
+		focusedField = 'secure';
+
+		const result = await deliverTranscriptionResult(app, { text: 'hello' });
+
+		expect(result.outcome).toEqual({
+			reach: 'output',
+			sinkKind: 'ledger',
+			pressedEnter: false,
+			withheld: true,
+		});
+		// Nothing reached the clipboard: the withhold is total, not a fallback.
+		expect(delivered).toEqual(['ledger:hello']);
+	});
+
+	test('an unknown verdict fails open and delivers normally', async () => {
+		settingsValues.set('outputTranscriptionClipboard', true);
+		settingsValues.set('secureFieldGuardEnabled', true);
+		focusedField = 'unknown';
+
+		const result = await deliverTranscriptionResult(app, { text: 'hello' });
+
+		expect(result.outcome.withheld).toBe(false);
+		expect(delivered).toEqual(['clipboard:hello']);
+	});
+
+	test('a disabled guard never probes the focused field away from delivery', async () => {
+		settingsValues.set('outputTranscriptionClipboard', true);
+		focusedField = 'secure';
+
+		const result = await deliverTranscriptionResult(app, { text: 'hello' });
+
+		expect(result.outcome.withheld).toBe(false);
+		expect(delivered).toEqual(['clipboard:hello']);
 	});
 
 	test('every delivery clears whatever undo was held before it', async () => {

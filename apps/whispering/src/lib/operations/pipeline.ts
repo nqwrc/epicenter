@@ -7,6 +7,7 @@ import {
 import { expandSnippets } from '$lib/operations/expand-snippets';
 import { matchCommand } from '$lib/operations/match-command';
 import { polishWillRun, runPolish } from '$lib/operations/run-polish';
+import { runRecipe } from '$lib/operations/run-recipe';
 import {
 	commandApplies,
 	runVoiceCommand,
@@ -19,6 +20,8 @@ import { dictationLifecycle } from '$lib/state/dictation-lifecycle.svelte';
 import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import { polishHud } from '$lib/state/polish-hud.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import type { ForegroundSnapshot } from './foreground-context';
+import { matchAppRule } from './match-app-rule';
 
 /**
  * Argument shape for the pipeline. The recorder produces a
@@ -30,6 +33,13 @@ type PipelineInput = {
 	audioBlobId: BlobId;
 	durationMs: number | null;
 	deliverySource?: TranscriptionSource;
+	/**
+	 * The foreground app at capture start, for per-app rule routing. In-memory
+	 * only: it is never written to the recording row, so app usage stays out of
+	 * the synced replica. Absent for file imports and callers with no capture
+	 * moment; routing then simply does not apply.
+	 */
+	foregroundApp?: ForegroundSnapshot | null;
 };
 
 /**
@@ -43,7 +53,12 @@ type PipelineInput = {
  */
 export async function processRecordingPipeline(
 	app: WhisperingApp,
-	{ audioBlobId, durationMs, deliverySource = 'recording' }: PipelineInput,
+	{
+		audioBlobId,
+		durationMs,
+		deliverySource = 'recording',
+		foregroundApp,
+	}: PipelineInput,
 ) {
 	const now = InstantString.now();
 
@@ -170,6 +185,19 @@ export async function processRecordingPipeline(
 		}
 	}
 
+	// Which per-app rule applies, decided from the app in front at capture
+	// start. Resolved after the command-mode intercept (commands stay senior to
+	// routing) and before Polish, whose directive the rule may replace. No
+	// snapshot or no match means the global behavior, unchanged.
+	const appRule =
+		isDictation && foregroundApp
+			? matchAppRule({
+					appId: foregroundApp.appId,
+					rules: app.appRules.all,
+					platform: foregroundApp.platform,
+				})
+			: null;
+
 	// Run Polish over the raw transcript, then deliver the polished text. When
 	// history succeeds, the raw stays on `recordings.transcript` so "show
 	// original" is recoverable. We hold delivery until Polish finishes and
@@ -194,22 +222,54 @@ export async function processRecordingPipeline(
 	const { data: polishedText, error: polishError } = await runPolish(app, {
 		input: transcribedText,
 		signal,
+		instructions: appRule?.polishInstructions ?? undefined,
 	});
 	if (showPolishHud) polishHud.end();
 	// Polish is best-effort: a failed AI pass carries the raw transcript in
 	// `fallback`, so a transcript is never lost to a polish error. Surface the
 	// failure without blocking delivery.
-	const polishOutput = polishError ? polishError.fallback : polishedText;
-	// Snippets expand after Polish and before delivery, on whichever text is
-	// about to ship. A trigger Polish reworded simply will not match, which
-	// shows up as the literal trigger in the output: visible, and recoverable.
-	const deliveredText = expandSnippets(polishOutput, app.snippets.all);
+	let polishOutput = polishError ? polishError.fallback : polishedText;
 	if (polishError) {
 		report.info({
 			title: 'Polishing skipped',
 			description: polishError.message,
 		});
 	}
+
+	// A per-app rule may auto-run one recipe over the polished text, before
+	// snippets so snippets stay last-before-delivery (ADR-0099's ordering with
+	// one added step). Best-effort like Polish: a dangling recipe id or a
+	// failed AI call degrades to the polished text with a notice, never a
+	// failed dictation. This is a second AI call, so it only ever happens
+	// because the user named a recipe on the rule.
+	let recipeReshaped = false;
+	if (appRule?.recipeId != null) {
+		const recipe = app.recipes.pickable.find(
+			(candidate) => candidate.id === appRule.recipeId,
+		);
+		if (recipe === undefined) {
+			report.info({
+				title: 'App rule recipe missing',
+				description: `The "${appRule.name}" rule names a recipe that no longer exists, so the text shipped un-reshaped.`,
+			});
+		} else {
+			const reshaped = await runRecipe(app, { input: polishOutput, recipe });
+			if (reshaped.error !== null) {
+				report.info({
+					title: 'Recipe skipped',
+					description: reshaped.error.message,
+				});
+			} else {
+				polishOutput = reshaped.data;
+				recipeReshaped = true;
+			}
+		}
+	}
+
+	// Snippets expand after Polish and before delivery, on whichever text is
+	// about to ship. A trigger Polish reworded simply will not match, which
+	// shows up as the literal trigger in the output: visible, and recoverable.
+	const deliveredText = expandSnippets(polishOutput, app.snippets.all);
 
 	// Attempt to persist the delivered transcript alongside the raw transcript so
 	// history can show what was actually delivered, with the original one click
@@ -220,7 +280,10 @@ export async function processRecordingPipeline(
 	// Snippet expansion rides along in `deliveredText`, so a polished row records
 	// what shipped. The two no-write paths keep only the unexpanded transcript,
 	// which is the existing speed-mode tradeoff and not something snippets change.
-	if (willPolish && !polishError) {
+	// A rule's recipe reshaping also earns the write: even in speed mode, a
+	// reshaped delivery differs from the raw transcript and history should show
+	// what actually shipped.
+	if ((willPolish && !polishError) || recipeReshaped) {
 		const polishedHistory = await saveRecordingHistory(app, recording.id, {
 			polishedTranscript: deliveredText,
 		});
@@ -240,7 +303,9 @@ export async function processRecordingPipeline(
 	// Dictation only: undoing a file import would target a paste the person
 	// never dictated. The outcome carries the sink kind and whether an Enter
 	// followed, which is what decides whether a backspace can reach it at all.
-	if (isDictation) {
+	// A withheld delivery holds nothing: no paste happened, so there is nothing
+	// at the cursor for an undo to take back.
+	if (isDictation && !transcriptDelivery.withheld) {
 		lastDelivery.record({
 			text: deliveredText,
 			sinkKind: transcriptDelivery.sinkKind,
@@ -249,13 +314,24 @@ export async function processRecordingPipeline(
 		});
 	}
 	if (isDictation) {
-		// The delivered transcript is the dictation receipt. Every reach is a success,
-		// even when history could not be confirmed, so this is always `delivered`; the reach decides
-		// whether the pill flashes (clean `output`) or persists (a reduced
-		// `clipboard`). The word count rides the same event so the pill can show
-		// "N words" without a second round trip for the delivered text.
-		const wordCount = deliveredText.trim().split(/\s+/).filter(Boolean).length;
-		dictationLifecycle.markDelivered(transcriptDelivery.reach, wordCount);
+		if (transcriptDelivery.withheld) {
+			// The secure-field guard refused the configured output; the transcript
+			// lives only in history. This persists on the pill like a reduced reach
+			// does, because nothing landed to corroborate the dictation and the tag
+			// is the only explanation the user gets.
+			dictationLifecycle.markWithheld();
+		} else {
+			// The delivered transcript is the dictation receipt. Every reach is a success,
+			// even when history could not be confirmed, so this is always `delivered`; the reach decides
+			// whether the pill flashes (clean `output`) or persists (a reduced
+			// `clipboard`). The word count rides the same event so the pill can show
+			// "N words" without a second round trip for the delivered text.
+			const wordCount = deliveredText
+				.trim()
+				.split(/\s+/)
+				.filter(Boolean).length;
+			dictationLifecycle.markDelivered(transcriptDelivery.reach, wordCount);
+		}
 	} else {
 		transcribeLoading?.resolve(transcribeNotice);
 	}

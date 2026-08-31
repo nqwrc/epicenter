@@ -22,4 +22,13 @@ export type DeliveryOutcome = {
 	reach: DeliveryReach;
 	sinkKind: SinkKind;
 	pressedEnter: boolean;
+	/**
+	 * True when the secure-field guard withheld a cursor or clipboard delivery
+	 * because a password field had focus at paste time. The text was routed to
+	 * the ledger sink instead (still in history, nothing on the clipboard), so
+	 * `reach` reads `output` for the substituted sink; this flag is what tells
+	 * feedback the configured output was deliberately refused. A refusal
+	 * announced to the user is not the accidental stranding ADR-0040 abolished.
+	 */
+	withheld: boolean;
 };
