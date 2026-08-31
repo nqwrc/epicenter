@@ -96,11 +96,21 @@ mod tests {
         panic!("the platform root must not be resolved when the override wins");
     }
 
+    /// An absolute path spelled the way the running platform spells one.
+    /// The rule under test is `Path::is_absolute`, and that is per-platform:
+    /// `/tmp/epicenter-test` is a relative path on Windows, so a Unix-only
+    /// literal would test the refusal branch there instead of the override.
+    const ABSOLUTE_OVERRIDE: &str = if cfg!(windows) {
+        r"C:\epicenter-test"
+    } else {
+        "/tmp/epicenter-test"
+    };
+
     #[test]
     fn an_absolute_override_wins_without_touching_the_platform_root() {
         assert_eq!(
-            resolve_data_root(Some(OsStr::new("/tmp/epicenter-test")), unreachable_root).unwrap(),
-            PathBuf::from("/tmp/epicenter-test")
+            resolve_data_root(Some(OsStr::new(ABSOLUTE_OVERRIDE)), unreachable_root).unwrap(),
+            PathBuf::from(ABSOLUTE_OVERRIDE)
         );
     }
 

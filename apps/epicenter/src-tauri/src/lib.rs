@@ -1828,7 +1828,15 @@ mod tests {
         // only offers IDs from the list Bun served it, and an ID that names no
         // member opens a window Bun answers with 404. Re-deriving membership
         // here would be a second catalog with a second answer.
-        for accepted in ["hello-http", "a", "notes2", "x-y-z", "0-", "never-admitted"] {
+        for accepted in [
+            "hello-http",
+            "a",
+            "notes2",
+            "x-y-z",
+            "0",
+            "so.epicenter.hello",
+            "never-admitted",
+        ] {
             assert!(
                 matches!(parse_application_id(accepted), Some(Application::Admitted(id)) if id == accepted),
                 "expected {accepted:?} to resolve to the app-window path"
@@ -1839,9 +1847,10 @@ mod tests {
             "",
             "Hello",
             "hello_http",
-            "hello.http",
             "hello/http",
             "..",
+            "0-",
+            "-a",
             "hello http",
             "héllo",
             // Reserved windows Home does not list: the shell itself, and
