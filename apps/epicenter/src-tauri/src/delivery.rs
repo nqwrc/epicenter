@@ -24,7 +24,9 @@ const PRE_RESTORE_SETTLE: std::time::Duration = std::time::Duration::from_millis
 ///
 /// With `keep_on_clipboard`, the transcript is the intended final clipboard
 /// state. Otherwise this command borrows the clipboard, pastes, then restores
-/// the exact previous macOS pasteboard or the previous text on other platforms.
+/// the exact previous macOS pasteboard, or the previous text on other
+/// platforms — clearing instead when there was no previous text, so the
+/// borrowed transcript never lingers.
 #[tauri::command]
 #[specta::specta]
 pub async fn write_text(
@@ -83,10 +85,21 @@ pub async fn write_text(
     #[cfg(target_os = "macos")]
     crate::clipboard::restore(&snapshot);
     #[cfg(not(target_os = "macos"))]
-    if let Some(content) = snapshot {
-        app.clipboard()
+    match snapshot {
+        // There was previous text: put it back.
+        Some(content) => app
+            .clipboard()
             .write_text(&content)
-            .map_err(|error| format!("Failed to restore clipboard: {error}"))?;
+            .map_err(|error| format!("Failed to restore clipboard: {error}"))?,
+        // Nothing readable as text was there before (empty, or non-text content
+        // this platform can't snapshot): clear rather than leave the transcript
+        // behind. `read_text` errors in both cases, so `None` doesn't distinguish
+        // them, but leaving the borrowed transcript on the clipboard is wrong
+        // either way.
+        None => app
+            .clipboard()
+            .clear()
+            .map_err(|error| format!("Failed to restore clipboard: {error}"))?,
     }
 
     Ok(WriteTextOutcome::Pasted)
