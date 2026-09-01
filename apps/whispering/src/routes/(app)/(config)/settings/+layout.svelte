@@ -6,7 +6,7 @@
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import { report } from '$lib/report';
 	import { deviceConfig } from '$lib/state/device-config.svelte';
-	import SidebarNav from './SidebarNav.svelte';
+	import GroupNav from './GroupNav.svelte';
 	import { getWhisperingApp } from '$lib/whispering/context';
 
 	const app = getWhisperingApp();
@@ -52,8 +52,6 @@
 		</Button>
 	</div>
 	<Separator class="my-6" />
-	<div class="flex flex-col space-y-8 lg:flex-row lg:gap-8">
-		<aside class="lg:w-1/6"><SidebarNav /></aside>
-		<main class="flex-1 p-1.5 lg:max-w-3xl">{@render children()}</main>
-	</div>
+	<GroupNav />
+	<main class="flex-1 p-1.5 pt-6 lg:max-w-3xl">{@render children()}</main>
 </main>

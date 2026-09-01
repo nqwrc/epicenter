@@ -46,14 +46,17 @@ function reportDeviceAcquisitionOutcome(
 
 	persist(outcome.deviceId);
 	switch (outcome.reason) {
+		// The microphone is chosen in the pipeline row on the record screen, not
+		// in settings, so the recovery goes there rather than to a page that no
+		// longer carries a device selector.
 		case 'no-device-selected':
 			report.info({
 				title: 'Switched to available microphone',
 				description:
-					'No microphone was selected, so we automatically connected to an available one. You can update your selection in settings.',
+					'No microphone was selected, so we automatically connected to an available one. You can pick a different one on the record screen.',
 				action: {
-					label: 'Open Settings',
-					onClick: () => goto(whisperingPath('/settings/recording')),
+					label: 'Choose microphone',
+					onClick: () => goto(whisperingPath('/')),
 				},
 			});
 			return;
@@ -63,8 +66,8 @@ function reportDeviceAcquisitionOutcome(
 				description:
 					"Your previously selected microphone wasn't found, so we automatically connected to an available one.",
 				action: {
-					label: 'Open Settings',
-					onClick: () => goto(whisperingPath('/settings/recording')),
+					label: 'Choose microphone',
+					onClick: () => goto(whisperingPath('/')),
 				},
 			});
 			return;
