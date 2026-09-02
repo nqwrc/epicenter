@@ -22,6 +22,7 @@ import {
 	RecorderError,
 	type RecordingEndedReason,
 } from '$lib/services/recorder/contract';
+import { getTranscriptionPreflightBlocker } from '$lib/settings/transcription-validation';
 import { captureSurface } from '$lib/state/capture-surface.svelte';
 import { deviceConfig } from '$lib/state/device-config.svelte';
 import { dictationLifecycle } from '$lib/state/dictation-lifecycle.svelte';
@@ -30,6 +31,37 @@ import { vadRecorder } from '$lib/state/vad-recorder.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
 
 const log = createLogger('whispering/recording');
+
+/**
+ * Whether a capture may start, saying what is missing when it may not.
+ *
+ * The record screen swaps the recorder for a setup panel when transcription is
+ * not ready, which reads as a gate but is only a rendering choice. The global
+ * shortcut, push-to-talk, the tray, and the toggle command all reach the start
+ * functions directly, so a capture ran anyway and failed at the provider: the
+ * user learned after speaking, in a 401's words rather than in the one sentence
+ * that names the fix.
+ *
+ * This is what every entry point shares, so the check lives here. It runs
+ * before any audio exists, which is why refusing is the kind answer: it costs a
+ * keypress, where starting costs a whole dictation that cannot become text. It
+ * refuses only on what the app knows for certain, never on the on-device route,
+ * whose failures the host owns and describes at the point of use (ADR-0180).
+ */
+function canStartCapture(app: WhisperingApp): boolean {
+	const blocker = getTranscriptionPreflightBlocker(app);
+	if (blocker === null) return true;
+
+	report.info({
+		title: 'Recording not started',
+		description: blocker,
+		action: {
+			label: 'Set up transcription',
+			onClick: () => goto(whisperingPath('/settings/processing')),
+		},
+	});
+	return false;
+}
 
 /**
  * Surface the outcome of acquiring a recording device. A clean success is
@@ -176,6 +208,8 @@ export function isVadRecordingActive() {
 export async function startManualRecording(
 	app: WhisperingApp,
 ): Promise<BlobId | null> {
+	if (!canStartCapture(app)) return null;
+
 	// The opt-in secure-field capture gate: refuse to start while a detected
 	// password field has focus, before any audio exists. This is the only gate
 	// that keeps a dictated secret from reaching a cloud transcription or
@@ -382,6 +416,10 @@ function cancelPendingVadResume() {
 }
 
 export async function startVadRecording(app: WhisperingApp) {
+	// A session is armed once and speaks many times, so an unusable provider
+	// here would fail every utterance in it, not one.
+	if (!canStartCapture(app)) return;
+
 	app.settings.set('recordingTrigger', 'vad');
 	// A new dictation session is starting: clear any lingering terminal state.
 	dictationLifecycle.reset();

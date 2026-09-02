@@ -32,6 +32,7 @@ import {
 	PROVIDERS,
 	type UploadProviderId,
 } from '$lib/services/transcription/providers';
+import { getTranscriptionPreflightBlocker } from '$lib/settings/transcription-validation';
 import { deviceConfig } from '$lib/state/device-config.svelte';
 import { type SecretKey, secrets } from '$lib/state/secrets.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
@@ -64,6 +65,13 @@ const TranscriptionOperationError = defineErrors({
 	LocalTranscriptionUnavailableOnWeb: () => ({
 		message:
 			'Local transcription is only available in the desktop app. Choose a cloud or self-hosted provider on web.',
+	}),
+	/** Whispering already knows this cannot succeed: nothing is selected, or the
+	 *  selected provider has no usable credential. Carries the same sentence the
+	 *  record screen shows, so a missing key reads as a missing key instead of
+	 *  arriving as a provider's 401 after the audio has already been sent. */
+	TranscriptionNotSetUp: ({ issue }: { issue: string }) => ({
+		message: issue,
 	}),
 });
 
@@ -260,6 +268,25 @@ export async function transcribeAudio(
 		type: 'transcription_requested',
 		provider: selectedService,
 	});
+
+	// The capture paths refuse before recording, but they are not the only way
+	// in: a file import and a retry from the recordings list both arrive here
+	// with audio already in hand. Answering with the known blocker costs nothing
+	// and beats uploading the clip to collect a 401 that names the provider
+	// rather than the fix.
+	const blocker = getTranscriptionPreflightBlocker(app);
+	if (blocker !== null) {
+		const notSetUp = TranscriptionOperationError.TranscriptionNotSetUp({
+			issue: blocker,
+		});
+		void logAnalyticsEvent(app, {
+			type: 'transcription_failed',
+			provider: selectedService,
+			error_name: notSetUp.error.name,
+			error_message: notSetUp.error.message,
+		});
+		return notSetUp;
+	}
 
 	// Silence never reaches a recognizer, whichever one is selected.
 	//
