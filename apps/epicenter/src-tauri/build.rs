@@ -72,6 +72,16 @@ fn bake_transcribe_rpath() {
 
 /// Copy transcribe-cpp's shared libraries and backend modules into the stable
 /// `transcribe-libs/` staging directory used by Tauri's platform bundles.
+///
+/// `tauri.conf.json` maps this directory to the bundle resource root, so on
+/// Windows every file landed here installs beside `epicenter.exe`, which is
+/// where the loader looks. That mapping is what puts the runtime in the NSIS
+/// installer: the WiX bundler globs the cargo target directory for loose DLLs
+/// and would have found them anyway, but the NSIS bundler only ever adds
+/// `WebView2Loader.dll` on its own.
+///
+/// Must run before `tauri_build::try_build`, which is what reads that resource
+/// mapping.
 fn stage_transcribe_runtime() {
     for var in [
         "DEP_TRANSCRIBE_CPP_RUNTIME_DIR",
@@ -85,13 +95,19 @@ fn stage_transcribe_runtime() {
     // A missing runtime directory means this is a statically linked target.
     // Remove stale cross-target libraries once, but leave an already-empty
     // directory untouched so `tauri dev` does not rebuild in a watcher loop.
+    //
+    // The directory still has to exist when it stays empty. It is a bundle
+    // resource, and tauri-utils treats a missing resource path as a hard error
+    // while skipping an empty directory, so a fresh macOS clone would fail the
+    // build here rather than at bundling time. `create_dir_all` returns early
+    // on an existing directory, so this does not touch its mtime.
     let Some(runtime_dir) = env::var_os("DEP_TRANSCRIBE_CPP_RUNTIME_DIR") else {
         let has_stale_entries =
             fs::read_dir(&staging).is_ok_and(|mut entries| entries.next().is_some());
         if has_stale_entries {
             fs::remove_dir_all(&staging).expect("remove stale transcribe-libs staging directory");
-            fs::create_dir_all(&staging).expect("create transcribe-libs staging directory");
         }
+        fs::create_dir_all(&staging).expect("create transcribe-libs staging directory");
         return;
     };
 

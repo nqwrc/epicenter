@@ -21,16 +21,25 @@
 #
 # Why the Windows leg audits the installers it uploads: on Windows x86_64
 # transcribe-cpp is built with `dynamic-backends`, so the ggml runtime ships as
-# loose DLLs rather than being linked in. Nothing in tauri.conf.json maps them,
-# and nothing should: tauri v2 has a `bundle.linux.<fmt>.files` mapping but no
-# Windows equivalent. The DLLs reach the .msi and NSIS payload because
-# tauri-bundler packs every .dll sitting beside the executable in the cargo
-# target directory, which is also how the loader finds them at run time. That
-# is an implicit contract between three crates, so a build can compile, link,
+# loose DLLs rather than being linked in. build.rs stages them into
+# src-tauri/transcribe-libs, and tauri.conf.json maps that directory onto the
+# bundle resource root, which on Windows is the directory holding the
+# executable and so the directory the loader searches.
+#
+# That mapping is load-bearing for the NSIS installer alone, which is why this
+# audit exists and why it failed the first time it ran. tauri-bundler's WiX
+# path globs the cargo target directory for loose .dll files and packs every
+# one it finds, above a TODO in msi/mod.rs saying it should leave them to the
+# resources config, so the .msi carried the runtime with nothing declaring it.
+# The NSIS path adds no DLL of its own beyond WebView2Loader.dll, so the NSIS
+# .exe shipped the whole app and not one ggml module. A build can compile, link,
 # bundle, and go green while producing an installer whose app registers zero
 # compute devices. build.rs asserts `copied > 0` at staging time, which proves
 # nothing about the installer. The audit below is the only thing that does.
-# Do not "fix" a failure there by inventing a bundle.windows files mapping.
+#
+# tauri v2 still has no `bundle.windows.<fmt>.files` mapping and does not need
+# one. A failure here is a resources problem: check what build.rs staged, then
+# check what the map in tauri.conf.json does with it.
 #
 # Why no Linux leg: tauri-bundler intersects `bundle.targets` with the target
 # platform's own list, so this config's ["app", "msi", "nsis"] resolves to the
@@ -38,6 +47,9 @@
 # job would compile and package nothing. Adding one first requires deciding on
 # deb/rpm/AppImage targets and a `bundle.linux` files mapping for the
 # transcribe-cpp shared libraries build.rs stages into src-tauri/transcribe-libs.
+# The resources map that covers Windows does not cover Linux: resources install
+# to /usr/lib/<name>/ while build.rs bakes an $ORIGIN/../lib rpath, so the
+# loader would still not find them.
 #
 # This workflow never publishes: no release, no tag, no push, no secrets.
 # auto.release.yml owns publishing and stays `if: false` until v8.0.0 is tagged
@@ -351,9 +363,10 @@ jobs:
           if ($LASTEXITCODE -ge 2) { Write-Host "::error::7z failed to extract $($exe.Name) (exit $LASTEXITCODE)"; exit 1 }
           Assert-Runtime "NSIS ($($exe.Name))" (Dlls $nsisDir)
 
-          # Read the file header before reaching for tauri.conf.json: there is
-          # no bundle.windows files mapping in tauri v2, so the fix is upstream
-          # of the bundler, in what the build leaves beside the executable.
+          # A failure here means the resource map stopped reaching a bundler,
+          # not that a library failed to build: the staging assertion above
+          # runs first and answers that question. Fix it in bundle.resources,
+          # not with a bundle.windows files mapping tauri v2 does not have.
           if ($script:fail) { Write-Host "::error::a Windows installer would ship without the transcribe-cpp runtime"; exit 1 }
           Write-Host "Staging dir, MSI, and NSIS installer all carry transcribe.dll plus a ggml-cpu backend."
 
