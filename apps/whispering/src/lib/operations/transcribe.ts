@@ -19,6 +19,10 @@ import {
 } from '$lib/constants/languages';
 import { logAnalyticsEvent } from '$lib/operations/analytics';
 import {
+	buildTranscriptionPrompt,
+	recognizerPromptCharBudget,
+} from '$lib/operations/build-transcription-prompt';
+import {
 	recordTranscriptionOutcome,
 	type TranscriptionSuccess,
 } from '$lib/operations/transcription-history';
@@ -29,7 +33,9 @@ import { ElevenLabsTranscriptionServiceLive } from '$lib/services/transcription/
 import { MistralTranscriptionServiceLive } from '$lib/services/transcription/cloud/mistral';
 import {
 	isOnDeviceProviderId,
+	type OnDeviceProviderId,
 	PROVIDERS,
+	type TranscriptionServiceId,
 	type UploadProviderId,
 } from '$lib/services/transcription/providers';
 import { getTranscriptionPreflightBlocker } from '$lib/settings/transcription-validation';
@@ -130,7 +136,8 @@ function secretApiKey(key: SecretKey): string | undefined {
  * default; Speaches stores a bare host, so its `/v1` is appended; a keyless local
  * box sends no key. Bespoke entries (ElevenLabs, Deepgram, Mistral) keep their own
  * clients because they do not speak the wire (Deepgram's raw body + `Authorization:
- * Token`, ElevenLabs' `xi-api-key`, Mistral's `context_bias`); ADR-0060 blesses it.
+ * Token`, ElevenLabs' `xi-api-key`, Mistral's own `@mistralai/mistralai` SDK);
+ * ADR-0060 blesses it.
  */
 const uploadDispatch = (app: WhisperingApp) =>
 	({
@@ -320,7 +327,7 @@ export async function transcribeAudio(
 	// to `OnDeviceProviderId` in one arm and `UploadProviderId` in the other, so each
 	// helper receives an already-narrowed id and neither re-checks.
 	const transcriptionResult = isOnDeviceProviderId(selectedService)
-		? await transcribeOnDevice(app, audioBlobId)
+		? await transcribeOnDevice(app, audioBlobId, selectedService)
 		: await transcribeViaUpload(app, audioBlobId, selectedService);
 
 	const duration = Date.now() - startTime;
@@ -411,22 +418,44 @@ export function prewarmOnDeviceModel(app: WhisperingApp): void {
 }
 
 /**
- * Fold the user's Dictionary into a transcription prompt. Both the cloud `prompt`
- * and the local `initialPrompt` are freeform context the recognizer biases
- * toward, so appending the terms as a glossary nudges it to spell proper nouns
- * and jargon the way the user wrote them. Composition stays here in the app, not
- * in `@epicenter/client`: the wire just carries one prompt string. An empty
- * Dictionary returns the prompt unchanged. See ADR-0099.
+ * Read the recognizer's advisory prompt from settings, Dictionary folded in.
+ *
+ * Every arm composes it the same way, so it is composed here, and each passes the
+ * route it is about to call. The Whisper prompt ceiling is Whisper's alone, so a
+ * Deepgram keyterm list and a `gpt-4o-transcribe` prompt go out whole while a
+ * Whisper route is clipped; `recognizerPromptCharBudget` owns which is which.
+ *
+ * When the route does carry the bound, a long Dictionary loses its tail, and that
+ * loss is what the log line exists for. It is deliberately not a toast: the
+ * transcript still succeeds, this runs on every dictation, and a standing
+ * `report.warning` per dictation would be louder than the problem. The present
+ * tense surface is the Dictionary card on the dictation settings page, which
+ * calls the same pair of functions and says which terms do not reach the
+ * recognizer while the person is standing in front of the list. This line is the
+ * after-the-fact record, alongside the applied-hints log below, so "my Dictionary
+ * had no effect" has an answer here too.
  */
-function withDictionaryTerms(
-	prompt: string,
-	/** Null when the person has added no terms: the definition cannot default an array. */
-	dictionary: readonly string[] | null,
+function recognizerPrompt(
+	app: WhisperingApp,
+	service: TranscriptionServiceId,
+	/** The model about to run, where the caller has resolved one. */
+	model: string | null,
 ): string {
-	if (dictionary === null || dictionary.length === 0) return prompt;
-	const glossary = dictionary.join(', ');
-	const trimmed = prompt.trim();
-	return trimmed ? `${trimmed} ${glossary}` : glossary;
+	const { prompt, dropped } = buildTranscriptionPrompt(
+		app.settings.get('transcriptionPrompt'),
+		app.settings.get('dictionary'),
+		recognizerPromptCharBudget(service, model),
+	);
+	if (dropped.length > 0) {
+		// The count and the boundary term are the whole answer. The tail itself can
+		// run to hundreds of the person's proper nouns, and this line is written on
+		// every dictation, so logging the array would trade volume for nothing.
+		log.info('Dictionary terms did not fit the recognizer prompt budget', {
+			droppedCount: dropped.length,
+			firstDropped: dropped[0],
+		});
+	}
+	return prompt;
 }
 
 /**
@@ -444,6 +473,7 @@ function withDictionaryTerms(
 async function transcribeOnDevice(
 	app: WhisperingApp,
 	audioBlobId: BlobId,
+	selectedService: OnDeviceProviderId,
 ): Promise<Result<string, TranscriptionError>> {
 	if (!tauri) {
 		return TranscriptionOperationError.LocalTranscriptionUnavailableOnWeb();
@@ -452,12 +482,12 @@ async function transcribeOnDevice(
 	// Read-at-use: the hints are built right here, where they are consumed, so
 	// there is no ambient config to go stale. `auto` language and an empty prompt
 	// map to the wire's "unset" (an omitted optional field). The Dictionary terms
-	// fold into the prompt so local recognition spells them the user's way.
+	// fold into the prompt, up to the local route's Whisper prompt budget, so local
+	// recognition spells them the user's way. No model is named here (ADR-0180), so
+	// none is passed: the budget question is answered by the route, and a local
+	// model that takes no prompt has it stripped by the host either way.
 	const language = app.settings.get('transcriptionLanguage');
-	const prompt = withDictionaryTerms(
-		app.settings.get('transcriptionPrompt'),
-		app.settings.get('dictionary'),
-	);
+	const prompt = recognizerPrompt(app, selectedService, null);
 	const { data: outcome, error } =
 		await tauri.transcription.transcribeRecording(audioBlobId, {
 			language: language === 'auto' ? undefined : language,
@@ -496,8 +526,8 @@ async function transcribeViaUpload(
 	// `auto` language and an empty prompt map to the wire's "unset" (omitted from
 	// the form). No per-provider key-format pre-check: no key just means no header,
 	// and the server answers 401, surfaced as a RequestFailed carrying that detail.
-	// The Dictionary terms fold into the prompt so cloud recognition spells them
-	// the user's way.
+	// The Dictionary terms fold into the prompt, up to whatever budget the selected
+	// recognizer has, so cloud recognition spells them the user's way.
 	// Narrowed here rather than in the workspace: the stored code is a plain string so
 	// a hand-written union could never drift from `constants/languages.ts`, and a
 	// code this release no longer supports falls back to letting the provider
@@ -506,15 +536,17 @@ async function transcribeViaUpload(
 	const spokenLanguage: SupportedLanguage = isSupportedLanguage(stored)
 		? stored
 		: 'auto';
-	const prompt = withDictionaryTerms(
-		app.settings.get('transcriptionPrompt'),
-		app.settings.get('dictionary'),
-	);
+	// The prompt is built inside each arm rather than above the switch, because one
+	// provider's budget depends on which model it is pointed at and only the wire
+	// arm resolves a model. A bespoke entry owns its model privately and none of
+	// them is a Whisper decoder, so passing null there costs nothing.
 	const entry = uploadDispatch(app)[selectedService];
 	switch (entry.kind) {
 		case 'wire': {
+			const model = entry.model();
+			const prompt = recognizerPrompt(app, selectedService, model);
 			const result = await transcribe(audio, entry.resolve(), {
-				model: entry.model(),
+				model,
 				language: spokenLanguage === 'auto' ? undefined : spokenLanguage,
 				prompt: prompt || undefined,
 			});
@@ -532,6 +564,9 @@ async function transcribeViaUpload(
 			return result;
 		}
 		case 'bespoke':
-			return entry.transcribe(audio, { prompt, spokenLanguage });
+			return entry.transcribe(audio, {
+				prompt: recognizerPrompt(app, selectedService, null),
+				spokenLanguage,
+			});
 	}
 }
