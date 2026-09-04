@@ -75,7 +75,8 @@ const sharedCommands = [
 		// Not "the edges are the whole state machine": a lost release edge would
 		// otherwise leave recording stuck on. Both the desktop global-shortcut plugin
 		// and the browser keydown backend emit the Pressed/Released pair. Ships
-		// bound to Ctrl+Alt+Space globally (`DEFAULT_GLOBAL_BINDINGS.pushToTalk`).
+		// bound globally to a per-platform hold chord
+		// (`DEFAULT_GLOBAL_BINDINGS.pushToTalk` is the source of truth).
 		// Routed through `handsFreePushToTalk` rather than calling `pushToTalk`
 		// directly: a double-tap (two Pressed within 400ms) locks the mic open
 		// hands-free, so the second tap's Released is swallowed instead of
@@ -94,7 +95,7 @@ const sharedCommands = [
 		// Press once to start and again to stop. This is also what the record button
 		// fires (a click arrives with no edge). It ships with the default global
 		// recording chord; push-to-talk ships with its own default hold chord
-		// (Ctrl+Alt+Space) for users who prefer a hold.
+		// for users who prefer a hold.
 		on: ['Pressed'],
 		run: (app) => toggleManualRecording(app),
 	},
