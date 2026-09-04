@@ -87,10 +87,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
-    # No other workflow here sets one, because none of them download and run an
-    # installer on a paid multi-core runner. A cold leg is minutes, not hours;
-    # anything past this is hung, not slow, and `cancel-in-progress` cannot
-    # reclaim it because it only cancels older runs of the same PR.
+    # No other workflow here sets one, because none of them compile Rust, then
+    # download and run an installer. A cold leg is minutes, not hours; anything
+    # past this is hung, not slow, and `cancel-in-progress` cannot reclaim it
+    # because it only cancels older runs of the same PR.
     timeout-minutes: 90
 
     strategy:
@@ -98,21 +98,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Blacksmith labels: this repo ran the retired Whispering matrix on
-          # these exact images, where a cold Windows Tauri build took roughly 6
-          # minutes against roughly 22 on a GitHub-hosted runner. If the
-          # Blacksmith plan no longer covers Windows or macOS the job will queue
-          # forever rather than fail; swap in `windows-latest` and `macos-15`
-          # here and nothing else in this file changes.
-          - runner: blacksmith-8vcpu-windows-2025
+          # GitHub-hosted, not Blacksmith. The retired Whispering matrix ran
+          # on blacksmith-8vcpu-windows-2025 and blacksmith-6vcpu-macos-15,
+          # where a cold Windows Tauri build took roughly 6 minutes against
+          # roughly 22 here. That runner plan belongs to the upstream repo and
+          # does not reach a fork, and an uninstalled Blacksmith label queues
+          # forever rather than failing, which is how this matrix went unrun on
+          # every push after it landed. Going back is one line per row; nothing
+          # else in this file reads the label.
+          #
+          # `windows-latest` is windows-2025, the same image generation the
+          # Blacksmith label named, so the vcpkg and 7z assumptions the steps
+          # below make still hold. Both legs start cold: Windows sets
+          # `cache-targets: false`, and the macOS target cache only saves from
+          # main, which has never run this workflow.
+          - runner: windows-latest
             os: windows
             suffix: windows-x86_64
           # macOS is arm64 only, on purpose. scripts/build-sidecar.ts refuses
           # when TAURI_ENV_TARGET_TRIPLE differs from the rustc host triple,
           # because `bun build --compile` cannot produce the sidecar for another
           # architecture. Covering Intel Macs means an x86_64 runner, not a
-          # cross-compile flag.
-          - runner: blacksmith-6vcpu-macos-15
+          # cross-compile flag. Pinned to `macos-15` rather than `macos-latest`
+          # so the image cannot move under the build.
+          - runner: macos-15
             os: macos
             suffix: macos-aarch64
 
