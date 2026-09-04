@@ -1,10 +1,13 @@
-//! Foreground application identity and focused-field probing.
+//! Foreground application identity, focused-field probing, and input reach.
 //!
-//! One pull-based command answers two questions Whispering asks at two named
-//! moments: which application is in front (sampled at recording start, to
-//! route per-app behavior) and whether the focused UI element is a secure
-//! text field (re-sampled immediately before delivery, to withhold a paste
-//! into a password box).
+//! This module answers three questions about whatever is in front of the user.
+//! One pull-based command carries the first two, asked at two named moments:
+//! which application is in front (sampled at recording start, to route per-app
+//! behavior) and whether the focused UI element is a secure text field
+//! (re-sampled immediately before delivery, to withhold a paste into a
+//! password box). The third has no command and no frontend caller: whether
+//! injected input can reach the foreground window at all, sampled by
+//! `delivery` on Windows in the instant before it posts a paste or a copy.
 //!
 //! Identity is the smallest stable name per platform: the lowercased
 //! executable file name on Windows, the bundle identifier on macOS. Window
@@ -12,10 +15,31 @@
 //! subjects, exactly the data class this capability must keep out of prompts,
 //! logs, and synced rows.
 //!
-//! Detection is best-effort and fail-open. Every probe failure (elevated
-//! target window, no frontmost app, missing macOS Accessibility grant,
-//! UI Automation refusal) collapses to `None` / `Unknown`, which callers must
-//! treat as "no rule matches, no guard fires".
+//! Identity and focused-field detection are best-effort and fail-open. Every
+//! probe failure there (no frontmost app, a SYSTEM-owned, protected, or
+//! other-user process, a missing macOS Accessibility grant, a UI Automation
+//! refusal) collapses to `None` / `Unknown`, which callers must treat as "no
+//! rule matches, no guard fires". An unreadable answer costs at most a routing
+//! rule or one layer of defense in depth.
+//!
+//! Input reach is the one fail-closed answer, and the asymmetry is why.
+//! Guessing "reachable" wrongly destroys the transcript: the injected paste is
+//! dropped, nothing lands at the cursor, and delivery still reports success.
+//! Guessing "unreachable" wrongly costs the user one Ctrl+V and tells them the
+//! truth about where their text is. So every refusal on that path answers
+//! "cannot reach".
+//!
+//! Two residues come with that direction, accepted rather than overlooked.
+//! Being refused a read of a process is not the same question as being refused
+//! input to it, so a same-desktop process running under a second user account,
+//! or one whose DACL denies a query, is called unreachable while a paste would
+//! in fact land in it: that user gets the clipboard fallback on every dictation
+//! into their editor and no explanation of why. And the answer is a sample
+//! taken `PRE_PASTE_SETTLE` before the keystroke, so focus moving into an
+//! elevated window inside that gap is a case where no refusal is possible at
+//! all and the transcript is lost from cursor and clipboard both. Neither is
+//! closable from here: the first needs a reach test Windows does not expose,
+//! the second needs a probe the injection itself performs.
 
 /// What the focused UI element revealed about itself.
 #[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
@@ -35,7 +59,8 @@ pub enum FocusedFieldKind {
 pub struct ForegroundContext {
     /// Stable per-platform identity: lowercased exe file name on Windows
     /// ("code.exe"), bundle identifier on macOS ("com.microsoft.VSCode").
-    /// `None` when the OS refuses to say (elevated target, no frontmost app).
+    /// `None` when the OS refuses to say (no frontmost app, or a SYSTEM-owned,
+    /// protected, or other-user process).
     pub app_id: Option<String>,
     /// Human-readable name for settings helper UI only. Never matched against.
     pub app_name: Option<String>,
@@ -87,6 +112,35 @@ pub async fn get_foreground_context(app: tauri::AppHandle) -> ForegroundContext 
     }
 }
 
+/// Whether injected input posted right now can reach the foreground window.
+///
+/// Windows UIPI silently drops injected input aimed at a process above our own
+/// integrity level: the injection call reports nothing wrong, so a paste into
+/// an elevated editor looks successful and inserts nothing, and a copy out of
+/// one hands back whatever was already on the clipboard. This is the pre-check
+/// that lets `delivery` tell the truth instead.
+///
+/// Fail-closed, unlike the rest of this module: every refusal answers `false`,
+/// including a process the OS declines to open, which is the over-refusal the
+/// module doc names. The one exception that is not a refusal is our own
+/// process, which UIPI never blocks from itself.
+///
+/// One assumption is worth stating: this reduces reach to integrity levels,
+/// which is only the whole rule while Epicenter's manifest does not request
+/// `uiAccess="true"`. A uiAccess process may inject above its own level, and
+/// this probe would then refuse targets it can actually reach.
+#[cfg(target_os = "windows")]
+pub(crate) fn foreground_accepts_synthetic_input() -> bool {
+    windows_impl::accepts_synthetic_input()
+}
+
+/// UIPI permits injected input only into a process at an equal or lower
+/// integrity level. This is the whole rule, expressed without Win32.
+#[cfg(any(target_os = "windows", test))]
+fn integrity_permits_injection(own: u32, target: u32) -> bool {
+    target <= own
+}
+
 /// Lowercased file name of an executable path ("C:\\...\\Code.exe" ->
 /// "code.exe"), or `None` for a path with no file component.
 #[cfg(any(target_os = "windows", test))]
@@ -107,20 +161,32 @@ fn app_name_from_app_id(app_id: &str) -> String {
 #[cfg(target_os = "windows")]
 mod windows_impl {
     use super::{
-        app_id_from_image_path, app_name_from_app_id, FocusedFieldKind, ForegroundContext,
+        app_id_from_image_path, app_name_from_app_id, integrity_permits_injection,
+        FocusedFieldKind, ForegroundContext,
     };
+    use std::sync::OnceLock;
     use windows::core::PWSTR;
-    use windows::Win32::Foundation::{CloseHandle, HWND};
+    use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND};
+    use windows::Win32::Security::{
+        GetSidSubAuthority, GetSidSubAuthorityCount, GetTokenInformation, TokenIntegrityLevel,
+        PSID, TOKEN_MANDATORY_LABEL, TOKEN_QUERY,
+    };
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_INPROC_SERVER,
         COINIT_MULTITHREADED,
     };
     use windows::Win32::System::Threading::{
-        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
-        PROCESS_QUERY_LIMITED_INFORMATION,
+        GetCurrentProcess, GetCurrentProcessId, OpenProcess, OpenProcessToken,
+        QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
     };
     use windows::Win32::UI::Accessibility::{CUIAutomation, IUIAutomation};
     use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+
+    /// The integrity level a normal desktop application runs at
+    /// (SECURITY_MANDATORY_MEDIUM_RID). Written out rather than pulled from
+    /// `Win32_System_SystemServices` so this probe costs one crate feature, not
+    /// two.
+    const MEDIUM_INTEGRITY: u32 = 0x2000;
 
     pub fn probe() -> ForegroundContext {
         let window = unsafe { GetForegroundWindow() };
@@ -139,17 +205,30 @@ mod windows_impl {
         }
     }
 
-    /// Lowercased exe file name of the process owning the given window, or
-    /// `None` when the process refuses inspection (elevated targets do).
-    fn foreground_app_id(window: HWND) -> Option<String> {
+    /// Process id owning the given window, or `None` when the window is gone.
+    fn window_process_id(window: HWND) -> Option<u32> {
         let mut process_id = 0u32;
         if unsafe { GetWindowThreadProcessId(window, Some(&mut process_id)) } == 0
             || process_id == 0
         {
             return None;
         }
-        let process =
-            unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id) }.ok()?;
+        Some(process_id)
+    }
+
+    /// A read-only handle to the process. `None` when the OS refuses:
+    /// SYSTEM-owned, protected (PPL), and other-user processes do; a same-user
+    /// elevated process does not, because a process object's mandatory label is
+    /// NO_WRITE_UP and this access mask is a read. So this handle says nothing
+    /// about input reach on its own; only the token behind it does.
+    fn open_for_limited_query(process_id: u32) -> Option<HANDLE> {
+        unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id) }.ok()
+    }
+
+    /// Lowercased exe file name of the process owning the given window, or
+    /// `None` when the window is gone or the OS refuses to open the process.
+    fn foreground_app_id(window: HWND) -> Option<String> {
+        let process = open_for_limited_query(window_process_id(window)?)?;
         let mut buffer = [0u16; 1024];
         let mut length = buffer.len() as u32;
         let queried = unsafe {
@@ -164,6 +243,126 @@ mod windows_impl {
         queried.ok()?;
         let path = String::from_utf16_lossy(&buffer[..length as usize]);
         app_id_from_image_path(&path)
+    }
+
+    /// The token integrity level RID of a process, given a limited-query
+    /// handle. `None` when the token itself refuses (a protected process does;
+    /// `audiodg` is the local example) or the label is malformed.
+    fn integrity_level(process: HANDLE) -> Option<u32> {
+        let mut token = HANDLE::default();
+        unsafe { OpenProcessToken(process, TOKEN_QUERY, &mut token) }.ok()?;
+        let level = token_integrity_level(token);
+        let _ = unsafe { CloseHandle(token) };
+        level
+    }
+
+    /// Reads the integrity-level RID out of an already-open token. Closing the
+    /// token belongs to the caller, which is what keeps both entry points here
+    /// leak-free on their error paths.
+    ///
+    /// The label lives at the tail of a variable-length structure, so this is
+    /// the standard two-call `GetTokenInformation`: size, allocate, read. The
+    /// RID is the last sub-authority of the label's SID.
+    fn token_integrity_level(token: HANDLE) -> Option<u32> {
+        // The sizing call always fails (there is no buffer to write into), so
+        // the length it reports back, not its result, is the answer.
+        let mut needed = 0u32;
+        let _ = unsafe { GetTokenInformation(token, TokenIntegrityLevel, None, 0, &mut needed) };
+        if needed == 0 {
+            return None;
+        }
+        // Allocated as `u64`, not `u8`: the label is a structure holding a
+        // pointer, and both this code and advapi32 dereference it, so a
+        // byte-aligned buffer would hand them a misaligned SID. Rounded up, so
+        // the byte length handed to the OS stays `needed`.
+        let mut buffer = vec![0u64; (needed as usize).div_ceil(8)];
+
+        // SAFETY: `buffer` is at least the length the OS asked for, aligned for
+        // the widest field the label can contain, and outlives every pointer
+        // read out of it below. The SID the label carries points into `buffer`
+        // and is owned by it, so it must not be freed here. The sub-authority
+        // count is read and checked before it indexes, so the final `count - 1`
+        // can neither underflow nor read past the SID.
+        unsafe {
+            GetTokenInformation(
+                token,
+                TokenIntegrityLevel,
+                Some(buffer.as_mut_ptr().cast()),
+                needed,
+                &mut needed,
+            )
+            .ok()?;
+            let label = buffer.as_ptr().cast::<TOKEN_MANDATORY_LABEL>();
+            let sid: PSID = (*label).Label.Sid;
+            if sid.0.is_null() {
+                return None;
+            }
+            let count = GetSidSubAuthorityCount(sid);
+            if count.is_null() || *count == 0 {
+                return None;
+            }
+            let rid = GetSidSubAuthority(sid, u32::from(*count) - 1);
+            if rid.is_null() {
+                return None;
+            }
+            Some(*rid)
+        }
+    }
+
+    /// This process's own integrity level, computed once. A process's token
+    /// integrity level cannot change while it runs, so this is a constant.
+    /// Falls back to medium when self-inspection fails, which is the
+    /// conservative direction: a lower assumed self level refuses more targets,
+    /// never fewer.
+    fn own_integrity_level() -> u32 {
+        static OWN_INTEGRITY: OnceLock<u32> = OnceLock::new();
+        *OWN_INTEGRITY.get_or_init(|| {
+            let mut token = HANDLE::default();
+            // `GetCurrentProcess` hands back a pseudo-handle, not a real one:
+            // it must never be closed. The token it opens must be.
+            if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) }.is_err() {
+                return MEDIUM_INTEGRITY;
+            }
+            let level = token_integrity_level(token);
+            let _ = unsafe { CloseHandle(token) };
+            level.unwrap_or(MEDIUM_INTEGRITY)
+        })
+    }
+
+    /// Whether injected input can reach whatever holds focus right now.
+    ///
+    /// Called straight from the tokio thread, deliberately not through
+    /// `spawn_blocking` the way `probe` is. The reason `probe` needs a blocking
+    /// thread is the cross-process COM/UI Automation call in
+    /// `focused_field_kind`, which can stall for the UIA timeout against a hung
+    /// target. `OpenProcess`, `OpenProcessToken`, and `GetTokenInformation` are
+    /// local kernel calls that cannot block on another process, so moving this
+    /// onto the blocking pool would buy latency and nothing else.
+    pub fn accepts_synthetic_input() -> bool {
+        let window = unsafe { GetForegroundWindow() };
+        if window.is_invalid() {
+            // Nothing holds focus, so a paste has nowhere to go.
+            return false;
+        }
+        let Some(process_id) = window_process_id(window) else {
+            return false;
+        };
+        // Our own window: the user dictated into one of Whispering's own text
+        // boxes. UIPI never blocks a process from injecting into itself, and
+        // answering early keeps this case out of reach of a probe failure
+        // below.
+        if process_id == unsafe { GetCurrentProcessId() } {
+            return true;
+        }
+        let Some(process) = open_for_limited_query(process_id) else {
+            return false;
+        };
+        let target = integrity_level(process);
+        let _ = unsafe { CloseHandle(process) };
+        let Some(target) = target else {
+            return false;
+        };
+        integrity_permits_injection(own_integrity_level(), target)
     }
 
     /// Asks UI Automation whether the focused element is a password field.
@@ -284,7 +483,7 @@ mod macos_impl {
 
 #[cfg(test)]
 mod tests {
-    use super::{app_id_from_image_path, app_name_from_app_id};
+    use super::{app_id_from_image_path, app_name_from_app_id, integrity_permits_injection};
 
     #[test]
     fn app_id_is_the_lowercased_file_name() {
@@ -315,5 +514,28 @@ mod tests {
         assert_eq!(app_name_from_app_id("code.exe"), "code");
         assert_eq!(app_name_from_app_id("wt.exe"), "wt");
         assert_eq!(app_name_from_app_id("some-tool"), "some-tool");
+    }
+
+    // SECURITY_MANDATORY_* RIDs: 0 untrusted, 0x1000 low, 0x2000 medium,
+    // 0x3000 high (what a UAC-elevated process runs at).
+    #[test]
+    fn injection_cannot_reach_up_into_an_elevated_target() {
+        assert!(!integrity_permits_injection(0x2000, 0x3000));
+    }
+
+    #[test]
+    fn an_elevated_epicenter_reaches_an_ordinary_app() {
+        assert!(integrity_permits_injection(0x3000, 0x2000));
+    }
+
+    #[test]
+    fn equal_integrity_levels_pass() {
+        assert!(integrity_permits_injection(0x2000, 0x2000));
+    }
+
+    #[test]
+    fn injection_reaches_down_into_sandboxed_targets() {
+        assert!(integrity_permits_injection(0x2000, 0x1000));
+        assert!(integrity_permits_injection(0x2000, 0));
     }
 }
