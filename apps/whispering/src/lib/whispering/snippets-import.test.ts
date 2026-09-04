@@ -53,10 +53,14 @@ test('drops an entry whose replacement exceeds the length cap', () => {
 
 test('trims trigger and replacement whitespace', () => {
 	const result = parseSnippetsImport(
-		JSON.stringify([{ trigger: '  my address  ', replacement: '  123 Main St  ' }]),
+		JSON.stringify([
+			{ trigger: '  my address  ', replacement: '  123 Main St  ' },
+		]),
 	);
 	const { valid } = expectOk(result);
-	expect(valid).toEqual([{ trigger: 'my address', replacement: '123 Main St' }]);
+	expect(valid).toEqual([
+		{ trigger: 'my address', replacement: '123 Main St' },
+	]);
 });
 
 test('dedupeAgainstExisting skips a trigger already in the table, case-insensitively', () => {
@@ -85,6 +89,8 @@ test('dedupeAgainstExisting keeps everything when nothing collides', () => {
 		[{ trigger: 'my address', replacement: '123 Main St' }],
 		['my email'],
 	);
-	expect(toCreate).toEqual([{ trigger: 'my address', replacement: '123 Main St' }]);
+	expect(toCreate).toEqual([
+		{ trigger: 'my address', replacement: '123 Main St' },
+	]);
 	expect(skippedDuplicate).toBe(0);
 });

@@ -1,9 +1,9 @@
 import type {
-	ForegroundContext,
 	FocusedFieldKind,
+	ForegroundContext,
 } from '$lib/tauri/bindings.gen';
 
-export type { ForegroundContext, FocusedFieldKind };
+export type { FocusedFieldKind, ForegroundContext };
 
 export type ContextService = {
 	/**

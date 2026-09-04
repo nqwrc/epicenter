@@ -20,7 +20,9 @@ const ADDRESS: SnippetRule = {
 test('expansion survives the capitalization and full stop Polish adds', () => {
 	// What Polish hands the delivery step when it ran.
 	const polished = 'Send it to my address.';
-	expect(expandSnippets(polished, [ADDRESS])).toBe('Send it to 123 Main Street.');
+	expect(expandSnippets(polished, [ADDRESS])).toBe(
+		'Send it to 123 Main Street.',
+	);
 });
 
 test('expansion behaves identically on an unpolished transcript', () => {

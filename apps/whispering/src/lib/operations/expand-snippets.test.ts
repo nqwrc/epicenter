@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test';
 import { expandSnippets, type SnippetRule } from './expand-snippets';
 
-const rule = (id: string, trigger: string, replacement: string): SnippetRule => ({
+const rule = (
+	id: string,
+	trigger: string,
+	replacement: string,
+): SnippetRule => ({
 	id,
 	trigger,
 	replacement,
@@ -29,7 +33,9 @@ test('matches case-insensitively and inserts the saved casing', () => {
 
 test('a longer trigger wins over a shorter one that also matches', () => {
 	const rules = [ADDRESS, rule('s2', 'my work address', '9 Office Park')];
-	expect(expandSnippets('use my work address', rules)).toBe('use 9 Office Park');
+	expect(expandSnippets('use my work address', rules)).toBe(
+		'use 9 Office Park',
+	);
 });
 
 test('equal-length triggers resolve by row id, not table order', () => {
@@ -55,9 +61,9 @@ test('trailing punctuation added by Polish still matches', () => {
 });
 
 test('a trigger inside a longer word does not match', () => {
-	expect(expandSnippets('addressable market', [rule('s1', 'address', 'X')])).toBe(
-		'addressable market',
-	);
+	expect(
+		expandSnippets('addressable market', [rule('s1', 'address', 'X')]),
+	).toBe('addressable market');
 });
 
 test('an empty or whitespace-only trigger is inert', () => {
