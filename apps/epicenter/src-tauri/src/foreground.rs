@@ -429,10 +429,19 @@ mod macos_impl {
     /// Asks the Accessibility API whether the system-wide focused element is a
     /// secure text field. Only called when the process holds the grant; every
     /// AX refusal is `Unknown`.
+    ///
+    /// The question is the element's subrole, not its role. A secure field is
+    /// an `AXTextField` carrying the subrole `AXSecureTextField`, and there is
+    /// no `AXSecureTextField` role: `accessibility-sys` exports
+    /// `kAXSecureTextFieldSubrole` and no role counterpart. Comparing a role
+    /// against that value can only ever be false, so the guard in
+    /// `secure-field-guard.ts`, which withholds delivery on `Secure` alone,
+    /// would be enabled and inert on macOS.
     fn focused_field_kind() -> FocusedFieldKind {
         use accessibility_sys::{
-            kAXErrorSuccess, kAXFocusedUIElementAttribute, kAXRoleAttribute,
-            kAXSecureTextFieldRole, AXUIElementCopyAttributeValue, AXUIElementCreateSystemWide,
+            kAXErrorAttributeUnsupported, kAXErrorNoValue, kAXErrorSuccess,
+            kAXFocusedUIElementAttribute, kAXSecureTextFieldSubrole, kAXSubroleAttribute,
+            AXUIElementCopyAttributeValue, AXUIElementCreateSystemWide,
         };
         use core_foundation::base::TCFType;
         use core_foundation::string::CFString;
@@ -459,20 +468,32 @@ mod macos_impl {
                 return FocusedFieldKind::Unknown;
             }
 
-            let role_attribute = CFString::new(kAXRoleAttribute);
-            let mut role: CFTypeRef = std::ptr::null();
+            let subrole_attribute = CFString::new(kAXSubroleAttribute);
+            let mut subrole: CFTypeRef = std::ptr::null();
             let copied = AXUIElementCopyAttributeValue(
                 focused as accessibility_sys::AXUIElementRef,
-                role_attribute.as_concrete_TypeRef(),
-                &mut role,
+                subrole_attribute.as_concrete_TypeRef(),
+                &mut subrole,
             );
             CFRelease(focused);
-            if copied != kAXErrorSuccess || role.is_null() {
+
+            // Unlike a role, which every element has, a subrole is the
+            // exception: the API reports its absence as
+            // `kAXErrorAttributeUnsupported` or `kAXErrorNoValue`. That is an
+            // answer, not a refusal, and the answer is that this is not a
+            // secure field. Folding it into `Unknown` with the genuine
+            // failures would leave the probe reporting `Unknown` for nearly
+            // every element it ever sees, which is how the role/subrole
+            // mix-up above stayed invisible.
+            if copied == kAXErrorAttributeUnsupported || copied == kAXErrorNoValue {
+                return FocusedFieldKind::NotSecure;
+            }
+            if copied != kAXErrorSuccess || subrole.is_null() {
                 return FocusedFieldKind::Unknown;
             }
 
-            let role_name = CFString::wrap_under_create_rule(role as _).to_string();
-            if role_name == kAXSecureTextFieldRole {
+            let subrole_name = CFString::wrap_under_create_rule(subrole as _).to_string();
+            if subrole_name == kAXSecureTextFieldSubrole {
                 FocusedFieldKind::Secure
             } else {
                 FocusedFieldKind::NotSecure
