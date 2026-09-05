@@ -32,10 +32,15 @@ const MAX_BACKSPACES = 2000;
  * as VAD, so "stop listening" during a manual dictation would otherwise
  * match, do nothing, and eat the words: no text and no action. An
  * inapplicable "stop listening" falls through and delivers as ordinary text
- * instead, and an inapplicable "scratch that" does the same: on the common
- * default of clipboard output, or with the Enter toggle on, nothing is ever
- * undoable, and unconditionally swallowing the utterance there would eat
- * every "scratch that" forever.
+ * instead, and an inapplicable "scratch that" does the same.
+ *
+ * Cursor output ships on by default, so the ordinary case is now that an undo
+ * has something to take back. The fallthrough still carries real weight: with
+ * the Enter toggle on, after a cursor write that fell back to the clipboard
+ * because the OS refused it, after a withheld delivery, and on every path that
+ * delivers without recording one (a file import, a recordings row, a recipe),
+ * nothing is undoable. Unconditionally swallowing the utterance in those
+ * states would eat the words and do nothing.
  */
 export function commandApplies(id: VoiceCommandId): boolean {
 	switch (id) {
