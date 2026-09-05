@@ -36,6 +36,37 @@ Start Epicenter from the repository root:
 bun dev:epicenter
 ```
 
+### On Windows
+
+`bun dev:epicenter` alone does not build here. The native crate pulls
+transcribe-cpp with the `vulkan` feature on Windows x64, and that build needs
+four things an ordinary shell does not provide: the MSVC environment, the Ninja
+generator, a short target directory, and a CMake policy floor for the Opus that
+`audiopus_sys` vendors. Each missing one is a hard failure, and the errors point
+at vendored C++ rather than at what is actually wrong.
+
+`apps/epicenter/scripts/windows-build-env.bat` supplies all four and then runs
+the dev server. Run it from this directory:
+
+```bat
+scripts\windows-build-env.bat
+```
+
+It takes an optional command, so it also wraps anything else that has to compile
+the crate:
+
+```bat
+scripts\windows-build-env.bat cargo build --manifest-path src-tauri\Cargo.toml
+```
+
+It finds Visual Studio through `vswhere`, so Build Tools, Community,
+Professional and Enterprise all work, and it uses the Ninja that ships inside
+that install. It picks a short `CARGO_TARGET_DIR` at the root of the repository's
+drive, because the ggml-vulkan shader build otherwise runs past Windows'
+250-character object-path limit; set `CARGO_TARGET_DIR` yourself to override
+that, keeping it near a drive root. It needs `VULKAN_SDK` set, and warns when it
+is not.
+
 Epicenter opens Home, which is an application beside the others rather than a
 shell above them (ADR-0209). Its Apps pane lists what this build can launch, the
 compiled applications plus the selected catalog generation's members, and

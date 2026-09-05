@@ -13,12 +13,17 @@ import { afterEach, expect, mock, test } from 'bun:test';
 import { generateBlobId } from '@epicenter/blobs';
 import { Err, Ok } from 'wellcrafted/result';
 import type { RecordingId } from '$lib/workspace';
+import { expandSnippets } from './expand-snippets';
 
 let autoUpload = true;
 let willPolish = false;
 const uploadAudio = mock(async () => Ok(undefined));
 const deliverTranscriptionResult = mock(async () => ({
-	outcome: { reach: 'output' } as const,
+	outcome: {
+		reach: 'output',
+		sinkKind: 'cursor',
+		pressedEnter: false,
+	} as const,
 	notice: { title: 'done' },
 }));
 const reportInfo = mock();
@@ -28,8 +33,15 @@ const saveRecordingHistory = mock(async () =>
 	polishedHistoryError === null ? Ok(undefined) : Err(polishedHistoryError),
 );
 
+// The pipeline reaches this by alias, which bun cannot resolve here, so it is
+// registered explicitly. Backed by the real function, not a stub: it is pure and
+// the fixture below gives it an empty snippet list, so delivery is unchanged.
+mock.module('$lib/operations/expand-snippets', () => ({ expandSnippets }));
 mock.module('$lib/operations/delivery', () => ({
 	deliverTranscriptionResult,
+}));
+mock.module('$lib/operations/run-recipe', () => ({
+	runRecipe: mock(),
 }));
 mock.module('$lib/operations/run-polish', () => ({
 	polishWillRun: () => willPolish,
@@ -82,6 +94,7 @@ const app = {
 		uploadAudio,
 		update: mock(async () => Ok(undefined)),
 	},
+	snippets: { all: [] },
 } as unknown as WhisperingApp;
 
 afterEach(() => {

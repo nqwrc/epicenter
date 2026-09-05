@@ -37,12 +37,12 @@
 		log.warn(DictationIndicatorError.OverlayWiringFailed({ cause }));
 
 	$effect(() => {
-		synchronizeRecordingOverlayWindow(status);
+		synchronizeRecordingOverlayWindow(app, status);
 	});
 
 	// The native window outlives this component, so hide it when the session-root
 	// owner is destroyed rather than leaving stale status with detached controls.
-	onDestroy(() => synchronizeRecordingOverlayWindow(null));
+	onDestroy(() => synchronizeRecordingOverlayWindow(app, null));
 
 	// The event subscriptions resolve asynchronously, so unmount can land before
 	// a listener settles. A late listener is immediately detached instead of leaked.

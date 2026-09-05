@@ -346,5 +346,11 @@ Each option and the one reason it lost. Terse. This is not the spec.
 | [0261](0261-a-local-account-replica-is-addressed-by-its-application-server-url-and-verified-principal.md) | A local account replica is addressed by its application, server URL, and verified principal | Accepted (supersedes 0259; refuses minted profile ids; amends 0233 at the retained replica address) |
 | [0262](0262-the-desktop-host-owns-one-active-connection-and-no-connection-registry.md) | The desktop host owns one active connection and no connection registry | Accepted (supersedes 0260; amends 0155 at the selected connection) |
 | [0263](0263-a-connection-is-one-server-at-a-time-and-a-replica-is-derived-from-it.md) | A connection is one server at a time and a replica is derived from it | Accepted (restates 0075, 0092, 0261, and 0262 as one reader-facing contract) |
+| [0264](0264-the-recording-overlays-position-is-a-snapped-anchor-not-a-pixel-pair.md) | The recording overlay's position is a snapped anchor, not a pixel pair | Accepted |
+| [0265](0265-a-reposition-session-grows-the-overlay-into-the-work-area.md) | A reposition session grows the overlay into the work area | Accepted |
+| [0266](0266-a-settings-bundle-overwrites-preferences-and-appends-tables.md) | A settings bundle overwrites preferences and appends tables | Accepted |
+| [0267](0267-leaving-a-reposition-session-is-a-press-on-its-own-backdrop.md) | Leaving a reposition session is a press on its own backdrop | Accepted (amends 0265 at its escape hatch) |
+| [0268](0268-a-detected-password-field-withholds-delivery-to-history.md) | A detected password field withholds delivery to history | Accepted (amends 0040 at its no-history-only rule) |
+| [0269](0269-a-per-app-rule-reshapes-polish-and-may-auto-run-one-recipe.md) | A per-app rule reshapes Polish and may auto-run one recipe | Accepted (amends 0099 at its ordering and auto-run deferral) |
 
 When you add an ADR, add its row here.

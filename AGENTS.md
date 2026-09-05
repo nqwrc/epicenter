@@ -26,7 +26,9 @@ docs/          reference materials
 
 One runtime: a desktop SPA in a WebView over a client-owned store (ADR-0227). The host serves bundles and brokers credentials and owns no application data (ADR-0226).
 
-ADR-0227 was executed as a clean break, so these are broken on purpose until they are rebuilt against the store: `apps/whispering`, `apps/vocab`, `apps/skills`, `apps/epicenter`, `packages/chat`, `packages/skills`, and app-shell's agent chat.
+ADR-0227 was executed as a clean break, so these are broken on purpose until they are rebuilt against the store: `apps/vocab`, `apps/skills`, `packages/chat`, `packages/skills`, and app-shell's agent chat.
+
+`apps/whispering` and `apps/epicenter` are off that list: they were rebuilt. Whispering declares a real workspace with `defineData` (`src/lib/workspace/index.ts:240`), opens the device and account stores and attaches sync (`src/lib/whispering/app.ts`), and its suite runs green. Epicenter compiles, bundles, and serves. Read the remaining names as a list to re-check against the code rather than a standing fact: this file is the first thing an agent reads, and a stale entry here sends it to rebuild something that already works.
 
 Migration reference: `docs/the-store-and-what-it-replaced.md`.
 

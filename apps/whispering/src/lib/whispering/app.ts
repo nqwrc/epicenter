@@ -17,6 +17,10 @@ import {
 	whisperingDefinition,
 } from '../workspace';
 import {
+	createWhisperingAppRules,
+	type WhisperingAppRules,
+} from './app-rules.svelte';
+import {
 	createWhisperingRecipes,
 	type WhisperingRecipes,
 } from './recipes.svelte';
@@ -25,6 +29,10 @@ import {
 	createWhisperingRecordings,
 	type WhisperingRecordings,
 } from './recordings';
+import {
+	createWhisperingSnippets,
+	type WhisperingSnippets,
+} from './snippets.svelte';
 
 export type { WhisperingBlobs } from './recording-audio';
 
@@ -106,7 +114,7 @@ const APPLICATION_DEFAULTS: Partial<WhisperingSettingValues> = {
 	soundTranscriptionComplete: true,
 	soundRecipeComplete: true,
 	outputTranscriptionClipboard: true,
-	outputTranscriptionCursor: false,
+	outputTranscriptionCursor: true,
 	outputTranscriptionEnter: false,
 	outputRecipeClipboard: true,
 	outputRecipeCursor: false,
@@ -114,6 +122,10 @@ const APPLICATION_DEFAULTS: Partial<WhisperingSettingValues> = {
 	recordingTrigger: 'manual',
 	recordingPausePlayback: false,
 	recordingAutoUpload: false,
+	recordingOverlayXAnchor: 'center',
+	recordingOverlayXMarginPx: 0,
+	recordingOverlayYAnchor: 'bottom',
+	recordingOverlayYMarginPx: 72,
 	transcriptionService: 'local',
 	transcriptionOpenaiModel: 'whisper-1',
 	transcriptionGroqModel: 'whisper-large-v3-turbo',
@@ -127,7 +139,14 @@ const APPLICATION_DEFAULTS: Partial<WhisperingSettingValues> = {
 	dictionary: null,
 	polishEnabled: true,
 	polishInstructions: 'Fix grammar and punctuation. Keep my wording.',
-	analyticsEnabled: true,
+	commandModeEnabled: true,
+	secureFieldGuardEnabled: true,
+	secureFieldCaptureGateEnabled: false,
+	// Off until someone asks for it. There is no first-run screen, so shipping
+	// this on means the first event fires before any consent moment exists, and
+	// a local-first app that phones home by default has given away the one claim
+	// it is built on. The Analytics card on the account page is the opt-in.
+	analyticsEnabled: false,
 	shortcutPushToTalkModifiers: null,
 	shortcutPushToTalkKeys: null,
 	shortcutToggleManualRecordingModifiers: null,
@@ -148,6 +167,8 @@ export type WhisperingApp = {
 	readonly settings: WhisperingSettings;
 	readonly recordings: WhisperingRecordings;
 	readonly recipes: WhisperingRecipes;
+	readonly snippets: WhisperingSnippets;
+	readonly appRules: WhisperingAppRules;
 	/**
 	 * What sync is doing, or undefined when this generation has no account or
 	 * its dials were permanently denied. A denied bound replica works offline
@@ -217,16 +238,26 @@ export async function openWhisperingApp(
 	const recipesDomain = createWhisperingRecipes({
 		table: work.tables.recipes,
 	});
+	const snippetsDomain = createWhisperingSnippets({
+		table: work.tables.snippets,
+	});
+	const appRulesDomain = createWhisperingAppRules({
+		table: work.tables.appRules,
+	});
 
 	let disposed = false;
 	return Object.freeze({
 		settings: settingsDomain.settings,
 		recordings: recordingsDomain.recordings,
 		recipes: recipesDomain,
+		snippets: snippetsDomain,
+		appRules: appRulesDomain,
 		syncStatus: () => account?.syncStatus(),
 		async [Symbol.asyncDispose]() {
 			if (disposed) return;
 			disposed = true;
+			appRulesDomain[Symbol.dispose]();
+			snippetsDomain[Symbol.dispose]();
 			recipesDomain[Symbol.dispose]();
 			recordingsDomain[Symbol.dispose]();
 			settingsDomain[Symbol.dispose]();

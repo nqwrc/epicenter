@@ -1,7 +1,7 @@
 import { platformCommands } from '#platform/commands';
 import { goto } from '$app/navigation';
 import { whisperingPath } from '$lib/constants/urls';
-import { pushToTalk } from '$lib/operations/push-to-talk';
+import { handsFreePushToTalk } from '$lib/operations/hands-free-instance';
 import { runRecipeOnClipboard } from '$lib/operations/recipe-clipboard';
 import {
 	cancelRecording,
@@ -74,12 +74,17 @@ const sharedCommands = [
 		// session, and a release that lands before startup finishes is still honored.
 		// Not "the edges are the whole state machine": a lost release edge would
 		// otherwise leave recording stuck on. Both the desktop global-shortcut plugin
-		// and the browser keydown backend emit the Pressed/Released pair. Unbound
-		// globally by default: bind a chord here for hold-to-talk.
+		// and the browser keydown backend emit the Pressed/Released pair. Ships
+		// bound globally to a per-platform hold chord
+		// (`DEFAULT_GLOBAL_BINDINGS.pushToTalk` is the source of truth).
+		// Routed through `handsFreePushToTalk` rather than calling `pushToTalk`
+		// directly: a double-tap (two Pressed within 400ms) locks the mic open
+		// hands-free, so the second tap's Released is swallowed instead of
+		// stopping the recording (`operations/hands-free.ts`).
 		on: ['Pressed', 'Released'],
 		run: (app, state?: ShortcutEventState) => {
-			if (state === 'Pressed') return pushToTalk.start(app);
-			if (state === 'Released') return pushToTalk.stop(app);
+			if (state === 'Pressed') return handsFreePushToTalk.onPressed(app);
+			if (state === 'Released') return handsFreePushToTalk.onReleased(app);
 		},
 	},
 	{
@@ -89,7 +94,8 @@ const sharedCommands = [
 		reach: 'global',
 		// Press once to start and again to stop. This is also what the record button
 		// fires (a click arrives with no edge). It ships with the default global
-		// recording chord; push-to-talk ships unbound for users who prefer a hold.
+		// recording chord; push-to-talk ships with its own default hold chord
+		// for users who prefer a hold.
 		on: ['Pressed'],
 		run: (app) => toggleManualRecording(app),
 	},

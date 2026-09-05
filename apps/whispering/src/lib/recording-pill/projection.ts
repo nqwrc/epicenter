@@ -49,7 +49,13 @@ export function projectLifecycleToStatus(
 		case 'polishing':
 			return { phase: 'polishing' };
 		case 'delivered':
-			return { phase: 'delivered', reach: outcome.reach };
+			return {
+				phase: 'delivered',
+				reach: outcome.reach,
+				wordCount: outcome.wordCount,
+			};
+		case 'withheld':
+			return { phase: 'withheld' };
 		case 'failed':
 			return { phase: 'failed', tier: outcome.tier };
 		default:

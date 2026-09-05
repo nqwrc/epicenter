@@ -1,4 +1,5 @@
 import { extractErrorMessage } from 'wellcrafted/error';
+import { createLogger } from 'wellcrafted/logger';
 import { Err, tryAsync } from 'wellcrafted/result';
 import { type Command, commands, dispatchCommandTrigger } from '$lib/commands';
 import {
@@ -27,6 +28,8 @@ import type { CreateSystemShortcuts } from './types';
  * `focusedShortcuts`; the web build of this seam supplies `null` (no system
  * backend), which is how the router caps web at focused reach. See ADR-0052.
  */
+
+const log = createLogger('whispering/system-shortcuts');
 
 const globalKey = (id: Command['id']) => `shortcuts.global.${id}` as const;
 
@@ -67,13 +70,45 @@ export const createSystemShortcuts: CreateSystemShortcuts | null = (app) =>
 		},
 		syncErrorTitle: 'Error registering global shortcuts',
 		async push(entries) {
-			const chords: ChordRegistration[] = [];
+			// An accelerator can only be registered once, and the host validates the
+			// whole replace-all set: one duplicate rejects every registration, so a
+			// collision costs the device all its global shortcuts rather than one
+			// command. `findConflict` cannot rule that out, because it only guards a
+			// write. A shipped default that moves between releases lands underneath a
+			// chord the user stored while the default was something else, and nothing
+			// revisits that write.
+			//
+			// So resolve it here, in the user's favour: a binding they picked outranks
+			// one that is only this build's default. Their deliberate chord keeps
+			// firing, and the command whose default lost reads as unbound until they
+			// rebind it.
+			const claims = new Map<
+				string,
+				{ commandId: Command['id']; isDefault: boolean }
+			>();
 			for (const entry of entries) {
 				if (entry.binding === null) continue;
 				const accelerator = keyBindingToAccelerator(entry.binding);
 				if (accelerator === null) continue;
-				chords.push({ commandId: entry.command.id, accelerator });
+				const fallback = DEFAULT_GLOBAL_BINDINGS[entry.command.id] ?? null;
+				const isDefault =
+					fallback !== null && bindingsEqual(entry.binding, fallback);
+				const held = claims.get(accelerator);
+				if (held) {
+					// The first claim keeps the accelerator unless it is only a default
+					// and this one is a chord the user picked.
+					const heldYields = held.isDefault && !isDefault;
+					const unbound = heldYields ? held.commandId : entry.command.id;
+					log.info(
+						`Global shortcut ${accelerator} is claimed twice; leaving "${unbound}" unbound`,
+					);
+					if (!heldYields) continue;
+				}
+				claims.set(accelerator, { commandId: entry.command.id, isDefault });
 			}
+			const chords: ChordRegistration[] = [...claims].map(
+				([accelerator, { commandId }]) => ({ commandId, accelerator }),
+			);
 			// A plugin registration the OS rejects (a chord another app holds) fails
 			// the whole replace-all; surface it instead of partially binding.
 			const { error } = await tryAsync({

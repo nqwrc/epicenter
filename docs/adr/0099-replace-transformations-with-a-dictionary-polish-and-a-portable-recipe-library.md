@@ -1,6 +1,7 @@
 # 0099. Replace Transformations with a Dictionary, an always-on Polish, and a portable Recipe library
 
 - **Status:** Accepted
+- **Amended by:** [ADR-0269](0269-a-per-app-rule-reshapes-polish-and-may-auto-run-one-recipe.md) at its ordering (one optional per-app recipe step between Polish and snippet expansion) and its deferred auto-run alternative, which lands there in the per-context shape this ADR named as the correct version.
 - **Date:** 2026-06-16 (evolved twice the same day; see Evolution). Accepted
   2026-06-18 once Polish, the Dictionary, and the Recipe library + picker shipped.
   Re-pointed onto current `main` and renumbered from 0052 (taken there by the

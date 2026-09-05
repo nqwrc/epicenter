@@ -13,7 +13,10 @@ permissions: {}
 
 jobs:
   autofix:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # GitHub-hosted, not Blacksmith, for the reason recorded in
+    # ci.format.yml: a label the fork's plan does not cover queues until the
+    # run is reaped, so this bot never pushed a formatting fix here.
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6

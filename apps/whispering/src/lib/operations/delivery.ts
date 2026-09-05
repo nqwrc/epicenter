@@ -8,7 +8,10 @@ import {
 	type Sink,
 } from '$lib/operations/sink';
 import type { Notice } from '$lib/report';
+import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { probeForegroundContext } from './foreground-probe';
+import { decideSecureFieldGuard } from './secure-field-guard';
 
 // The reach types live in their own `delivery-reach` module next to their ADR
 // docstrings; re-exported here so callers keep one delivery import.
@@ -16,6 +19,7 @@ export type {
 	DeliveryOutcome,
 	DeliveryReach,
 } from '$lib/operations/delivery-reach';
+export type { SinkKind } from '$lib/operations/sink';
 
 /**
  * The output scopes Whispering delivers into. Each has its own
@@ -92,7 +96,7 @@ export async function deliverTranscriptionResult(
 		source?: TranscriptionSource;
 	},
 ): Promise<DeliveryResult> {
-	return deliverToSink({
+	return deliverToSink(app, {
 		text,
 		successCopy: TRANSCRIPTION_SUCCESS_COPY[source],
 		sink: resolveSettingsSink(app, 'transcription'),
@@ -118,7 +122,7 @@ export async function deliverRecipeResult(
 		recordingId: string | null;
 	},
 ): Promise<DeliveryResult> {
-	return deliverToSink({
+	return deliverToSink(app, {
 		text,
 		successCopy: '🔄 Recipe complete',
 		sink: resolveSettingsSink(app, 'recipe'),
@@ -144,17 +148,20 @@ function resolveSettingsSink(
 			: ledgerSink;
 }
 
-async function deliverToSink({
-	text,
-	successCopy,
-	sink,
-	linkedRecording,
-}: {
-	text: string;
-	successCopy: string;
-	sink: Sink;
-	linkedRecording: boolean;
-}): Promise<DeliveryResult> {
+async function deliverToSink(
+	app: WhisperingApp,
+	{
+		text,
+		successCopy,
+		sink,
+		linkedRecording,
+	}: {
+		text: string;
+		successCopy: string;
+		sink: Sink;
+		linkedRecording: boolean;
+	},
+): Promise<DeliveryResult> {
 	const recordingsAction = linkedRecording
 		? {
 				label: 'Go to recordings',
@@ -162,17 +169,65 @@ async function deliverToSink({
 			}
 		: undefined;
 
-	const reach = await sink.deliver(text);
+	// Any delivery invalidates the previous one: whatever was held is no longer
+	// the last thing at the cursor. The dictation pipeline records the new one
+	// straight after this returns; every other path (file import, a recordings
+	// row, a recipe) simply leaves nothing held, so "scratch that" refuses
+	// rather than backspacing into text it did not deliver.
+	lastDelivery.clear();
 
-	const title =
-		sink.kind === 'cursor'
+	// The secure-field guard, re-sampled at paste time because the paste lands
+	// wherever focus is now, not where it was at capture. Only a cursor or
+	// clipboard sink can put text somewhere dangerous, and blocking the
+	// clipboard too is deliberate: "copied" next to a password field invites
+	// the exact wrong paste. On a withhold the ledger sink substitutes, so the
+	// text survives in history and nothing else changes hands.
+	// One probe, two readers. The guard wants the focused field; the undo record
+	// wants the app id, so "scratch that" can tell later whether the window it
+	// would backspace into is still the one that got the text.
+	//
+	// Skipped when neither reader exists, because it is a cross-process round
+	// trip on the path a person is waiting on. A ledger delivery writes to
+	// history, where no keystroke can go wrong; a clipboard delivery with the
+	// guard off has no reader either, since only a cursor write is undoable
+	// (`last-delivery.svelte.ts`).
+	const guardEnabled = app.settings.get('secureFieldGuardEnabled');
+	const foreground =
+		sink.kind !== 'ledger' && (guardEnabled || sink.kind === 'cursor')
+			? await probeForegroundContext()
+			: { focusedField: 'unknown' as const, appId: null };
+
+	const effectiveSink = ((): { sink: Sink; withheld: boolean } => {
+		if (sink.kind === 'ledger') return { sink, withheld: false };
+		const decision = decideSecureFieldGuard({
+			focusedField: foreground.focusedField,
+			enabled: guardEnabled,
+		});
+		return decision === 'withhold'
+			? { sink: ledgerSink, withheld: true }
+			: { sink, withheld: false };
+	})();
+
+	const { reach, pressedEnter } = await effectiveSink.sink.deliver(text);
+
+	const title = effectiveSink.withheld
+		? `${successCopy}, kept in history (a password field has focus)`
+		: effectiveSink.sink.kind === 'cursor'
 			? reach === 'output'
 				? `${successCopy} and written to cursor!`
 				: `${successCopy}, copied to clipboard (couldn't write to cursor)`
 			: `${successCopy}!`;
 
 	return {
-		outcome: { reach },
+		outcome: {
+			reach,
+			sinkKind: effectiveSink.sink.kind,
+			pressedEnter,
+			withheld: effectiveSink.withheld,
+			// Null on a withhold: nothing was written, so naming an app the text
+			// went to would be a lie a later undo could act on.
+			deliveredToAppId: effectiveSink.withheld ? null : foreground.appId,
+		},
 		notice: { title, description: text, action: recordingsAction },
 	};
 }

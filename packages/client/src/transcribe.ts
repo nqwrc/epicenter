@@ -17,14 +17,15 @@
  * session fetch (ADR-0053/0060), which is never connection data. So this client
  * never re-resolves and never branches on what kind of transport it got.
  *
- * Deepgram and ElevenLabs stay bespoke in their own clients: they do not speak
- * this wire (Deepgram takes a raw body under `Authorization: Token`, ElevenLabs an
- * `xi-api-key` with `model_id`), and ADR-0060 blesses that exception. Whispering's
- * in-process `transcribe-rs` engine also stays its own path: it is `invoke` over
- * the Tauri FFI, a privileged non-wire sibling, not a `Connection`.
+ * Deepgram, ElevenLabs and Mistral stay bespoke in their own clients: they do not
+ * speak this wire (Deepgram takes a raw body under `Authorization: Token`,
+ * ElevenLabs an `xi-api-key` with `model_id`, Mistral its own SDK), and ADR-0060
+ * blesses that exception. Whispering's on-device route also stays its own path: it
+ * is `invoke` over the Tauri FFI into the host's transcribe.cpp GGUF engine, a
+ * privileged non-wire sibling, not a `Connection`.
  *
- * This is `apps/whispering/.../self-hosted/speaches.ts` generalized: the name
- * dropped and the bespoke config replaced by a transport. The error stays lean
+ * This generalizes the per-provider Speaches client Whispering used to carry: the
+ * name dropped and the bespoke config replaced by a transport. The error stays lean
  * and structured (it carries the HTTP `status`); an app maps a status to its own
  * user-facing copy at its toast/query layer, the library does not own that copy.
  */

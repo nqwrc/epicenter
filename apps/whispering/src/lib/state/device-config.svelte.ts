@@ -5,7 +5,7 @@ import { createLogger } from 'wellcrafted/logger';
 import { os } from '#platform/os';
 import { BITRATES_KBPS, DEFAULT_BITRATE_KBPS } from '$lib/constants/audio';
 import { report } from '$lib/report';
-import type { KeyBinding } from '$lib/utils/key-binding';
+import { defaultGlobalBindings } from '$lib/utils/default-global-bindings';
 
 const log = createLogger('whispering/device-config');
 
@@ -24,45 +24,13 @@ const globalBinding = type({
 	keys: 'string[]',
 }).or('null');
 
-// Default global gestures, not mnemonic app hotkeys. These are plain chords the
-// `tauri-plugin-global-shortcut` backend registers with no Accessibility grant,
-// the only global-shortcut backend on every platform (ADR-0117). Every default
-// binding is distinct.
-//
-// Toggle recording is the out-of-the-box gesture: press once to start and again
-// to stop. A chord is the right tool for a toggle; its press effort resists
-// accidental triggers. Push-to-talk ships unbound: bind a chord for it in
-// settings if you want a held key (Fn and modifier-only holds are not supported).
-//
-//   macOS:   Cmd + Shift + Space  = toggle,  Cmd + .          = cancel
-//   Windows: Ctrl + Shift + Space = toggle,  Ctrl + Shift + . = cancel
-//
-// Cancel is the platform cancel chord (Cmd + . on macOS, the system cancel
-// gesture since classic Mac OS; Ctrl + Shift + . elsewhere); it carries a
-// modifier so it is safe to register globally. Recipe gestures ship
-// unbound: opt-in only. Exported so the reset path in platform/system-shortcuts.tauri.ts
-// shares this one source of truth.
-const TOGGLE_MODIFIERS: KeyBinding['modifiers'] = os.isApple
-	? ['meta', 'shift']
-	: ['ctrl', 'shift'];
-
-const CANCEL_MODIFIERS: KeyBinding['modifiers'] = os.isApple
-	? ['meta']
-	: ['ctrl', 'shift'];
-
-export const DEFAULT_GLOBAL_BINDINGS = {
-	pushToTalk: null,
-	toggleManualRecording: { modifiers: TOGGLE_MODIFIERS, keys: ['space'] },
-	cancelRecording: { modifiers: CANCEL_MODIFIERS, keys: ['dot'] },
-	toggleVadRecording: null,
-	openRecipePicker: null,
-	runRecipeOnClipboard: null,
-	// Focused-reach command (ADR-0052): its reach ceiling clamps any key to the
-	// in-app store, so the router never writes this global slot. It stays here only
-	// so the system backend's all-commands sync keeps one entry per command;
-	// always null.
-	openSettings: null,
-} satisfies Record<string, KeyBinding | null>;
+// The global chords this build ships, bound to this device's OS. The table and
+// the reasoning behind every chord live in `utils/default-global-bindings.ts`,
+// which is pure so the contract test can run the real table against the
+// reserved-chord policy instead of a restatement of it. Exported because
+// `platform/system-shortcuts.tauri.ts` reads it too: reset writes these values
+// back, and push tells a default apart from a chord the user picked.
+export const DEFAULT_GLOBAL_BINDINGS = defaultGlobalBindings(os.isApple);
 
 // ── Per-key definitions ──────────────────────────────────────────────────────
 
