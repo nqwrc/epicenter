@@ -77,6 +77,19 @@ export const lastDelivery = {
 	},
 
 	/**
+	 * What `take` would return, without consuming the record.
+	 *
+	 * "Scratch that" reads this first, because whether the undo may run depends
+	 * on where focus is, and a refusal has to leave the record alive: the copy
+	 * for a moved window tells the person to switch back and say it again, and
+	 * that instruction has to be true.
+	 */
+	peek(): { graphemes: number; appId: string | null } | null {
+		if (held === null || !isUndoable(held)) return null;
+		return { graphemes: countGraphemes(held.text), appId: held.appId };
+	},
+
+	/**
 	 * Whether `take` would return a count, without consuming the record.
 	 * Applicability has to ask this before the pipeline commits to the command
 	 * branch, and asking must not destroy the thing it is asking about.

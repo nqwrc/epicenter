@@ -184,18 +184,24 @@ async function deliverToSink(
 	// text survives in history and nothing else changes hands.
 	// One probe, two readers. The guard wants the focused field; the undo record
 	// wants the app id, so "scratch that" can tell later whether the window it
-	// would backspace into is still the one that got the text. A ledger delivery
-	// needs neither: it writes to history, where no keystroke can go wrong.
+	// would backspace into is still the one that got the text.
+	//
+	// Skipped when neither reader exists, because it is a cross-process round
+	// trip on the path a person is waiting on. A ledger delivery writes to
+	// history, where no keystroke can go wrong; a clipboard delivery with the
+	// guard off has no reader either, since only a cursor write is undoable
+	// (`last-delivery.svelte.ts`).
+	const guardEnabled = app.settings.get('secureFieldGuardEnabled');
 	const foreground =
-		sink.kind === 'ledger'
-			? { focusedField: 'unknown' as const, appId: null }
-			: await probeForegroundContext();
+		sink.kind !== 'ledger' && (guardEnabled || sink.kind === 'cursor')
+			? await probeForegroundContext()
+			: { focusedField: 'unknown' as const, appId: null };
 
 	const effectiveSink = ((): { sink: Sink; withheld: boolean } => {
 		if (sink.kind === 'ledger') return { sink, withheld: false };
 		const decision = decideSecureFieldGuard({
 			focusedField: foreground.focusedField,
-			enabled: app.settings.get('secureFieldGuardEnabled'),
+			enabled: guardEnabled,
 		});
 		return decision === 'withhold'
 			? { sink: ledgerSink, withheld: true }

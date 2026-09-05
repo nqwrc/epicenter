@@ -22,9 +22,18 @@ let canUndo = false;
 const simulateBackspaces = mock(
 	async (): Promise<Result<void, TextError>> => Ok(undefined),
 );
-const take = mock(
-	(): { graphemes: number; appId: string | null } | null => null,
-);
+/**
+ * The undo record, as a stateful double rather than a canned return, because
+ * whether a refusal leaves it alive is the thing under test.
+ */
+type Undo = { graphemes: number; appId: string | null };
+let held: Undo | null = null;
+const take = mock((): Undo | null => {
+	const record = held;
+	held = null;
+	return record;
+});
+const peek = mock((): Undo | null => held);
 /** The app in front when the undo runs. Same as the delivery's by default. */
 let focusedNow: string | null = 'Code.exe';
 const reportInfo = mock();
@@ -39,7 +48,13 @@ mock.module('$lib/services', () => ({
 	services: { text: { simulateBackspaces } },
 }));
 mock.module('$lib/state/last-delivery.svelte', () => ({
-	lastDelivery: { take, canUndo: () => canUndo, record: mock(), clear: mock() },
+	lastDelivery: {
+		take,
+		peek,
+		canUndo: () => canUndo,
+		record: mock(),
+		clear: mock(),
+	},
 }));
 mock.module('$lib/report', () => ({
 	report: { info: reportInfo, error: reportError },
@@ -83,7 +98,7 @@ test("commandApplies('scratchThat') follows whether something undoable is held, 
 });
 
 test('scratchThat with nothing held sends no backspaces and reports an info notice', async () => {
-	take.mockReturnValueOnce(null);
+	held = null;
 	await runVoiceCommand(app, 'scratchThat');
 	expect(simulateBackspaces).not.toHaveBeenCalled();
 	expect(reportInfo).toHaveBeenLastCalledWith({
@@ -94,7 +109,7 @@ test('scratchThat with nothing held sends no backspaces and reports an info noti
 });
 
 test('scratchThat over the cap sends no backspaces and reports an info notice', async () => {
-	take.mockReturnValueOnce({ graphemes: 2001, appId: 'Code.exe' });
+	held = { graphemes: 2001, appId: 'Code.exe' };
 	await runVoiceCommand(app, 'scratchThat');
 	expect(simulateBackspaces).not.toHaveBeenCalled();
 	expect(reportInfo).toHaveBeenLastCalledWith({
@@ -105,7 +120,7 @@ test('scratchThat over the cap sends no backspaces and reports an info notice', 
 });
 
 test('scratchThat with a held record sends exactly one backspace call for its graphemes', async () => {
-	take.mockReturnValueOnce({ graphemes: 12, appId: 'Code.exe' });
+	held = { graphemes: 12, appId: 'Code.exe' };
 	await runVoiceCommand(app, 'scratchThat');
 	expect(simulateBackspaces).toHaveBeenCalledTimes(1);
 	expect(simulateBackspaces).toHaveBeenLastCalledWith(12);
@@ -118,7 +133,7 @@ test('scratchThat with a held record sends exactly one backspace call for its gr
  */
 test('scratchThat refuses when focus has moved to another app', async () => {
 	simulateBackspaces.mockClear();
-	take.mockReturnValueOnce({ graphemes: 12, appId: 'Code.exe' });
+	held = { graphemes: 12, appId: 'Code.exe' };
 	focusedNow = 'slack.exe';
 
 	await runVoiceCommand(app, 'scratchThat');
@@ -139,7 +154,7 @@ test('scratchThat refuses when focus has moved to another app', async () => {
  */
 test('scratchThat refuses when the app in front cannot be identified', async () => {
 	simulateBackspaces.mockClear();
-	take.mockReturnValueOnce({ graphemes: 12, appId: 'Code.exe' });
+	held = { graphemes: 12, appId: 'Code.exe' };
 	focusedNow = null;
 
 	await runVoiceCommand(app, 'scratchThat');
@@ -153,8 +168,28 @@ test('scratchThat refuses when the app in front cannot be identified', async () 
 	focusedNow = 'Code.exe';
 });
 
+/**
+ * The refusal copy tells the person to switch back to the app and say it again,
+ * so that has to work. It only does because a refusal leaves the record alive,
+ * and leaving it alive is only safe because the target check runs every time: a
+ * third window would not match either.
+ */
+test('a refused undo still runs after switching back to the app', async () => {
+	simulateBackspaces.mockClear();
+	held = { graphemes: 12, appId: 'Code.exe' };
+	focusedNow = 'slack.exe';
+	await runVoiceCommand(app, 'scratchThat');
+	expect(simulateBackspaces).not.toHaveBeenCalled();
+
+	focusedNow = 'Code.exe';
+	await runVoiceCommand(app, 'scratchThat');
+
+	expect(simulateBackspaces).toHaveBeenCalledTimes(1);
+	expect(simulateBackspaces).toHaveBeenLastCalledWith(12);
+});
+
 test('a failing simulateBackspaces reports an error notice and does not throw', async () => {
-	take.mockReturnValueOnce({ graphemes: 5, appId: 'Code.exe' });
+	held = { graphemes: 5, appId: 'Code.exe' };
 	const cause = { name: 'SimulateKeystroke' } as unknown as TextError;
 	simulateBackspaces.mockImplementationOnce(async () => Err(cause));
 	await runVoiceCommand(app, 'scratchThat');

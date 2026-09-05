@@ -126,14 +126,29 @@ describe('transcription delivery', () => {
 	 * The undo record's half of the paste-time probe. "Scratch that" posts real
 	 * Backspace keystrokes wherever focus is when it runs, so it has to be able
 	 * to compare that against the window the text actually went into.
+	 *
+	 * The guard is on here because it is on by default and because the probe is
+	 * skipped when nothing reads it: a clipboard delivery with the guard off has
+	 * neither reader, since only a cursor write is undoable.
 	 */
 	test('the outcome names the app the text was written into', async () => {
 		settingsValues.set('outputTranscriptionClipboard', true);
+		settingsValues.set('secureFieldGuardEnabled', true);
 		foregroundAppId = 'Code.exe';
 
 		const result = await deliverTranscriptionResult(app, { text: 'hello' });
 
 		expect(result.outcome.deliveredToAppId).toBe('Code.exe');
+	});
+
+	test('a delivery nothing could undo does not pay for the probe', async () => {
+		settingsValues.set('outputTranscriptionClipboard', true);
+		settingsValues.set('secureFieldGuardEnabled', false);
+		foregroundAppId = 'Code.exe';
+
+		const result = await deliverTranscriptionResult(app, { text: 'hello' });
+
+		expect(result.outcome.deliveredToAppId).toBeNull();
 	});
 
 	test('cursor off and clipboard off delivers to history only', async () => {

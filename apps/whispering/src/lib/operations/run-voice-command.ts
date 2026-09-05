@@ -67,7 +67,9 @@ export async function runVoiceCommand(
 }
 
 async function scratchThat(): Promise<void> {
-	const undo = lastDelivery.take();
+	// Read without consuming: a refusal below has to leave the record alive, or
+	// the copy telling the person to switch back and say it again would be a lie.
+	const undo = lastDelivery.peek();
 	if (undo === null) {
 		// Defensive, not the common case: `commandApplies` already checked
 		// `canUndo()` against this same held state with no `await` in between, so
@@ -82,6 +84,8 @@ async function scratchThat(): Promise<void> {
 	}
 
 	if (undo.graphemes > MAX_BACKSPACES) {
+		// Consumed: no retry helps, and the copy promises none.
+		lastDelivery.take();
 		report.info({
 			title: 'That dictation is too long to undo',
 			description:
@@ -91,12 +95,17 @@ async function scratchThat(): Promise<void> {
 	}
 
 	// The backspaces go wherever focus is right now, not where the text went, so
-	// the window has to be the same one. Checked after `take()` on purpose: the
-	// record is consumed either way, because a person who dictated in one app and
-	// then moved has ended that undo, and holding it would let the next "scratch
-	// that" fire it at a third window. Fail-closed, unlike the secure-field guard,
-	// because a wrong refusal costs a sentence of copy and a wrong allow costs
-	// text the person already had (`undo-target.ts`).
+	// the window has to be the same one. Fail-closed, unlike the secure-field
+	// guard, because a wrong refusal costs a sentence of copy and a wrong allow
+	// costs text the person already had (`undo-target.ts`).
+	//
+	// Both refusals keep the record. Holding it is safe precisely because this
+	// check runs every time: a third window will not match either, so the undo
+	// cannot wander. Keeping it is also what makes the copy true, and it means a
+	// probe that merely timed out has not destroyed the undo. The standing
+	// tradeoff is unchanged: a keystroke undo deletes the last N characters at
+	// the cursor, so typing more in the original app before switching back is
+	// still the person's to avoid.
 	const target = decideUndoTarget({
 		deliveredTo: undo.appId,
 		focusedNow: (await probeForegroundContext()).appId,
@@ -118,6 +127,9 @@ async function scratchThat(): Promise<void> {
 		return;
 	}
 
+	// Consumed here, on the one path that fires. A second "scratch that" must
+	// find nothing held rather than deleting another paste's worth of characters.
+	lastDelivery.take();
 	const { error } = await services.text.simulateBackspaces(undo.graphemes);
 	if (error !== null) {
 		// The held record is already gone, which is what we want: after a partial
