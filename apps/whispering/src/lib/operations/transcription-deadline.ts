@@ -65,6 +65,45 @@ export function transcriptionTimeoutMs(
 		: BATCH_TRANSCRIPTION_TIMEOUT_MS;
 }
 
+/**
+ * Which deadline one pipeline run takes.
+ *
+ * `isDictation` is not enough on its own. It is true for a VAD utterance, which
+ * is short by construction, and equally true for manual record, which has no
+ * length bound at all: someone can press record, sit through a meeting, and
+ * press stop. The dictation ceiling is generous next to a few seconds of speech
+ * and meaningless next to twenty minutes of it, so a manual capture that long
+ * would expire on work that was going to succeed, which is the exact failure the
+ * batch ceiling exists to avoid.
+ *
+ * So a capture longer than the dictation ceiling itself takes the batch one. The
+ * threshold is that ceiling rather than a new number, because the claim is
+ * precisely that audio outrunning the whole budget cannot be judged by it. Manual
+ * stop is the only path that reports a duration; VAD and import both pass null,
+ * and for VAD that is right, since those clips are short by construction.
+ *
+ * The residual is a manual capture of a few minutes on unusually slow hardware,
+ * under the threshold but over the ceiling once transcribed. It fails visibly and
+ * the row retries under the generous ceiling, which is the same recovery every
+ * other expiry has.
+ */
+export function deadlineForCapture({
+	isDictation,
+	audioDurationMs,
+}: {
+	isDictation: boolean;
+	audioDurationMs: number | null;
+}): TranscriptionDeadline {
+	if (!isDictation) return 'batch';
+	if (
+		audioDurationMs !== null &&
+		audioDurationMs > DICTATION_TRANSCRIPTION_TIMEOUT_MS
+	) {
+		return 'batch';
+	}
+	return 'dictation';
+}
+
 export const TranscriptionDeadlineError = defineErrors({
 	/**
 	 * The wait ran out. Deliberately an error and never `Ok('')`: an empty

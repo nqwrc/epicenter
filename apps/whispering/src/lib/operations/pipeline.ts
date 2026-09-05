@@ -22,6 +22,7 @@ import { polishHud } from '$lib/state/polish-hud.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
 import type { ForegroundSnapshot } from './foreground-context';
 import { matchAppRule } from './match-app-rule';
+import { deadlineForCapture } from './transcription-deadline';
 
 /**
  * Argument shape for the pipeline. The recorder produces a
@@ -152,15 +153,16 @@ async function runRecordingPipeline(
 				description: 'Your recording is being transcribed...',
 			});
 
-	// A live dictation takes the tight deadline and a file import the generous
-	// one. The split is the same `isDictation` this function already computes,
-	// and it is exact rather than estimated: a dictation is short, has a person
-	// watching the pill, and is the only kind the run queue serializes, so a run
-	// that never returns holds every later utterance. An import can hold close
-	// to an hour of audio and nobody is waiting at a cursor for it.
+	// A live dictation takes the tight deadline, a file import or a long manual
+	// capture the generous one. Both facts the choice needs are already here and
+	// both are exact rather than estimated, so `deadlineForCapture` is handed
+	// them rather than guessing from the audio.
 	const { data: transcription, error: transcribeError } =
 		await transcribeAndPersist(app, recording.id, audioBlobId, {
-			deadline: isDictation ? 'dictation' : 'batch',
+			deadline: deadlineForCapture({
+				isDictation,
+				audioDurationMs: durationMs,
+			}),
 		});
 
 	if (transcribeError) {

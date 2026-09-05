@@ -12,7 +12,8 @@
  *   pill without reporting anything
  * - The copy names the duration and the one recovery there is, since unlike a
  *   polish pass there is no raw text to fall back on
- * - A live dictation waits less than an import or a retry
+ * - A live dictation waits less than an import or a retry, and a manual
+ *   capture too long to be judged by the dictation ceiling is not judged by it
  * - The race answers with the expiry when the run never settles, and gets out
  *   of the way when it does
  *
@@ -25,6 +26,7 @@ import { expect, test } from 'bun:test';
 import {
 	BATCH_TRANSCRIPTION_TIMEOUT_MS,
 	DICTATION_TRANSCRIPTION_TIMEOUT_MS,
+	deadlineForCapture,
 	transcriptionTimedOut,
 	transcriptionTimeoutMs,
 	withDeadline,
@@ -65,6 +67,45 @@ test('a live dictation waits less than an import or a retry', () => {
 	expect(DICTATION_TRANSCRIPTION_TIMEOUT_MS).toBeLessThan(
 		BATCH_TRANSCRIPTION_TIMEOUT_MS,
 	);
+});
+
+test('a file import takes the generous deadline', () => {
+	expect(
+		deadlineForCapture({ isDictation: false, audioDurationMs: null }),
+	).toBe('batch');
+});
+
+/**
+ * VAD reports no duration (`recording.ts` passes null), and that is the right
+ * answer for it: an utterance is short by construction, so the absence of a
+ * number is not a reason to stop treating it as a dictation.
+ */
+test('a VAD utterance with no reported duration stays a dictation', () => {
+	expect(deadlineForCapture({ isDictation: true, audioDurationMs: null })).toBe(
+		'dictation',
+	);
+});
+
+test('a short manual capture is a dictation', () => {
+	expect(
+		deadlineForCapture({ isDictation: true, audioDurationMs: 8_000 }),
+	).toBe('dictation');
+});
+
+/**
+ * The case `isDictation` alone gets wrong. Manual record has no length bound, so
+ * a meeting recorded with the record button arrives as `deliverySource:
+ * 'recording'`. Judging twenty minutes of audio by a five-minute ceiling would
+ * expire on work that was going to succeed, which is the failure the generous
+ * ceiling exists to avoid.
+ */
+test('a manual capture longer than the dictation ceiling takes the generous one', () => {
+	expect(
+		deadlineForCapture({
+			isDictation: true,
+			audioDurationMs: DICTATION_TRANSCRIPTION_TIMEOUT_MS + 1,
+		}),
+	).toBe('batch');
 });
 
 test('the race answers with the expiry when the run never settles', async () => {
