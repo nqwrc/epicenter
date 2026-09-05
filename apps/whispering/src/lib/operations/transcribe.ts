@@ -23,6 +23,12 @@ import {
 	recognizerPromptCharBudget,
 } from '$lib/operations/build-transcription-prompt';
 import {
+	type TranscriptionDeadline,
+	transcriptionTimedOut,
+	transcriptionTimeoutMs,
+	withDeadline,
+} from '$lib/operations/transcription-deadline';
+import {
 	recordTranscriptionOutcome,
 	type TranscriptionSuccess,
 } from '$lib/operations/transcription-history';
@@ -263,10 +269,18 @@ async function loadForUpload(
  * Local transcription always goes through `transcribe_recording(id)`.
  * Upload (non-on-device) transcription uploads compressed bytes derived from the
  * saved file when possible, falling back to the raw blob.
+ *
+ * `deadline` says which situation is waiting, and so how long this is willing to
+ * wait before giving up on the route: tight for a live dictation, generous for
+ * an import or a retry. Required rather than defaulted, because guessing wrong
+ * in either direction has a real cost (a killed import, or a dictation session
+ * held behind a route that is never coming back) and every caller knows which
+ * one it is.
  */
 export async function transcribeAudio(
 	app: WhisperingApp,
 	audioBlobId: BlobId,
+	{ deadline }: { deadline: TranscriptionDeadline },
 ): Promise<Result<string, TranscriptionError>> {
 	const selectedService = app.settings.get('transcriptionService');
 
@@ -295,40 +309,65 @@ export async function transcribeAudio(
 		return notSetUp;
 	}
 
-	// Silence never reaches a recognizer, whichever one is selected.
+	// One wait covers everything that can hang: the silence gate, the FFI call,
+	// the upload. It is a ceiling for a route that is never coming back, not a
+	// latency budget, and it cancels nothing (see `withDeadline`).
 	//
-	// Whisper cannot decline to answer: given a clip with no speech in it, the
-	// decoder still emits its highest-prior caption, which is why a tap of
-	// push-to-talk with nothing said pastes "Thank you." at the cursor. The
-	// on-device route already refused to run a model on empty audio and reported
-	// `empty-audio`; the upload route had no equivalent and posted the clip
-	// anyway. That made one policy two implementations, and only the route
-	// nobody was using was protected.
+	// Inside `transcribeAudio` rather than around it, so an expiry is an
+	// ordinary transcription failure: the analytics branch below reports it by
+	// name, and `transcribeAndPersist` marks the row failed. That leaves the
+	// audio retryable from the recordings list, which is the only recovery there
+	// is, because unlike a polish pass there is no raw text to fall back on.
 	//
-	// So the gate sits above the fork, in the one place that already decides
-	// on-device-ness, and both arms inherit it. An empty transcript is the same
-	// honest answer `empty-audio` gives, so this adds no new outcome for callers
-	// to learn. `containsSpeech` answers `true` whenever it cannot tell, so a
-	// broken gate transcribes rather than discards.
-	//
-	// The cost is that the on-device arm now reads the blob here to be asked the
-	// question and Rust reads it again to transcribe. That is the price of one
-	// gate instead of two, and it is worth naming rather than discovering.
-	if (await isSilent(app, audioBlobId)) {
-		void logAnalyticsEvent(app, {
-			type: 'transcription_completed',
-			provider: selectedService,
-			duration: Date.now() - startTime,
-		});
-		return Ok('');
-	}
+	// On the on-device route the abandoned call keeps Rust's model mutex, which
+	// is held across load and inference (`model_cache.rs`), so every later local
+	// run blocks on it and expires too until the app restarts. That wedge is
+	// there with or without this deadline. What changes is that it is reported
+	// rather than silent.
+	const transcriptionResult = await withDeadline(
+		transcriptionTimeoutMs(deadline),
+		() => transcriptionTimedOut(deadline),
+		async () => {
+			// Silence never reaches a recognizer, whichever one is selected.
+			//
+			// Whisper cannot decline to answer: given a clip with no speech
+			// in it, the decoder still emits its highest-prior caption, which
+			// is why a tap of push-to-talk with nothing said pastes "Thank
+			// you." at the cursor. The on-device route already refused to run
+			// a model on empty audio and reported `empty-audio`; the upload
+			// route had no equivalent and posted the clip anyway. That made
+			// one policy two implementations, and only the route nobody was
+			// using was protected.
+			//
+			// So the gate sits above the fork, in the one place that already
+			// decides on-device-ness, and both arms inherit it. An empty
+			// transcript is the same honest answer `empty-audio` gives, so
+			// this adds no new outcome for callers to learn.
+			// `containsSpeech` answers `true` whenever it cannot tell, so a
+			// broken gate transcribes rather than discards.
+			//
+			// The cost is that the on-device arm now reads the blob here to
+			// be asked the question and Rust reads it again to transcribe.
+			// That is the price of one gate instead of two, and it is worth
+			// naming rather than discovering.
+			//
+			// It sits inside the deadline rather than above it, which bounds
+			// `containsSpeech` too: it fetches a VAD model over the network
+			// on first use, so it is one more thing that can fail to come
+			// back. An empty transcript still reports
+			// `transcription_completed` from the tail below, the same event
+			// this gate used to send on its own.
+			if (await isSilent(app, audioBlobId)) return Ok('');
 
-	// The one place on-device-ness is decided. The type guard narrows `selectedService`
-	// to `OnDeviceProviderId` in one arm and `UploadProviderId` in the other, so each
-	// helper receives an already-narrowed id and neither re-checks.
-	const transcriptionResult = isOnDeviceProviderId(selectedService)
-		? await transcribeOnDevice(app, audioBlobId, selectedService)
-		: await transcribeViaUpload(app, audioBlobId, selectedService);
+			// The one place on-device-ness is decided. The type guard narrows
+			// `selectedService` to `OnDeviceProviderId` in one arm and
+			// `UploadProviderId` in the other, so each helper receives an
+			// already-narrowed id and neither re-checks.
+			return isOnDeviceProviderId(selectedService)
+				? transcribeOnDevice(app, audioBlobId, selectedService)
+				: transcribeViaUpload(app, audioBlobId, selectedService);
+		},
+	);
 
 	const duration = Date.now() - startTime;
 	if (transcriptionResult.error) {
@@ -387,11 +426,12 @@ export async function transcribeAndPersist(
 	app: WhisperingApp,
 	recordingId: RecordingId,
 	audioBlobId: BlobId,
+	{ deadline }: { deadline: TranscriptionDeadline },
 ): Promise<Result<TranscriptionSuccess, TranscriptionError>> {
 	return recordTranscriptionOutcome(
 		app,
 		recordingId,
-		await transcribeAudio(app, audioBlobId),
+		await transcribeAudio(app, audioBlobId, { deadline }),
 	);
 }
 
