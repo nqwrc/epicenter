@@ -4,7 +4,10 @@ import {
 	type InferErrors,
 } from 'wellcrafted/error';
 import { isErr, Ok, type Result } from 'wellcrafted/result';
-import { buildSystemPrompt } from '$lib/operations/build-system-prompt';
+import {
+	buildRecipeSystemPrompt,
+	wrapRecipeInput,
+} from '$lib/operations/build-system-prompt';
 import { completeWithGlobalDefault } from '$lib/operations/completion';
 import type { WhisperingApp } from '$lib/whispering/app';
 import type { Recipe } from '$lib/workspace';
@@ -23,10 +26,14 @@ export type RunRecipeError = InferErrors<typeof RunRecipeError>;
  * per-Recipe model. Polish has already run upstream, so `input` is the polished
  * text and this never re-does correction.
  *
- * The system prompt is `recipe.instructions` plus the Dictionary block (via
- * `buildSystemPrompt`, with `dictionary` read at use per ADR 0012). Provider and
- * model come from the single global `completion.*` default (via
- * `completeWithGlobalDefault`), not from the Recipe.
+ * The system prompt is a fixed scaffold wrapping `recipe.instructions`, plus the
+ * Dictionary block (via `buildRecipeSystemPrompt`, with `dictionary` read at use
+ * per ADR 0012), and `input` goes out inside the boundary that scaffold names.
+ * The scaffold is what makes a Recipe safe to point at text the user did not
+ * write: the automatic per-app-rule path pastes the result at the cursor, and the
+ * clipboard path runs over whatever was copied. Provider and model come from the
+ * single global `completion.*` default (via `completeWithGlobalDefault`), not
+ * from the Recipe.
  *
  * Pure execution: no workspace writes, no persistence, no toasts. The picker is
  * the caller; it owns delivery and any history bookkeeping.
@@ -61,11 +68,11 @@ export async function runRecipe(
 	}
 
 	const result = await completeWithGlobalDefault(app, {
-		systemPrompt: buildSystemPrompt(
+		systemPrompt: buildRecipeSystemPrompt(
 			recipe.instructions,
 			app.settings.get('dictionary'),
 		),
-		userPrompt: input,
+		userPrompt: wrapRecipeInput(input),
 		signal,
 	});
 
