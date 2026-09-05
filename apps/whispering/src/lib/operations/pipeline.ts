@@ -43,15 +43,57 @@ type PipelineInput = {
 };
 
 /**
+ * The tail of the run queue. Every acquisition path funnels through it, so
+ * runs deliver in the order their audio was captured.
+ *
+ * Without this the three call sites are unordered: `onSpeechEnd` is typed
+ * `(blob: Blob) => void` and invoked without an await (`vad-recorder.ts:159`),
+ * so an async handler returns a floating promise, and a manual stop or a file
+ * import can start while a VAD run is still in flight. Two runs then race to
+ * the same cursor, and the loser is whichever transcribes slower. With
+ * `polishEnabled` on by default a long utterance takes an LLM round trip that
+ * a short one does not, so the short one wins: this is the common case, not an
+ * edge.
+ *
+ * Interleaved paste would be bad enough. `lastDelivery.record()` below is the
+ * part that destroys text: it holds the grapheme count "scratch that"
+ * backspaces, so an out-of-order run leaves the undo pointed at a delivery
+ * that is no longer what is at the cursor, and the command deletes that many
+ * characters of whatever is. Ordering the runs orders that state with them,
+ * which is why the queue belongs here rather than around one call site.
+ */
+let runQueue: Promise<void> = Promise.resolve();
+
+/**
  * Processes finalized local audio through row creation, transcription, and
  * polishing.
  *
  * Audio bytes never live in pipeline state. Every acquisition path has
  * committed the local blob before calling this operation.
  *
- * `deliverySource` only shapes the success copy (recording vs file import).
+ * Runs are serialized (see `runQueue`). A caller still awaits its own run and
+ * still sees its own failure; what it no longer does is overlap another one.
  */
-export async function processRecordingPipeline(
+export function processRecordingPipeline(
+	app: WhisperingApp,
+	input: PipelineInput,
+): Promise<void> {
+	const run = runQueue.then(() => runRecordingPipeline(app, input));
+	// The queue must outlive a failed run. Keeping the rejection in the tail
+	// would reject every later utterance without ever running it, turning one
+	// bad transcription into a dead dictation session.
+	runQueue = run.then(
+		() => undefined,
+		() => undefined,
+	);
+	return run;
+}
+
+/**
+ * One run, start to finish. `deliverySource` only shapes the success copy
+ * (recording vs file import).
+ */
+async function runRecordingPipeline(
 	app: WhisperingApp,
 	{
 		audioBlobId,
