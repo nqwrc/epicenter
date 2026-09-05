@@ -263,21 +263,3 @@ export type AppRule = RowOf<typeof appRulesTable>;
  * (a record of descriptors) wearing the name of the values.
  */
 export type WhisperingSettingValues = KvOf<typeof whisperingDefinition>;
-
-/**
- * Default shortcuts, applied by the app rather than declared in the definition.
- *
- * The definition does not own initialization, so `keys` uses null for "no shortcut
- * configured" and the app applies shipped shortcuts separately.
- * These are release-local product policy anyway, which is where they were
- * before (`definition.ts`), and they are the only part of that file worth
- * keeping.
- */
-export const DEFAULT_SHORTCUT_KEYS = {
-	toggleManualRecording: ['space'],
-	cancelRecording: ['keyC'],
-	toggleVadRecording: ['keyV'],
-	openRecipePicker: ['keyT'],
-	runRecipeOnClipboard: ['keyR'],
-	openSettings: ['comma'],
-} as const;
