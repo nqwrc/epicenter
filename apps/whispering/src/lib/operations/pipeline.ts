@@ -380,6 +380,7 @@ async function runRecordingPipeline(
 			sinkKind: transcriptDelivery.sinkKind,
 			reach: transcriptDelivery.reach,
 			pressedEnter: transcriptDelivery.pressedEnter,
+			appId: transcriptDelivery.deliveredToAppId,
 		});
 	}
 	if (isDictation) {

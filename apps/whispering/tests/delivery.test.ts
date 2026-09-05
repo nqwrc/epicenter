@@ -32,14 +32,17 @@ mock.module('$lib/constants/urls', () => ({
 	WHISPERING_RECORDINGS_PATHNAME: '/apps/whispering/recordings',
 }));
 
-// The secure-field guard asks the context service for the focused-field
-// verdict at paste time; each test sets what the probe reports.
+// One probe at paste time, two readers: the secure-field guard takes the
+// focused-field verdict, and the undo record takes the app id so "scratch that"
+// can refuse rather than backspace into a window the dictation never reached.
+// Each test sets what the probe reports.
 let focusedField: 'secure' | 'notSecure' | 'unknown' = 'unknown';
+let foregroundAppId: string | null = null;
 mock.module('$lib/services', () => ({
 	services: {
 		context: {
 			getForegroundContext: async () => ({
-				appId: null,
+				appId: foregroundAppId,
 				appName: null,
 				focusedField,
 			}),
@@ -100,6 +103,7 @@ describe('transcription delivery', () => {
 		settingsValues.set('outputTranscriptionCursor', false);
 		settingsValues.set('outputTranscriptionEnter', false);
 		focusedField = 'unknown';
+		foregroundAppId = null;
 		clearDelivery.mockClear();
 	});
 
@@ -113,8 +117,23 @@ describe('transcription delivery', () => {
 			sinkKind: 'clipboard',
 			pressedEnter: false,
 			withheld: false,
+			deliveredToAppId: null,
 		});
 		expect(delivered).toEqual(['clipboard:hello']);
+	});
+
+	/**
+	 * The undo record's half of the paste-time probe. "Scratch that" posts real
+	 * Backspace keystrokes wherever focus is when it runs, so it has to be able
+	 * to compare that against the window the text actually went into.
+	 */
+	test('the outcome names the app the text was written into', async () => {
+		settingsValues.set('outputTranscriptionClipboard', true);
+		foregroundAppId = 'Code.exe';
+
+		const result = await deliverTranscriptionResult(app, { text: 'hello' });
+
+		expect(result.outcome.deliveredToAppId).toBe('Code.exe');
 	});
 
 	test('cursor off and clipboard off delivers to history only', async () => {
@@ -125,6 +144,9 @@ describe('transcription delivery', () => {
 			sinkKind: 'ledger',
 			pressedEnter: false,
 			withheld: false,
+			// A ledger delivery writes to history, where no keystroke can go
+			// wrong, so it never takes the probe.
+			deliveredToAppId: null,
 		});
 		expect(delivered).toEqual(['ledger:hello']);
 	});
@@ -141,6 +163,9 @@ describe('transcription delivery', () => {
 			sinkKind: 'ledger',
 			pressedEnter: false,
 			withheld: true,
+			// Nothing was written, so no app is named: an undo acting on this
+			// would backspace into a window that never got the text.
+			deliveredToAppId: null,
 		});
 		// Nothing reached the clipboard: the withhold is total, not a fallback.
 		expect(delivered).toEqual(['ledger:hello']);

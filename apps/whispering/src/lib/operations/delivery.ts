@@ -10,7 +10,7 @@ import {
 import type { Notice } from '$lib/report';
 import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
-import { probeFocusedField } from './focused-field';
+import { probeForegroundContext } from './foreground-probe';
 import { decideSecureFieldGuard } from './secure-field-guard';
 
 // The reach types live in their own `delivery-reach` module next to their ADR
@@ -182,15 +182,21 @@ async function deliverToSink(
 	// clipboard too is deliberate: "copied" next to a password field invites
 	// the exact wrong paste. On a withhold the ledger sink substitutes, so the
 	// text survives in history and nothing else changes hands.
-	const effectiveSink = await (async (): Promise<{
-		sink: Sink;
-		withheld: boolean;
-	}> => {
+	// One probe, two readers. The guard wants the focused field; the undo record
+	// wants the app id, so "scratch that" can tell later whether the window it
+	// would backspace into is still the one that got the text. A ledger delivery
+	// needs neither: it writes to history, where no keystroke can go wrong.
+	const foreground =
+		sink.kind === 'ledger'
+			? { focusedField: 'unknown' as const, appId: null }
+			: await probeForegroundContext();
+
+	const effectiveSink = ((): { sink: Sink; withheld: boolean } => {
 		if (sink.kind === 'ledger') return { sink, withheld: false };
-		if (!app.settings.get('secureFieldGuardEnabled'))
-			return { sink, withheld: false };
-		const focusedField = await probeFocusedField();
-		const decision = decideSecureFieldGuard({ focusedField, enabled: true });
+		const decision = decideSecureFieldGuard({
+			focusedField: foreground.focusedField,
+			enabled: app.settings.get('secureFieldGuardEnabled'),
+		});
 		return decision === 'withhold'
 			? { sink: ledgerSink, withheld: true }
 			: { sink, withheld: false };
@@ -212,6 +218,9 @@ async function deliverToSink(
 			sinkKind: effectiveSink.sink.kind,
 			pressedEnter,
 			withheld: effectiveSink.withheld,
+			// Null on a withhold: nothing was written, so naming an app the text
+			// went to would be a lie a later undo could act on.
+			deliveredToAppId: effectiveSink.withheld ? null : foreground.appId,
 		},
 		notice: { title, description: text, action: recordingsAction },
 	};

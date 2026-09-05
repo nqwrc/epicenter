@@ -7,11 +7,11 @@ import { goto } from '$app/navigation';
 import type { CaptureSurface } from '$lib/constants/audio';
 import { whisperingPath } from '$lib/constants/urls';
 import { logAnalyticsEvent } from '$lib/operations/analytics';
-import { probeFocusedField } from '$lib/operations/focused-field';
 import {
 	captureForegroundSnapshot,
 	type ForegroundSnapshot,
 } from '$lib/operations/foreground-context';
+import { probeFocusedField } from '$lib/operations/foreground-probe';
 import { recordingMedia } from '$lib/operations/media';
 import { processRecordingPipeline } from '$lib/operations/pipeline';
 import { decideSecureFieldGuard } from '$lib/operations/secure-field-guard';

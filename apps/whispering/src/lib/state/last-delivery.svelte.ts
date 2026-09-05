@@ -17,6 +17,12 @@ type Held = {
 	sinkKind: SinkKind;
 	reach: DeliveryReach;
 	pressedEnter: boolean;
+	/**
+	 * The app that held focus when the text was written. Held so "scratch that"
+	 * can compare it against the app in front when the undo actually runs: the
+	 * backspaces go wherever focus is then, not where the text went.
+	 */
+	appId: string | null;
 };
 
 let held: Held | null = null;
@@ -60,14 +66,14 @@ export const lastDelivery = {
 
 	/**
 	 * Take the held delivery, clearing it either way. Returns the number of
-	 * backspaces that would undo it, or null when nothing is held or what is
-	 * held never reached the cursor.
+	 * backspaces that would undo it and the app it was written into, or null
+	 * when nothing is held or what is held never reached the cursor.
 	 */
-	take(): { graphemes: number } | null {
+	take(): { graphemes: number; appId: string | null } | null {
 		const record = held;
 		held = null;
 		if (record === null || !isUndoable(record)) return null;
-		return { graphemes: countGraphemes(record.text) };
+		return { graphemes: countGraphemes(record.text), appId: record.appId };
 	},
 
 	/**

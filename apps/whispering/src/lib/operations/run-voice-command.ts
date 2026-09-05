@@ -5,11 +5,13 @@
  * See `specs/20260829T120000-command-mode.md`.
  */
 import { createLogger } from 'wellcrafted/logger';
+import { probeForegroundContext } from '$lib/operations/foreground-probe';
 import type { VoiceCommandId } from '$lib/operations/match-command';
 import {
 	isVadRecordingActive,
 	stopVadRecording,
 } from '$lib/operations/recording';
+import { decideUndoTarget } from '$lib/operations/undo-target';
 import { report } from '$lib/report';
 import { services } from '$lib/services';
 import { lastDelivery } from '$lib/state/last-delivery.svelte';
@@ -84,6 +86,34 @@ async function scratchThat(): Promise<void> {
 			title: 'That dictation is too long to undo',
 			description:
 				'Undo is capped at 2000 characters, so nothing was removed. Select the text and delete it instead.',
+		});
+		return;
+	}
+
+	// The backspaces go wherever focus is right now, not where the text went, so
+	// the window has to be the same one. Checked after `take()` on purpose: the
+	// record is consumed either way, because a person who dictated in one app and
+	// then moved has ended that undo, and holding it would let the next "scratch
+	// that" fire it at a third window. Fail-closed, unlike the secure-field guard,
+	// because a wrong refusal costs a sentence of copy and a wrong allow costs
+	// text the person already had (`undo-target.ts`).
+	const target = decideUndoTarget({
+		deliveredTo: undo.appId,
+		focusedNow: (await probeForegroundContext()).appId,
+	});
+	if (target === 'moved') {
+		report.info({
+			title: 'That dictation is in another window',
+			description:
+				'Undo only removes text from the app it was dictated into. Switch back to it, or select the text and delete it.',
+		});
+		return;
+	}
+	if (target === 'unknown') {
+		report.info({
+			title: "Couldn't tell which window to undo in",
+			description:
+				'Whispering could not confirm the app the last dictation went to, so it sent no backspaces. Select the text and delete it instead.',
 		});
 		return;
 	}

@@ -31,4 +31,11 @@ export type DeliveryOutcome = {
 	 * announced to the user is not the accidental stranding ADR-0040 abolished.
 	 */
 	withheld: boolean;
+	/**
+	 * The app that held focus when the text was written, from the probe delivery
+	 * already takes for the secure-field guard. Null when the platform, the
+	 * grant, or the probe could not say. "Scratch that" holds onto it so it can
+	 * refuse rather than backspace into a window the dictation never reached.
+	 */
+	deliveredToAppId: string | null;
 };

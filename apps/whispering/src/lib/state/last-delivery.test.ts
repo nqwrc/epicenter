@@ -9,8 +9,9 @@ test('a clean cursor paste is undoable, counted in graphemes', () => {
 		sinkKind: 'cursor',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
-	expect(lastDelivery.take()).toEqual({ graphemes: 5 });
+	expect(lastDelivery.take()).toEqual({ graphemes: 5, appId: 'Code.exe' });
 });
 
 test('an emoji and a combining mark each count as one backspace', () => {
@@ -21,8 +22,9 @@ test('an emoji and a combining mark each count as one backspace', () => {
 		sinkKind: 'cursor',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
-	expect(lastDelivery.take()).toEqual({ graphemes: 1 });
+	expect(lastDelivery.take()).toEqual({ graphemes: 1, appId: 'Code.exe' });
 
 	// Written as e + U+0301 on purpose: a combining mark, not the single
 	// precomposed character, or the test proves nothing.
@@ -31,8 +33,9 @@ test('an emoji and a combining mark each count as one backspace', () => {
 		sinkKind: 'cursor',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
-	expect(lastDelivery.take()).toEqual({ graphemes: 1 });
+	expect(lastDelivery.take()).toEqual({ graphemes: 1, appId: 'Code.exe' });
 });
 
 test('nothing that skipped the keyboard is undoable', () => {
@@ -41,6 +44,7 @@ test('nothing that skipped the keyboard is undoable', () => {
 		sinkKind: 'clipboard',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
 	expect(lastDelivery.take()).toBeNull();
 
@@ -49,6 +53,7 @@ test('nothing that skipped the keyboard is undoable', () => {
 		sinkKind: 'ledger',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
 	expect(lastDelivery.take()).toBeNull();
 
@@ -58,6 +63,7 @@ test('nothing that skipped the keyboard is undoable', () => {
 		sinkKind: 'cursor',
 		reach: 'clipboard',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
 	expect(lastDelivery.take()).toBeNull();
 });
@@ -68,8 +74,9 @@ test('the record is consumed once', () => {
 		sinkKind: 'cursor',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
-	expect(lastDelivery.take()).toEqual({ graphemes: 5 });
+	expect(lastDelivery.take()).toEqual({ graphemes: 5, appId: 'Code.exe' });
 	expect(lastDelivery.take()).toBeNull();
 });
 
@@ -85,6 +92,7 @@ test('an Enter keystroke after the paste makes it unreachable', () => {
 		sinkKind: 'cursor',
 		reach: 'output',
 		pressedEnter: true,
+		appId: 'Code.exe',
 	});
 	expect(lastDelivery.take()).toBeNull();
 });
@@ -95,6 +103,7 @@ test('the non-undoable path clears the record too', () => {
 		sinkKind: 'clipboard',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
 	expect(lastDelivery.take()).toBeNull();
 	// Nothing recorded in between, so a still-held record would show up here.
@@ -109,11 +118,12 @@ test('canUndo peeks without consuming the record', () => {
 		sinkKind: 'cursor',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
 	// Asking twice must not itself be the thing that clears the record.
 	expect(lastDelivery.canUndo()).toBe(true);
 	expect(lastDelivery.canUndo()).toBe(true);
-	expect(lastDelivery.take()).toEqual({ graphemes: 5 });
+	expect(lastDelivery.take()).toEqual({ graphemes: 5, appId: 'Code.exe' });
 	expect(lastDelivery.canUndo()).toBe(false);
 });
 
@@ -125,7 +135,27 @@ test('an empty transcript is not undoable', () => {
 		sinkKind: 'cursor',
 		reach: 'output',
 		pressedEnter: false,
+		appId: 'Code.exe',
 	});
 	expect(lastDelivery.canUndo()).toBe(false);
 	expect(lastDelivery.take()).toBeNull();
+});
+
+/**
+ * The app the delivery was written into rides along, so "scratch that" can
+ * refuse when focus has moved somewhere else by the time the undo runs.
+ * Whether it may run is decided in `operations/undo-target.test.ts`; here the
+ * id only has to survive the round trip, because a record that drops it makes
+ * every undo unidentifiable and therefore refused.
+ */
+test('the app the text was written into rides along with the count', () => {
+	lastDelivery.record({
+		text: 'hello',
+		sinkKind: 'cursor',
+		reach: 'output',
+		pressedEnter: false,
+		appId: 'slack.exe',
+	});
+
+	expect(lastDelivery.take()).toEqual({ graphemes: 5, appId: 'slack.exe' });
 });
