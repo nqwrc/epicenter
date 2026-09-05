@@ -142,7 +142,11 @@ const APPLICATION_DEFAULTS: Partial<WhisperingSettingValues> = {
 	commandModeEnabled: true,
 	secureFieldGuardEnabled: true,
 	secureFieldCaptureGateEnabled: false,
-	analyticsEnabled: true,
+	// Off until someone asks for it. There is no first-run screen, so shipping
+	// this on means the first event fires before any consent moment exists, and
+	// a local-first app that phones home by default has given away the one claim
+	// it is built on. The Analytics card on the account page is the opt-in.
+	analyticsEnabled: false,
 	shortcutPushToTalkModifiers: null,
 	shortcutPushToTalkKeys: null,
 	shortcutToggleManualRecordingModifiers: null,

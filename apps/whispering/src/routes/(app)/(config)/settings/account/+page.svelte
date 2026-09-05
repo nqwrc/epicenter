@@ -428,9 +428,9 @@
 		<Field.Set id="analytics" class="scroll-mt-20">
 			<Field.Legend variant="label">Analytics</Field.Legend>
 			<Field.Description>
-				Help us understand which features are used most. Whispering logs
-				anonymized events, and the switch is the whole of it: off means nothing
-				is sent.
+				Off unless you turn it on. With it on, Whispering logs anonymized
+				events so we can see which features are used most, and the switch is
+				the whole of it: off means nothing is sent.
 			</Field.Description>
 			<Field.Group>
 				<SettingSwitch
