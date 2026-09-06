@@ -13,6 +13,16 @@ import type { Recipe } from '$lib/workspace';
  * Its two siblings, `recordings.svelte.ts` and `settings.svelte.ts`, are the
  * same shape and go the same way once their domains are ported.
  */
+/**
+ * A blank recipe for the editor. Trusted on the way out: the person is about to
+ * type the instructions themselves, which is the whole of what trust means here.
+ */
 export function generateDefaultRecipe(): Recipe {
-	return { id: nanoid(), name: '', instructions: '', icon: null };
+	return {
+		id: nanoid(),
+		name: '',
+		instructions: '',
+		icon: null,
+		trusted: true,
+	};
 }

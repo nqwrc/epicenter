@@ -8,6 +8,17 @@
  * work rather than configuration and replacing it would delete rows nobody
  * asked to lose.
  *
+ * A bundle is a file, and the person importing it is not necessarily the person
+ * who wrote it. Two of the four categories carry directives rather than data: a
+ * recipe's `instructions` and an app rule's `polishInstructions` both reach the
+ * slot that tells the model what to do, and an app rule reaches it automatically,
+ * over every dictation into a matched app, pasting the result at the cursor. So
+ * neither arrives with the standing the person's own writing has. Recipes are
+ * created untrusted, which demotes their text out of the directive slot
+ * (`build-system-prompt.ts`), and app rules are created disabled, so no imported
+ * directive runs until a person turns that rule on having seen it. Snippets need
+ * neither: a snippet is literal replacement text and reaches no model.
+ *
  * See `specs/20260830T130918-settings-import-export.md`.
  */
 import { nanoid } from 'nanoid/non-secure';
@@ -156,7 +167,15 @@ export function applySettingsBundle(
 				app.recipes.all.map((row) => row.name),
 			);
 			for (const { name, instructions, icon } of toCreate) {
-				app.recipes.set({ id: nanoid(), name, instructions, icon });
+				// Untrusted is written here rather than read from the file: a bundle
+				// that could certify its own recipes would be certifying itself.
+				app.recipes.set({
+					id: nanoid(),
+					name,
+					instructions,
+					icon,
+					trusted: false,
+				});
 			}
 			summary.recipes = {
 				created: toCreate.length,
@@ -174,7 +193,10 @@ export function applySettingsBundle(
 				app.appRules.all,
 			);
 			for (const rule of toCreate) {
-				app.appRules.set({ id: nanoid(), ...rule });
+				// Disabled regardless of what the file says. This is the structural
+				// half of the guarantee above: an imported rule owns the automatic
+				// path once it is on, so turning it on stays a person's act.
+				app.appRules.set({ id: nanoid(), ...rule, enabled: false });
 			}
 			summary.appRules = {
 				created: toCreate.length,

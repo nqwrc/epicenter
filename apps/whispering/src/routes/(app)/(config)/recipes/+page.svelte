@@ -7,6 +7,7 @@
 	import { Label } from '@epicenter/ui/label';
 	import * as Modal from '@epicenter/ui/modal';
 	import * as SectionHeader from '@epicenter/ui/section-header';
+	import { Switch } from '@epicenter/ui/switch';
 	import { Textarea } from '@epicenter/ui/textarea';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -103,6 +104,8 @@
 							<span class="font-medium">{recipe.name}</span>
 							{#if builtin}
 								<Badge variant="secondary">Built-in</Badge>
+							{:else if !recipe.trusted}
+								<Badge variant="outline">From a file</Badge>
 							{/if}
 						</div>
 						<p class="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
@@ -176,6 +179,28 @@
 					bind:value={working.instructions}
 				/>
 			</div>
+			<!--
+				The promotion gesture for a recipe that arrived in a settings bundle.
+				It sits directly under the instruction because reading the instruction
+				is the whole of what is being asked: the switch means "these are my
+				words now", and nothing else in the app grants that.
+			-->
+			{#if isEditing && !working.trusted}
+				<div class="rounded-md border border-dashed p-3">
+					<p class="text-sm font-medium">This recipe came from a file</p>
+					<p class="text-muted-foreground mt-1 text-sm">
+						Its instruction runs as a description of the change to make, not as
+						something the AI takes orders from, and it cannot introduce a link
+						or an address your own text does not already contain.
+					</p>
+					<div class="mt-3 flex items-center gap-2">
+						<Switch id="recipe-trusted" bind:checked={working.trusted} />
+						<Label for="recipe-trusted" class="text-sm font-normal">
+							I have read this instruction and want it to run as my own
+						</Label>
+					</div>
+				</div>
+			{/if}
 		</div>
 		<Modal.Footer>
 			<Button variant="outline" onclick={() => (editorOpen = false)}>Cancel</Button>

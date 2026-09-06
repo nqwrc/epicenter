@@ -8,6 +8,10 @@
  * refuses duplicates on: two rules matching the same app would race on row
  * id, so an incoming rule whose exe or bundle id is already claimed is
  * skipped rather than created.
+ *
+ * `enabled` is validated but not honored: `applySettingsBundle` creates every
+ * imported rule disabled. The field stays in the check because a file that
+ * omits it is malformed, and because the export writes it.
  */
 import { Err, Ok, type Result } from 'wellcrafted/result';
 import type { AppRule } from '../workspace';

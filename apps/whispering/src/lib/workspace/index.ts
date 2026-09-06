@@ -76,6 +76,23 @@ const recipesTable = {
 	name: field.string(),
 	instructions: field.string(),
 	icon: field.nullable(field.string()),
+	/**
+	 * Whether these instructions may speak with the application's authority.
+	 *
+	 * A recipe's instructions are a directive, not content: they occupy the slot
+	 * in `buildRecipeSystemPrompt` that decides what the model does with the
+	 * text, and a per-app rule can auto-run one over every dictation and paste
+	 * the result at the cursor. That is the person's own authority when the
+	 * person wrote them, and somebody else's when the row came out of a settings
+	 * bundle, which is a file whose author need not be the person importing it.
+	 * So where the directive came from is stored with the directive: `false`
+	 * demotes it into a delimited block the fixed rules outrank.
+	 *
+	 * It rides the row rather than a device setting because recipes travel
+	 * (ADR-0233). A trust list kept per device would demote, on the second
+	 * machine, a recipe the person wrote on the first.
+	 */
+	trusted: field.boolean(),
 } as const;
 
 const snippetsTable = {

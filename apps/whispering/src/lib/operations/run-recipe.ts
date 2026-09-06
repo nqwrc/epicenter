@@ -26,6 +26,10 @@ export type RunRecipeError = InferErrors<typeof RunRecipeError>;
  * per-Recipe model. Polish has already run upstream, so `input` is the polished
  * text and this never re-does correction.
  *
+ * A recipe the person did not write commands nothing: `recipe.trusted` picks
+ * the demoted scaffold, where the instructions are content in their own block
+ * rather than the directive. Nothing else about the run changes.
+ *
  * The system prompt is a fixed scaffold wrapping `recipe.instructions`, plus the
  * Dictionary block (via `buildRecipeSystemPrompt`, with `dictionary` read at use
  * per ADR 0012), and `input` goes out inside the boundary that scaffold names.
@@ -71,6 +75,7 @@ export async function runRecipe(
 		systemPrompt: buildRecipeSystemPrompt(
 			recipe.instructions,
 			app.settings.get('dictionary'),
+			{ trusted: recipe.trusted },
 		),
 		userPrompt: wrapRecipeInput(input),
 		signal,
