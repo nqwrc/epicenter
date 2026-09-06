@@ -90,7 +90,7 @@ test('a row nonconforming for some other reason is left exactly as it is', () =>
 					// stamping it would be inventing a fact.
 					raw: { name: 42, instructions: 'x', icon: null, trusted: false },
 					conforming: { instructions: 'x', icon: null, trusted: false },
-					issues: [],
+					issues: [{ field: 'name', message: 'expected a string' }],
 				},
 			],
 		}),

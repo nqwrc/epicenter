@@ -19,6 +19,13 @@
  * directive runs until a person turns that rule on having seen it. Snippets need
  * neither: a snippet is literal replacement text and reaches no model.
  *
+ * The asymmetry is chosen. A rule has no `trusted` column and its
+ * `polishInstructions` command the pass in full once it is on, because turning
+ * a rule on is already the review: the editor shows the directive, and nothing
+ * runs until someone reads it and flips the switch. A recipe has no equivalent
+ * gesture, since it can be reached from the picker or named by a rule, which is
+ * why the column lives there instead.
+ *
  * See `specs/20260830T130918-settings-import-export.md`.
  */
 import { nanoid } from 'nanoid/non-secure';
