@@ -129,6 +129,18 @@ const appRulesTable = {
 	 */
 	recipeId: field.nullable(field.string()),
 	enabled: field.boolean(),
+	/**
+	 * Whether `polishInstructions` may command the pass, on the recipes table's
+	 * terms and for the same reason: a rule minted by a settings bundle carries
+	 * a directive the person did not write, and this rule's directive replaces
+	 * the global one over every dictation into the app it matches.
+	 *
+	 * `enabled` is a different question. Off means the rule does not run at all,
+	 * which is where an imported rule starts; `trusted` decides what its
+	 * directive is allowed to be once it does. Turning a rule on is not the same
+	 * act as vouching for the words inside it.
+	 */
+	trusted: field.boolean(),
 } as const;
 
 /**

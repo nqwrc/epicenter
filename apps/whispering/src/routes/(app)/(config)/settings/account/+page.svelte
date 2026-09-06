@@ -384,9 +384,10 @@
 			<Field.Description>
 				Checked preferences replace your current values. Snippets and Recipes
 				are added alongside what you already have, never overwriting a trigger
-				or a name you are using. A file is not you: imported recipes run as
-				descriptions rather than instructions until you read one and say
-				otherwise, and imported app rules arrive switched off.
+				or a name you are using. A file is not you: imported recipes and app
+				rules run as descriptions rather than instructions until you read one
+				and say otherwise, and imported app rules arrive switched off on top
+				of that.
 			</Field.Description>
 			<Field.Group>
 				<input

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '@epicenter/ui/badge';
 	import { Button } from '@epicenter/ui/button';
 	import { Card } from '@epicenter/ui/card';
 	import { confirmationDialog } from '@epicenter/ui/confirmation-dialog';
@@ -219,6 +220,9 @@
 							<span class="font-medium" class:opacity-50={!rule.enabled}>
 								{rule.name}
 							</span>
+							{#if !rule.trusted}
+								<Badge variant="outline" class="ml-2">From a file</Badge>
+							{/if}
 							<p class="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
 								{describeMatch(rule)}
 								{#if !rule.enabled}
@@ -372,6 +376,28 @@
 					so delivery takes a little longer.
 				</p>
 			</div>
+			<!--
+				The promotion gesture for a rule that arrived in a settings bundle,
+				directly under the directive it is about. Separate from Enabled on
+				purpose: running the rule and vouching for its words are two
+				different answers, and a bundle grants neither.
+			-->
+			{#if isEditing && !working.trusted}
+				<div class="rounded-md border border-dashed p-3">
+					<p class="text-sm font-medium">This rule came from a file</p>
+					<p class="text-muted-foreground mt-1 text-sm">
+						Its Polish directive runs as a description of how the text should
+						read, not as something the AI takes orders from, and it cannot
+						introduce a link or an address you did not dictate.
+					</p>
+					<div class="mt-3 flex items-center gap-2">
+						<Switch id="rule-trusted" bind:checked={working.trusted} />
+						<Label for="rule-trusted" class="text-sm font-normal">
+							I have read this directive and want it to run as my own
+						</Label>
+					</div>
+				</div>
+			{/if}
 			<div class="flex items-center justify-between">
 				<Label for="rule-enabled">Enabled</Label>
 				<Switch id="rule-enabled" bind:checked={working.enabled} />

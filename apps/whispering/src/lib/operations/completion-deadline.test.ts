@@ -47,12 +47,18 @@ mock.module('@epicenter/client', () => ({
 	},
 }));
 mock.module('#platform/http', () => ({ customFetch: mock() }));
+// Two test files fake this module and `mock.module` is process-global, with
+// the first registration winning, so this fake carries what every importer
+// needs rather than only what this file reads. `run-polish.ts` imports
+// `describePolishDestination` at module scope; omitting it here fails that
+// file's import with a SyntaxError that names neither test.
 mock.module('$lib/operations/completion-target', () => ({
 	resolveCompletionStateFromConfig: () => ({
 		target: { baseUrl: 'https://example.invalid', apiKey: 'k' },
 		canRun: true,
 		textStaysOnDevice: false,
 	}),
+	describePolishDestination: () => '',
 }));
 mock.module('$lib/state/device-config.svelte', () => ({
 	deviceConfig: { get: () => ({}) },

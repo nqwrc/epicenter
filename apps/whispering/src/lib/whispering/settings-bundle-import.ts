@@ -13,18 +13,17 @@
  * recipe's `instructions` and an app rule's `polishInstructions` both reach the
  * slot that tells the model what to do, and an app rule reaches it automatically,
  * over every dictation into a matched app, pasting the result at the cursor. So
- * neither arrives with the standing the person's own writing has. Recipes are
- * created untrusted, which demotes their text out of the directive slot
- * (`build-system-prompt.ts`), and app rules are created disabled, so no imported
- * directive runs until a person turns that rule on having seen it. Snippets need
- * neither: a snippet is literal replacement text and reaches no model.
+ * neither arrives with the standing the person's own writing has. Both are
+ * created untrusted, which demotes their text out of the directive slot into a
+ * delimited block the fixed rules outrank (`build-system-prompt.ts`). Snippets
+ * need nothing: a snippet is literal replacement text and reaches no model.
  *
- * The asymmetry is chosen. A rule has no `trusted` column and its
- * `polishInstructions` command the pass in full once it is on, because turning
- * a rule on is already the review: the editor shows the directive, and nothing
- * runs until someone reads it and flips the switch. A recipe has no equivalent
- * gesture, since it can be reached from the picker or named by a rule, which is
- * why the column lives there instead.
+ * App rules are created disabled on top of that, because they are the only ones
+ * that run without being asked: a matched rule reshapes every dictation into
+ * its app and pastes the result at the cursor. Two facts, not one. `enabled`
+ * decides whether the rule runs at all; `trusted` decides what its directive is
+ * allowed to be once it does. Turning a rule on is not the same act as vouching
+ * for the words inside it, so it does not grant the second.
  *
  * See `specs/20260830T130918-settings-import-export.md`.
  */
@@ -200,10 +199,16 @@ export function applySettingsBundle(
 				app.appRules.all,
 			);
 			for (const rule of toCreate) {
-				// Disabled regardless of what the file says. This is the structural
-				// half of the guarantee above: an imported rule owns the automatic
-				// path once it is on, so turning it on stays a person's act.
-				app.appRules.set({ id: nanoid(), ...rule, enabled: false });
+				// Both written here rather than read from the file, for the reason a
+				// self-certifying bundle would not be worth much: off, because an
+				// imported rule owns the automatic path once it is on, and untrusted,
+				// because its directive is somebody else's words either way.
+				app.appRules.set({
+					id: nanoid(),
+					...rule,
+					enabled: false,
+					trusted: false,
+				});
 			}
 			summary.appRules = {
 				created: toCreate.length,

@@ -33,6 +33,7 @@ function makeApp() {
 		polishInstructions: string | null;
 		recipeId: string | null;
 		enabled: boolean;
+		trusted: boolean;
 	}[] = [];
 
 	return {
@@ -246,13 +247,12 @@ test('an imported recipe is untrusted, and the file cannot say otherwise', () =>
 });
 
 /**
- * The structural half, and the one that does not depend on a model obeying a
- * scaffold. An app rule owns the automatic path: it replaces the Polish
- * directive over every dictation into a matched app and pastes the result at
- * the cursor. So an imported rule lands off, whatever the file says, and
- * turning it on stays a person's act.
+ * An app rule owns the automatic path: it replaces the Polish directive over
+ * every dictation into a matched app and pastes the result at the cursor. So an
+ * imported one lands off and untrusted, whatever the file says. Two facts:
+ * running it is one decision, and vouching for the words inside it is another.
  */
-test('an imported app rule arrives switched off', () => {
+test('an imported app rule arrives switched off and untrusted', () => {
 	const app = makeApp();
 	const file: SettingsBundleFile = {
 		version: 1,
@@ -277,6 +277,7 @@ test('an imported app rule arrives switched off', () => {
 	});
 
 	expect(app.appRules.all.map((row) => row.enabled)).toEqual([false]);
+	expect(app.appRules.all.map((row) => row.trusted)).toEqual([false]);
 });
 
 test('app rules import dedupes by identifier and validates shape', () => {
@@ -289,6 +290,7 @@ test('app rules import dedupes by identifier and validates shape', () => {
 		polishInstructions: null,
 		recipeId: null,
 		enabled: true,
+		trusted: true,
 	});
 	const file: SettingsBundleFile = {
 		version: 1,

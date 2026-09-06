@@ -274,7 +274,16 @@ async function runRecordingPipeline(
 	const { data: polishedText, error: polishError } = await runPolish(app, {
 		input: transcribedText,
 		signal,
-		instructions: appRule?.polishInstructions ?? undefined,
+		// The rule's directive and its standing travel together: a rule minted by
+		// a settings bundle is untrusted until the person vouches for it, and a
+		// demoted directive describes the style rather than commanding the pass.
+		override:
+			appRule?.polishInstructions != null
+				? {
+						instructions: appRule.polishInstructions,
+						trusted: appRule.trusted,
+					}
+				: undefined,
 	});
 	if (showPolishHud) polishHud.end();
 	// Polish is best-effort: a failed AI pass carries the raw transcript in

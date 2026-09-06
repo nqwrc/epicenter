@@ -9,6 +9,7 @@ const rule = (overrides: Partial<AppRule> & { id: string }): AppRule => ({
 	polishInstructions: null,
 	recipeId: null,
 	enabled: true,
+	trusted: true,
 	...overrides,
 });
 

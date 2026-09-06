@@ -10,13 +10,17 @@
  * skipped rather than created.
  *
  * `enabled` is validated but not honored: `applySettingsBundle` creates every
- * imported rule disabled. The field stays in the check because a file that
- * omits it is malformed, and because the export writes it.
+ * imported rule disabled, and untrusted with it. The field stays in the check
+ * because a file that omits it is malformed, and because the export writes it.
  */
 import { Err, Ok, type Result } from 'wellcrafted/result';
 import type { AppRule } from '../workspace';
 
-export type BundleAppRule = Omit<AppRule, 'id'>;
+/**
+ * The file cannot express `trusted`, and that is the point: standing is granted
+ * by the person importing, never claimed by the document being imported.
+ */
+export type BundleAppRule = Omit<AppRule, 'id' | 'trusted'>;
 
 export type AppRulesValidationError = { type: 'NotAnArray' };
 
