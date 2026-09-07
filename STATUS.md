@@ -12,7 +12,7 @@ stale-after-days: 30
 | upstream-prs-by-nqwrc | 1 | 0 | 2026-09-07 |
 
 ## focus
-- Fork of EpicenterHQ/epicenter (remote `origin`; the org renamed from `epicenter-md`, and while GitHub redirects the clone URL, the search API rejects the old name - `git remote set-url origin https://github.com/EpicenterHQ/epicenter.git` is still to be run here). Work on `feature/whispering-snippets` pushed to `fork` (nqwrc/epicenter): Windows dictation finishes a round trip, then the recording pill, snippets, voice commands and settings become portable; imported recipes and app rules are treated as content, not directives, and Polish drops the words the speaker did not mean to say.
+- Fork of EpicenterHQ/epicenter (remote `origin`, pointed at the current URL on 2026-09-08: the org renamed from `epicenter-md`, and GitHub redirects the clone URL but the search API rejects the old name). Work on `feature/whispering-snippets` pushed to `fork` (nqwrc/epicenter): Windows dictation finishes a round trip, then the recording pill, snippets, voice commands and settings become portable; imported recipes and app rules are treated as content, not directives, and Polish drops the words the speaker did not mean to say.
 - The upstream repo keeps its own AGENTS.md/CLAUDE.md (Codex owns execution, Claude is an advisory lane): this file is the harness kit only and stays out of any upstream PR.
 
 ## next
