@@ -18,7 +18,7 @@ stale-after-days: 30
 ## next
 - Decide whether the branch goes upstream as one PR or is split (platform fixes first, then pill, snippets, commands, settings); rebase on origin/main before either.
 - `transcriptionPrompt` defaults to empty (app.ts:138) and is the only disfluency lever that works with Polish off, which is the fresh-install state. A clean-prose default biases the first pass; it is provider-dependent and interacts with the dictionary matcher ADR-0099 defers, so it needs measuring before it is changed.
-- Untracked .sentry-native/ and a modified .claude/settings.local.json sit in the working tree: gitignore the first, keep the second local.
+- .claude/settings.local.json is tracked upstream but holds machine-local auto-mode config this session generated, so it stays modified and uncommitted on purpose. Decide between a local skip-worktree flag and asking upstream to untrack it; .sentry-native/ is now gitignored.
 
 ## blockers
 - none
