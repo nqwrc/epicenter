@@ -82,6 +82,30 @@ describe('buildPolishSystemPrompt', () => {
 		const result = buildPolishSystemPrompt(DEFAULT, [], TRUSTED);
 		expect(result).not.toContain('<known_terms>');
 	});
+
+	/**
+	 * The two removals, and the reason they live in the scaffold rather than in
+	 * the directive: "Fix grammar and punctuation" implies neither one to a
+	 * model, and a person who retypes the directive should not lose them.
+	 *
+	 * They are also the only removals, which is the line that keeps them from
+	 * fighting the preservation rule directly above: dropping "um" is removing a
+	 * word, and without the exception the two rules contradict each other.
+	 */
+	test('drops disfluencies and false starts, and says those are the only removals', () => {
+		const result = buildPolishSystemPrompt(DEFAULT, [], TRUSTED);
+
+		expect(result).toContain(
+			'The two rules below are the only text you ever remove.',
+		);
+		expect(result).toContain('hesitation sounds, filler words');
+		expect(result).toContain('stumbled over or repeated by accident');
+		expect(result).toContain('keep only the corrected version');
+		// Not English-only: the transcript language is whatever was spoken.
+		expect(result).toContain('in whatever language the transcript is in');
+		// A "like" that means something is not filler.
+		expect(result).toContain('even when that same word is often filler');
+	});
 });
 
 /**
@@ -109,6 +133,20 @@ describe('buildPolishSystemPrompt, untrusted', () => {
 		expect(result).toContain('Do not summarize, paraphrase, add ideas');
 		expect(result).toContain('keep only the corrected version');
 		expect(result).toContain('Return only the corrected text.');
+	});
+
+	/**
+	 * The two scaffolds are one behavior with two framings, so a rule added to
+	 * the trusted one and forgotten in the demoted one would make an imported
+	 * rule quietly clean less than the person's own does.
+	 */
+	test('drops disfluencies too, so demotion changes standing and not behavior', () => {
+		const result = buildPolishSystemPrompt(IMPORTED, [], UNTRUSTED);
+
+		expect(result).toContain('hesitation sounds, filler words');
+		expect(result).toContain(
+			'The two rules below are the only text you ever remove.',
+		);
 	});
 
 	test('closes the destination route', () => {
@@ -193,6 +231,10 @@ the dictated text
 
 		expect(result).not.toContain('Do not summarize, paraphrase, add ideas');
 		expect(result).not.toContain("Preserve the speaker's meaning");
+		// Nor the disfluency rule: a Recipe's input is a clipboard paste or a
+		// selection, which is not speech, and on the dictation path Polish has
+		// already dropped them upstream.
+		expect(result).not.toContain('hesitation sounds, filler words');
 	});
 
 	test('appends the Dictionary block after the scaffold', () => {

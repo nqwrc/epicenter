@@ -110,8 +110,9 @@
 		<Field.Set>
 			<Field.Legend variant="label">Polish</Field.Legend>
 			<Field.Description>
-				An always-on AI pass that fixes grammar and punctuation while keeping
-				your wording.
+				An always-on AI pass that fixes grammar and punctuation, drops the
+				"um"s and the words you stumbled over, and keeps only the corrected
+				half when you say something twice. Your wording otherwise stays yours.
 			</Field.Description>
 			<Field.Group>
 				<SettingSwitch
