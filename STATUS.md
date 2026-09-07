@@ -12,13 +12,13 @@ stale-after-days: 30
 | upstream-prs-by-nqwrc | 1 | 0 | 2026-09-07 |
 
 ## focus
-- Fork of epicenter-md/epicenter (remote `origin`), work on `feature/whispering-snippets` pushed to `fork` (nqwrc/epicenter): Windows dictation finishes a round trip, then the recording pill, snippets, voice commands and settings become portable; imported recipes and app rules are treated as content, not directives, and Polish drops the words the speaker did not mean to say.
+- Fork of EpicenterHQ/epicenter (remote `origin`; the org renamed from `epicenter-md`, and while GitHub redirects the clone URL, the search API rejects the old name - `git remote set-url origin https://github.com/EpicenterHQ/epicenter.git` is still to be run here). Work on `feature/whispering-snippets` pushed to `fork` (nqwrc/epicenter): Windows dictation finishes a round trip, then the recording pill, snippets, voice commands and settings become portable; imported recipes and app rules are treated as content, not directives, and Polish drops the words the speaker did not mean to say.
 - The upstream repo keeps its own AGENTS.md/CLAUDE.md (Codex owns execution, Claude is an advisory lane): this file is the harness kit only and stays out of any upstream PR.
 
 ## next
 - Decide whether the branch goes upstream as one PR or is split (platform fixes first, then pill, snippets, commands, settings); rebase on origin/main before either.
 - `transcriptionPrompt` defaults to empty (app.ts:138) and is the only disfluency lever that works with Polish off, which is the fresh-install state. A clean-prose default biases the first pass; it is provider-dependent and interacts with the dictionary matcher ADR-0099 defers, so it needs measuring before it is changed.
-- .claude/settings.local.json is tracked upstream but holds machine-local auto-mode config this session generated, so it stays modified and uncommitted on purpose. Decide between a local skip-worktree flag and asking upstream to untrack it; .sentry-native/ is now gitignored.
+- .claude/settings.local.json is tracked upstream but holds machine-local auto-mode config, so it carries a local skip-worktree flag: the tree reads clean and the flag shows up in `git ls-files -v` if a rebase ever trips on it. Asking upstream to untrack it is still the durable fix; .sentry-native/ is gitignored.
 
 ## blockers
 - none
