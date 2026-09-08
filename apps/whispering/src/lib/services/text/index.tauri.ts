@@ -39,4 +39,10 @@ export const TextServiceLive = {
 		if (error !== null) return TextError.SimulateKeystroke({ cause: error });
 		return Ok(undefined);
 	},
+
+	simulateBackspaces: async (count) => {
+		const { error } = await commands.simulateBackspaces(count);
+		if (error !== null) return TextError.SimulateKeystroke({ cause: error });
+		return Ok(undefined);
+	},
 } satisfies TextService;

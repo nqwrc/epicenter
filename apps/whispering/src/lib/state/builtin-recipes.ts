@@ -11,6 +11,9 @@ import type { Recipe } from '../workspace';
  * out. Built-in ids carry the `builtin:` prefix so they never collide with a
  * user recipe's generated id, and so the library can show them read-only (a user
  * edits a copy, not the shipped original). See ADR-0099.
+ *
+ * All four are `trusted`: they ship in this file, so their directives are the
+ * application's own words rather than a file somebody handed the person.
  */
 export const BUILTIN_RECIPES: Recipe[] = [
 	{
@@ -19,6 +22,7 @@ export const BUILTIN_RECIPES: Recipe[] = [
 		instructions:
 			'Rewrite the text as a clear, friendly email. Keep the meaning and every concrete detail; fix the tone, flow, and structure. Do not invent a greeting or sign-off unless the text implies one.',
 		icon: '✉️',
+		trusted: true,
 	},
 	{
 		id: 'builtin:reply',
@@ -26,6 +30,7 @@ export const BUILTIN_RECIPES: Recipe[] = [
 		instructions:
 			'Write a concise, natural reply to the message. Match its tone, answer what it asks, and keep it short.',
 		icon: '↩️',
+		trusted: true,
 	},
 	{
 		id: 'builtin:notes',
@@ -33,6 +38,7 @@ export const BUILTIN_RECIPES: Recipe[] = [
 		instructions:
 			"Turn the text into concise bullet-point notes. One idea per bullet, in the speaker's own words, no preamble.",
 		icon: '📝',
+		trusted: true,
 	},
 	{
 		id: 'builtin:todos',
@@ -40,6 +46,7 @@ export const BUILTIN_RECIPES: Recipe[] = [
 		instructions:
 			'Extract the action items as a checklist. One to-do per line, each starting with a verb. Drop anything that is not an action.',
 		icon: '✅',
+		trusted: true,
 	},
 ];
 

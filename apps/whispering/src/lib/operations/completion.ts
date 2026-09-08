@@ -58,16 +58,96 @@ export function completeWithGlobalDefault(
 			}),
 		);
 	}
-	return complete(
-		resolveConnection(
+	return completeWithDeadline(app, {
+		connection: resolveConnection(
 			{ baseUrl: target.baseUrl, apiKey: target.apiKey },
 			customFetch,
 		),
-		{
+		systemPrompt,
+		userPrompt,
+		signal,
+	});
+}
+
+/**
+ * How long one completion may take before the caller stops waiting for it.
+ *
+ * Both AI passes are non-streaming awaits behind the pill's "Flowing…" HUD, and
+ * a per-app rule with a recipe runs two of them, so an unbounded call is an
+ * unbounded wait with the transcript held hostage behind it. Since pipeline
+ * runs are serialized, it would also hold every later utterance.
+ *
+ * Generous on purpose: this is a ceiling for a call that is never coming back,
+ * not a latency budget. A polish pass over even a long dictation answers in
+ * seconds.
+ */
+export const COMPLETION_TIMEOUT_MS = 30_000;
+
+/**
+ * The failure a caller sees when the deadline expires.
+ *
+ * Split out so the copy can be asserted without waiting the deadline out, the
+ * same division `decideSecureFieldGuard` makes: the decision is pure and
+ * tested, the timing stays in the impure caller.
+ *
+ * Owning the copy matters. Surfacing whatever an aborted fetch rejected with
+ * reads as a transport error and names no duration, so the person is told
+ * something failed but not that waiting longer would not have helped.
+ */
+export function completionTimedOut(): Result<string, CompleteError> {
+	return CompleteError.TransportFailed({
+		cause: new Error(
+			`The AI provider did not answer within ${COMPLETION_TIMEOUT_MS / 1000} seconds.`,
+		),
+	});
+}
+
+/**
+ * Run the completion with a deadline, mapping an expiry to a failure the
+ * caller can degrade from.
+ *
+ * The distinction between the two aborts is the whole point. A person hitting
+ * "ship raw" is a clean outcome and `runPolish` returns the raw transcript with
+ * no notice, keyed on the *caller's* signal. The deadline aborts a private
+ * controller instead, so the caller's signal stays unaborted and the same code
+ * path reports a skipped pass. Losing the polish is the right trade; losing the
+ * dictation, or silently pretending the user asked for raw text, is not.
+ */
+async function completeWithDeadline(
+	app: WhisperingApp,
+	{
+		connection,
+		systemPrompt,
+		userPrompt,
+		signal,
+	}: {
+		connection: Parameters<typeof complete>[0];
+		systemPrompt: string;
+		userPrompt: string;
+		signal?: AbortSignal;
+	},
+): Promise<Result<string, CompleteError>> {
+	const controller = new AbortController();
+	let expired = false;
+	const timer = setTimeout(() => {
+		expired = true;
+		controller.abort();
+	}, COMPLETION_TIMEOUT_MS);
+	const forwardAbort = () => controller.abort();
+	if (signal?.aborted) controller.abort();
+	else signal?.addEventListener('abort', forwardAbort, { once: true });
+
+	try {
+		const result = await complete(connection, {
 			model: app.settings.get('completionModel').trim(),
 			systemPrompt,
 			userPrompt,
-			signal,
-		},
-	);
+			signal: controller.signal,
+		});
+		if (expired) return completionTimedOut();
+		return result;
+	} finally {
+		clearTimeout(timer);
+		signal?.removeEventListener('abort', forwardAbort);
+	}
 }

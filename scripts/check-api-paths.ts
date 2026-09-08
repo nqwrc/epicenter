@@ -23,7 +23,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
 // Resolve the repo root so this runs from any cwd.
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -45,7 +45,8 @@ const HARDCODED_PATH =
 	/['"`]\/api\/(session|rooms|blobs|ai)([^a-z]|$)|['"`]\/auth\/oauth2\/[a-z]+/;
 
 // The next two regexes test the full `path:line:content` record, exactly as
-// the workflow's `grep -v` filters did.
+// the workflow's `grep -v` filters did. The record is built with forward
+// slashes on every platform (see below), so these stay POSIX.
 const ALLOWED_RECORD =
 	/packages\/constants\/src\/(api|oauth)-routes\.ts|apps\/epicenter\/src\/routes\.ts/;
 const COMMENT_RECORD = /^[^:]+:[0-9]+:[ \t\v\f\r]*(\*|\/\/|\/\*)/;
@@ -75,7 +76,14 @@ for (const scanRoot of SCAN_ROOTS) {
 		for (let i = 0; i < lines.length; i += 1) {
 			const line = lines[i] as string;
 			if (!HARDCODED_PATH.test(line)) continue;
-			const record = `${scanRoot}${path.slice(dir.length)}:${i + 1}:${line}`;
+			// Separators normalized before the record is built. `join` yields
+			// backslashes on Windows, and the allowlist below is a POSIX-path
+			// regex, so without this the two files that ARE the source of truth
+			// fail their own check on Windows and pass on Linux CI.
+			const relative = `${scanRoot}${path.slice(dir.length)}`
+				.split(sep)
+				.join('/');
+			const record = `${relative}:${i + 1}:${line}`;
 			if (ALLOWED_RECORD.test(record)) continue;
 			if (COMMENT_RECORD.test(record)) continue;
 			violations.push(record);

@@ -24,10 +24,18 @@ export function createTranscriptionQueries(
 				}) > 0
 			);
 		},
+		// Both retries take the generous deadline. A retry runs outside the
+		// pipeline's run queue, so a hung one holds nothing but its own row, and
+		// `transcribeRecordings` starts every clock at once while the on-device
+		// route serializes the work in Rust: the last of ten selected recordings
+		// waits for the other nine inside its own ceiling. A tight bound here
+		// would expire on work that was going to succeed.
 		transcribeRecording: defineMutation({
 			mutationKey: transcriptionKeys.isTranscribing,
 			mutationFn: (recording: Recording) =>
-				transcribeAndPersist(app, recording.id, recording.audioBlobId),
+				transcribeAndPersist(app, recording.id, recording.audioBlobId, {
+					deadline: 'batch',
+				}),
 		}),
 
 		transcribeRecordings: defineMutation({
@@ -35,7 +43,9 @@ export function createTranscriptionQueries(
 			mutationFn: async (recordings: Recording[]) => {
 				const results = await Promise.all(
 					recordings.map((recording) =>
-						transcribeAndPersist(app, recording.id, recording.audioBlobId),
+						transcribeAndPersist(app, recording.id, recording.audioBlobId, {
+							deadline: 'batch',
+						}),
 					),
 				);
 				return Ok(partitionResults(results));

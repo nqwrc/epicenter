@@ -35,7 +35,8 @@ export type DictationOutcome =
 	| { kind: 'none' }
 	| { kind: 'transcribing' }
 	| { kind: 'polishing' }
-	| { kind: 'delivered'; reach: DeliveryReach }
+	| { kind: 'delivered'; reach: DeliveryReach; wordCount?: number }
+	| { kind: 'withheld' }
 	| ({ kind: 'failed' } & DictationFailure);
 
 export type DictationLifecycle = {
@@ -83,17 +84,33 @@ export type DictationLifecycleError = InferErrors<
 // capture is idle.)
 const DELIVERED_FLASH_MS = 900;
 
+// How long a failure holds the pill before the outcome retires to `none`.
+// Longer than a delivery's glance, because a failure is unexpected and there is
+// no landed text to corroborate it, but still bounded: the floating HUD is
+// always on top, so an outcome that never retires leaves an empty capsule
+// covering whatever the user moved on to. The durable records are the
+// recordings row and the OS notification, neither of which this timer touches.
+const FAILED_FLASH_MS = 2000;
+
 function createDictationLifecycle() {
 	// The outcome track is the ephemeral signal directly: `none` when no utterance
 	// is in flight, otherwise the most-recent utterance's phase. Reset to `none`
 	// when a new dictation begins so a stale `failed` never lingers past the next
 	// attempt.
 	let outcome = $state.raw<DictationOutcome>({ kind: 'none' });
-	let deliveredTimer: ReturnType<typeof setTimeout> | undefined;
+	let retireTimer: ReturnType<typeof setTimeout> | undefined;
 
-	function clearDeliveredTimer() {
-		clearTimeout(deliveredTimer);
-		deliveredTimer = undefined;
+	function clearRetireTimer() {
+		clearTimeout(retireTimer);
+		retireTimer = undefined;
+	}
+
+	/** Retire `outcome` to `none` after `delay`, unless a newer outcome took over. */
+	function retireAfter(delay: number, kind: DictationOutcome['kind']) {
+		retireTimer = setTimeout(() => {
+			retireTimer = undefined;
+			if (outcome.kind === kind) outcome = { kind: 'none' };
+		}, delay);
 	}
 
 	// The live session, read straight off the recorder machines. The pill owner is
@@ -119,17 +136,22 @@ function createDictationLifecycle() {
 		},
 
 		/**
-		 * A new dictation is starting: clear any terminal outcome from the last one
-		 * so it does not linger into this attempt.
+		 * Retire the outcome track: no dictation is worth showing.
+		 *
+		 * Two callers mean the same thing by it. A new dictation is starting, so
+		 * the last one's terminal outcome must not linger into this attempt; or an
+		 * attempt produced no words at all, and a person who said nothing should
+		 * see nothing rather than a receipt for it (`operations/pipeline.ts`).
+		 * Only the outcome is cleared, never the live capture.
 		 */
 		reset(): void {
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'none' };
 		},
 
 		/** The recorder stopped (or a VAD utterance ended); now transcribing. */
 		markTranscribing(): void {
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'transcribing' };
 		},
 
@@ -141,7 +163,7 @@ function createDictationLifecycle() {
 		 * delivered.
 		 */
 		markPolishing(): void {
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'polishing' };
 		},
 
@@ -158,22 +180,45 @@ function createDictationLifecycle() {
 		 * is no notification for a reduced reach (ADR-0039): the persistent pill tag
 		 * and the recordings row are the surfaces, and a revoked Accessibility grant
 		 * already raises its own standing notice.
+		 *
+		 * `wordCount` is the delivered text's word count, optional so a caller that
+		 * has no text handy (tests, future callers) can omit it; the pill falls
+		 * back to a plain "Delivered" label when absent.
 		 */
-		markDelivered(reach: DeliveryReach): void {
-			clearDeliveredTimer();
-			outcome = { kind: 'delivered', reach };
+		markDelivered(reach: DeliveryReach, wordCount?: number): void {
+			clearRetireTimer();
+			outcome = { kind: 'delivered', reach, wordCount };
 			// Only the clean reach auto-retires; a reduced reach stays put.
 			if (reach !== 'output') return;
-			deliveredTimer = setTimeout(() => {
-				deliveredTimer = undefined;
-				// Only retire the flash if a newer outcome has not taken over.
-				if (outcome.kind === 'delivered') outcome = { kind: 'none' };
-			}, DELIVERED_FLASH_MS);
+			retireAfter(DELIVERED_FLASH_MS, 'delivered');
 		},
 
-		/** A dictation failed: hold the failed outcome until the next dictation
-		 * resets it. Transient, not a held state: the pill glances it (manual), the
-		 * notification path fires it, and the recordings row is the durable record. */
+		/**
+		 * The secure-field guard withheld delivery: a password field had focus at
+		 * paste time, so the transcript went only to history, with nothing at the
+		 * cursor and nothing on the clipboard. Persists until the next dictation,
+		 * like a reduced reach: no landed text corroborates this outcome, so the
+		 * pill tag is the only explanation the user gets.
+		 */
+		markWithheld(): void {
+			clearRetireTimer();
+			outcome = { kind: 'withheld' };
+		},
+
+		/** A dictation failed: glance the failure, then retire to `none`.
+		 *
+		 * Transient, not a held state: the pill glances it (manual), the
+		 * notification path fires it, and the recordings row is the durable record.
+		 * The retirement is here rather than in the pill component because the
+		 * desktop pill does not own its own visibility. It draws into an
+		 * always-on-top overlay window whose show/hide is driven by this outcome
+		 * projecting to `null`, so a component-local fade cleared the drawn content
+		 * and left an empty capsule floating over the user's screen until the next
+		 * dictation. Retiring at the source is the one place every surface agrees:
+		 * the window hides, the pill clears, and the web indicator does the same.
+		 *
+		 * The OS notification is unaffected, because it fires on the failure's error
+		 * identity rather than on the outcome persisting. */
 		markFailed(failure: DictationFailure): void {
 			// Log here rather than at each call site, because this is the funnel every
 			// failure already passes through, so a new failure path cannot be added
@@ -188,8 +233,9 @@ function createDictationLifecycle() {
 					cause: failure.error,
 				}),
 			);
-			clearDeliveredTimer();
+			clearRetireTimer();
 			outcome = { kind: 'failed', ...failure };
+			retireAfter(FAILED_FLASH_MS, 'failed');
 		},
 	};
 }

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-06-19
 - **Amends:** [ADR-0039](0039-dictation-feedback-is-a-projection-of-one-lifecycle-state.md) (collapses the delivery reach from three rungs to two)
+- **Amended by:** [ADR-0268](0268-a-detected-password-field-withholds-delivery-to-history.md) at its no-history-only rule: the secure-field guard's withhold is a deliberate, announced history-only ending, so the rule reads "never strand accidentally".
 
 ## Context
 

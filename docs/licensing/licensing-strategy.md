@@ -59,11 +59,10 @@ Scenario 4 (a hosted competitor) is the one where the license is most load-beari
 
 ### Tier 1: MIT
 
-**Applies to:** exactly ten packages, which is what `bun run check:licenses` reports. The embeddable toolkit libraries `packages/data`, `packages/workspace`, `packages/ui`, `packages/sqlite`, `packages/sync`, and `packages/agent`, plus the toolkit-internal packages they carry: `packages/field`, `packages/identity`, `packages/chat`, and `packages/agent-protocol`.
+**Applies to:** exactly nine packages, which is what `bun run check:licenses` reports. The embeddable toolkit libraries `packages/data`, `packages/ui`, `packages/sqlite`, `packages/sync`, and `packages/agent`, plus the toolkit-internal packages they carry: `packages/field`, `packages/identity`, `packages/chat`, and `packages/agent-protocol`.
 
 **Rationale:**
 - Libraries: we want developers to embed `@epicenter/data` in their own projects with zero friction. AGPL would forbid that for closed-source consumers, killing adoption. The library is not what we sell.
-- `packages/workspace` is the inert data-contract vocabulary: pure JSON declarations with no runtime attached. It stays MIT as the seam a third-party plane would be rebuilt from, and it is what survived when that plane was refused (ADR-0227).
 - Toolkit-internal packages (`field`, `identity`, `chat`, `agent-protocol`): these are dependencies bundled into the MIT toolkit libraries, so they must be MIT-compatible for the toolkit to stay distributable as MIT. `@epicenter/identity` owns the capability and identity vocabulary shared by the MIT toolkit and the AGPL auth layer; `@epicenter/agent-protocol` is the agent wire contract shared the same way. They are not separately marketed.
 - MIT-clean closure: the toolkit depends on no AGPL package. `PrincipalId` and `AuthState` live in `@epicenter/identity`; the store sync route and bearer subprotocol live in the MIT `@epicenter/sync`; the agent wire contract is the MIT `@epicenter/agent-protocol`. `bun run check:licenses` enforces this, on dependency edges only.
 
@@ -132,7 +131,6 @@ All apps are AGPL-3.0. MIT is reserved for the embeddable toolkit libraries.
 | `apps/local-mail` | AGPL-3.0 | Gmail mirror |
 | `apps/sync-lab` | AGPL-3.0 | Store transport lab |
 | `packages/data` | MIT | The store: one document per application, its SQLite log and projection, and its transport (toolkit) |
-| `packages/workspace` | MIT | Inert JSON data-contract vocabulary (toolkit) |
 | `packages/ui` | MIT | shadcn-svelte components (toolkit) |
 | `packages/sqlite` | MIT | Domain-free synchronous SQLite adapter contract shared across embedded runtimes (toolkit) |
 | `packages/sync` | MIT | Store sync route contract plus the WebSocket bearer subprotocol (toolkit) |

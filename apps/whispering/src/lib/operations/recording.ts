@@ -7,8 +7,14 @@ import { goto } from '$app/navigation';
 import type { CaptureSurface } from '$lib/constants/audio';
 import { whisperingPath } from '$lib/constants/urls';
 import { logAnalyticsEvent } from '$lib/operations/analytics';
+import {
+	captureForegroundSnapshot,
+	type ForegroundSnapshot,
+} from '$lib/operations/foreground-context';
+import { probeFocusedField } from '$lib/operations/foreground-probe';
 import { recordingMedia } from '$lib/operations/media';
 import { processRecordingPipeline } from '$lib/operations/pipeline';
+import { decideSecureFieldGuard } from '$lib/operations/secure-field-guard';
 import { playSoundIfEnabled } from '$lib/operations/sound';
 import { prewarmOnDeviceModel } from '$lib/operations/transcribe';
 import { report } from '$lib/report';
@@ -16,6 +22,7 @@ import {
 	RecorderError,
 	type RecordingEndedReason,
 } from '$lib/services/recorder/contract';
+import { getTranscriptionPreflightBlocker } from '$lib/settings/transcription-validation';
 import { captureSurface } from '$lib/state/capture-surface.svelte';
 import { deviceConfig } from '$lib/state/device-config.svelte';
 import { dictationLifecycle } from '$lib/state/dictation-lifecycle.svelte';
@@ -24,6 +31,37 @@ import { vadRecorder } from '$lib/state/vad-recorder.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
 
 const log = createLogger('whispering/recording');
+
+/**
+ * Whether a capture may start, saying what is missing when it may not.
+ *
+ * The record screen swaps the recorder for a setup panel when transcription is
+ * not ready, which reads as a gate but is only a rendering choice. The global
+ * shortcut, push-to-talk, the tray, and the toggle command all reach the start
+ * functions directly, so a capture ran anyway and failed at the provider: the
+ * user learned after speaking, in a 401's words rather than in the one sentence
+ * that names the fix.
+ *
+ * This is what every entry point shares, so the check lives here. It runs
+ * before any audio exists, which is why refusing is the kind answer: it costs a
+ * keypress, where starting costs a whole dictation that cannot become text. It
+ * refuses only on what the app knows for certain, never on the on-device route,
+ * whose failures the host owns and describes at the point of use (ADR-0180).
+ */
+function canStartCapture(app: WhisperingApp): boolean {
+	const blocker = getTranscriptionPreflightBlocker(app);
+	if (blocker === null) return true;
+
+	report.info({
+		title: 'Recording not started',
+		description: blocker,
+		action: {
+			label: 'Set up transcription',
+			onClick: () => goto(whisperingPath('/settings/processing')),
+		},
+	});
+	return false;
+}
 
 /**
  * Surface the outcome of acquiring a recording device. A clean success is
@@ -40,14 +78,17 @@ function reportDeviceAcquisitionOutcome(
 
 	persist(outcome.deviceId);
 	switch (outcome.reason) {
+		// The microphone is chosen in the pipeline row on the record screen, not
+		// in settings, so the recovery goes there rather than to a page that no
+		// longer carries a device selector.
 		case 'no-device-selected':
 			report.info({
 				title: 'Switched to available microphone',
 				description:
-					'No microphone was selected, so we automatically connected to an available one. You can update your selection in settings.',
+					'No microphone was selected, so we automatically connected to an available one. You can pick a different one on the record screen.',
 				action: {
-					label: 'Open Settings',
-					onClick: () => goto(whisperingPath('/settings/recording')),
+					label: 'Choose microphone',
+					onClick: () => goto(whisperingPath('/')),
 				},
 			});
 			return;
@@ -57,8 +98,8 @@ function reportDeviceAcquisitionOutcome(
 				description:
 					"Your previously selected microphone wasn't found, so we automatically connected to an available one.",
 				action: {
-					label: 'Open Settings',
-					onClick: () => goto(whisperingPath('/settings/recording')),
+					label: 'Choose microphone',
+					onClick: () => goto(whisperingPath('/')),
 				},
 			});
 			return;
@@ -115,7 +156,44 @@ export function watchManualRecordingEnded(app: WhisperingApp): void {
 	});
 }
 
-function isVadRecordingActive() {
+/**
+ * The foreground snapshots for captures in flight, taken at recording start
+ * (manual) or speech start (VAD) and consumed when each capture's pipeline
+ * runs. Promises so the probe overlaps the recording instead of delaying its
+ * start; a probe failure resolves to null and routing simply does not apply.
+ * Skipped entirely while no rules exist, so the zero-rule case costs nothing.
+ *
+ * A FIFO, not a single slot: VAD speech events arrive in order (start 1,
+ * end 1, start 2, ...), but utterance 1's async end handler can still be
+ * storing audio when utterance 2's start fires. A slot would let utterance 1
+ * consume utterance 2's snapshot; pairing begins to takes in order cannot.
+ * Every path that begins must also take or discard, so a capture that never
+ * reaches a pipeline (a failed start, a cancel, a VAD misfire) cannot leave
+ * an entry behind for the next capture to inherit; consumers shift
+ * synchronously, before their first await, to keep the pairing.
+ */
+const pendingForeground: Promise<ForegroundSnapshot | null>[] = [];
+
+function beginForegroundSnapshot(app: WhisperingApp): void {
+	pendingForeground.push(
+		app.appRules.count > 0
+			? captureForegroundSnapshot().catch(() => null)
+			: Promise.resolve(null),
+	);
+}
+
+async function takeForegroundSnapshot(): Promise<ForegroundSnapshot | null> {
+	return pendingForeground.shift() ?? null;
+}
+
+/** Drop a capture's entry when it will never reach a pipeline (a failed
+ * start, a cancel, a VAD misfire), so the next capture cannot inherit it. */
+function discardForegroundSnapshot(): void {
+	pendingForeground.shift();
+}
+
+/** True while a VAD session is armed, whether or not speech is being heard. */
+export function isVadRecordingActive() {
 	return (
 		vadRecorder.state === 'LISTENING' || vadRecorder.state === 'SPEECH_DETECTED'
 	);
@@ -130,7 +208,33 @@ function isVadRecordingActive() {
 export async function startManualRecording(
 	app: WhisperingApp,
 ): Promise<BlobId | null> {
+	if (!canStartCapture(app)) return null;
+
+	// The opt-in secure-field capture gate: refuse to start while a detected
+	// password field has focus, before any audio exists. This is the only gate
+	// that keeps a dictated secret from reaching a cloud transcription or
+	// Polish provider; the always-available delivery withhold only stops the
+	// paste. Fail-open like the rest of the guard, so an `unknown` verdict
+	// (no grant, elevated target) never refuses a recording. Manual capture
+	// only: a VAD session is armed once and speaks much later, so a
+	// field-focus check at arming time would attest to nothing.
+	if (app.settings.get('secureFieldCaptureGateEnabled')) {
+		const focusedField = await probeFocusedField();
+		const decision = decideSecureFieldGuard({ focusedField, enabled: true });
+		if (decision === 'withhold') {
+			report.info({
+				title: 'Recording not started',
+				description:
+					'A password field has focus. Move focus elsewhere and try again, or turn the capture gate off in Privacy & Processing.',
+			});
+			return null;
+		}
+	}
+
 	app.settings.set('recordingTrigger', 'manual');
+	// The app in front right now is what this dictation is aimed at; the probe
+	// runs alongside the recorder bring-up and is consumed at stop.
+	beginForegroundSnapshot(app);
 	// A new dictation is starting: clear any lingering failed/delivered state so
 	// the pill follows this attempt, not the last one.
 	dictationLifecycle.reset();
@@ -152,6 +256,7 @@ export async function startManualRecording(
 
 	if (error) {
 		void recordingMedia.resume();
+		discardForegroundSnapshot();
 		// The recording never started, so there is no blob to recover: the
 		// loudest tier. The pill glances it and the OS notification always fires, so
 		// there is no toast.
@@ -178,6 +283,7 @@ export async function stopManualRecording(app: WhisperingApp) {
 
 	if (error) {
 		void recordingMedia.resume();
+		discardForegroundSnapshot();
 		// Finalizing failed, so the captured audio never reached a row: treat it
 		// as a silent loss rather than a retryable transcription.
 		dictationLifecycle.markFailed({ tier: 'silent-loss', error });
@@ -201,6 +307,7 @@ export async function stopManualRecording(app: WhisperingApp) {
 	await processRecordingPipeline(app, {
 		audioBlobId,
 		durationMs,
+		foregroundApp: await takeForegroundSnapshot(),
 	});
 }
 
@@ -252,6 +359,7 @@ export async function cancelRecording(app: WhisperingApp) {
 	}
 	if (data.status === 'cancelled') {
 		void recordingMedia.resume();
+		discardForegroundSnapshot();
 		// The pill vanishing plus the cancel sound is the confirmation; no toast.
 		void playSoundIfEnabled(app, 'manual-cancel');
 		log.info('Recording cancelled');
@@ -308,6 +416,10 @@ function cancelPendingVadResume() {
 }
 
 export async function startVadRecording(app: WhisperingApp) {
+	// A session is armed once and speaks many times, so an unusable provider
+	// here would fail every utterance in it, not one.
+	if (!canStartCapture(app)) return;
+
 	app.settings.set('recordingTrigger', 'vad');
 	// A new dictation session is starting: clear any lingering terminal state.
 	dictationLifecycle.reset();
@@ -327,10 +439,16 @@ export async function startVadRecording(app: WhisperingApp) {
 		onLevel: reportRecordingMicLevel,
 		onSpeechStart: () => {
 			// Speaking window opened: pause whatever is playing. The pill's meter
-			// tint shows speech was detected, so there is no toast.
+			// tint shows speech was detected, so there is no toast. Each utterance
+			// is its own pipeline run, so each gets its own foreground snapshot.
+			beginForegroundSnapshot(app);
 			pausePlaybackForSpeech(app);
 		},
 		onSpeechEnd: async (blob) => {
+			// Claim this utterance's snapshot before the first await: speech
+			// events are ordered, so a synchronous shift here pairs each end
+			// with its own start even while audio storage is still in flight.
+			const foregroundApp = takeForegroundSnapshot();
 			// Speaking window closed: resume after a short debounce so a quick
 			// next utterance does not flutter the music.
 			scheduleResumeAfterSpeech();
@@ -353,11 +471,14 @@ export async function startVadRecording(app: WhisperingApp) {
 			await processRecordingPipeline(app, {
 				audioBlobId: finalized.data.audioBlobId,
 				durationMs: null,
+				foregroundApp: await foregroundApp,
 			});
 		},
 		onVADMisfire: () => {
 			// False start: schedule the same debounced resume as a real speech
-			// end, so an immediate retry does not flutter the music.
+			// end, so an immediate retry does not flutter the music. The
+			// utterance never reaches a pipeline, so its snapshot goes too.
+			discardForegroundSnapshot();
 			scheduleResumeAfterSpeech();
 		},
 	});

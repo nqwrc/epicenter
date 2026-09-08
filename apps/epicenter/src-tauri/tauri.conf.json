@@ -27,7 +27,7 @@
 	},
 	"bundle": {
 		"active": true,
-		"targets": ["app"],
+		"targets": ["app", "msi", "nsis"],
 		"category": "Productivity",
 		"publisher": "Epicenter",
 		"copyright": "Copyright © 2026 Epicenter",
@@ -36,9 +36,10 @@
 		"resources": {
 			"../dist": "apps-dist",
 			"recorder-state-icons/studio_microphone.png": "recorder-state-icons/studio_microphone.png",
-			"recorder-state-icons/red_large_square.png": "recorder-state-icons/red_large_square.png"
+			"recorder-state-icons/red_large_square.png": "recorder-state-icons/red_large_square.png",
+			"transcribe-libs": ""
 		},
-		"icon": ["icons/icon.png", "icons/icon.icns"],
+		"icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"],
 		"macOS": {
 			"entitlements": "entitlements.plist",
 			"hardenedRuntime": true,

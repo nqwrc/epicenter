@@ -29,8 +29,35 @@ export function createWhisperingRecipes({
 	let rows = $state.raw<Recipe[]>([]);
 	let nonconforming = $state.raw<NonconformingRow[]>([]);
 
+	/**
+	 * Adopt rows written before the `trusted` column existed.
+	 *
+	 * A missing field is a conformance failure, not a defaulted one
+	 * (`packages/data`), so without this every recipe stored by an earlier
+	 * release would drop out of the library the moment this one opened it.
+	 * `update` is the documented repair for a row the current declaration
+	 * cannot fully read (ADR-0125).
+	 *
+	 * They adopt as trusted, which is what they are: settings bundles have
+	 * never shipped, so a stored recipe is one the person typed. Trust is not
+	 * granted here for anything else, and a row nonconforming for some other
+	 * reason is left exactly as it is.
+	 */
+	function adoptPreTrustRows(listed: ReturnType<typeof table.list>): boolean {
+		let repaired = false;
+		for (const row of listed.nonconforming) {
+			if ('trusted' in row.raw) continue;
+			if (table.update(row.id, { trusted: true }).error !== null) continue;
+			repaired = true;
+		}
+		return repaired;
+	}
+
 	function read(): void {
-		const listed = table.list();
+		let listed = table.list();
+		// The repair terminates: the second listing reports the same rows with
+		// the column present, so nothing matches the branch above a second time.
+		if (adoptPreTrustRows(listed)) listed = table.list();
 		rows = listed.rows;
 		nonconforming = listed.nonconforming;
 	}
@@ -47,6 +74,16 @@ export function createWhisperingRecipes({
 				...rows.toSorted((left, right) => left.name.localeCompare(right.name)),
 			];
 		},
+		/**
+		 * The person's own recipes, ordered by name for a stable export file.
+		 * The built-ins are shipped in code and are deliberately not here:
+		 * exporting them would be handing the app its own source data back.
+		 */
+		get all(): Recipe[] {
+			return rows.toSorted((left, right) =>
+				left.name.localeCompare(right.name),
+			);
+		},
 		/** How many the person wrote. The built-in ones are not theirs. */
 		get count(): number {
 			return rows.length;
@@ -54,7 +91,14 @@ export function createWhisperingRecipes({
 		get nonconforming(): NonconformingRow[] {
 			return nonconforming;
 		},
-		/** Save a recipe. A built-in one is copied rather than overwritten. */
+		/**
+		 * Save a recipe. A built-in one is copied rather than overwritten.
+		 *
+		 * Writes `trusted` exactly as handed in, on create and on update alike.
+		 * The caller owns that fact: the editor carries the person's own answer
+		 * (and a file-sourced recipe is promoted only by the acknowledgement on
+		 * that form), and the bundle importer writes `false`.
+		 */
 		set({ id, ...fields }: Recipe): void {
 			// A built-in is not a row, so saving one mints a copy the person owns.
 			// So does an id this store has never seen, which is what a recipe

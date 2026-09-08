@@ -91,6 +91,14 @@ export function polishWillRun(app: WhisperingApp, input: string): boolean {
  * when it aborts, the raw input is returned as a clean success, not an error,
  * because shipping the raw transcript was the user's explicit intent.
  *
+ * `override` replaces the global `polishInstructions` directive for this one
+ * pass (a per-app rule's). It carries the directive and its standing together,
+ * because the standing is not a separate fact to be looked up later: a rule
+ * minted by a settings bundle holds words the person did not write, and reading
+ * the words without their standing is what put them in the commanding slot.
+ * Trusted or not, the fixed anti-injection scaffold wraps whichever directive
+ * arrives, so it can never widen what Polish is allowed to do.
+ *
  * Pure execution: no workspace writes, no toasts. The pipeline owns delivery and
  * keeps the raw transcript on `recordings.transcript` underneath the polished
  * text. On a genuine AI failure the raw input rides along in the error so
@@ -101,17 +109,26 @@ export async function runPolish(
 	{
 		input,
 		signal,
+		override,
 	}: {
 		input: string;
 		signal?: AbortSignal;
+		override?: { instructions: string; trusted: boolean };
 	},
 ): Promise<Result<string, RunPolishError>> {
 	if (!polishWillRun(app, input)) return Ok(input);
 
+	// No override means the person's own directive, from Advanced, which is
+	// trusted by the only definition of the word this app has.
+	const directive = override ?? {
+		instructions: app.settings.get('polishInstructions'),
+		trusted: true,
+	};
 	const result = await completeWithGlobalDefault(app, {
 		systemPrompt: buildPolishSystemPrompt(
-			app.settings.get('polishInstructions'),
+			directive.instructions,
 			app.settings.get('dictionary'),
+			{ trusted: directive.trusted },
 		),
 		userPrompt: input,
 		signal,

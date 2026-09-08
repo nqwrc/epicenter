@@ -1,7 +1,9 @@
 import HomeIcon from '@lucide/svelte/icons/house';
 import LayersIcon from '@lucide/svelte/icons/layers';
 import ListIcon from '@lucide/svelte/icons/list';
+import ReplaceIcon from '@lucide/svelte/icons/replace';
 import SettingsIcon from '@lucide/svelte/icons/settings';
+import SpeechIcon from '@lucide/svelte/icons/speech';
 import type { Component } from 'svelte';
 import { WHISPERING_BASE_PATHNAME, whisperingPath } from '$lib/constants/urls';
 
@@ -37,10 +39,22 @@ export const NAV_ITEMS = [
 		isActive: matchesRoute(whisperingPath('/recordings')),
 	},
 	{
+		label: 'Dictation',
+		href: whisperingPath('/dictation'),
+		icon: SpeechIcon,
+		isActive: matchesRoute(whisperingPath('/dictation')),
+	},
+	{
 		label: 'Recipes',
 		href: whisperingPath('/recipes'),
 		icon: LayersIcon,
 		isActive: matchesRoute(whisperingPath('/recipes')),
+	},
+	{
+		label: 'Snippets',
+		href: whisperingPath('/snippets'),
+		icon: ReplaceIcon,
+		isActive: matchesRoute(whisperingPath('/snippets')),
 	},
 	{
 		label: 'Settings',

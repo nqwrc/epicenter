@@ -36,7 +36,7 @@ export type VadRecorderError = InferErrors<typeof VadRecorderError>;
  * Default base path the VAD loads its ONNX model and onnxruntime wasm from. The
  * consuming app must serve those assets at this path (see `@epicenter/recorder/vad-assets`).
  */
-const DEFAULT_VAD_ASSET_PATH = '/vad/';
+export const DEFAULT_VAD_ASSET_PATH = '/vad/';
 
 /**
  * Active VAD session, or null when idle. Holds the underlying MicVAD and the

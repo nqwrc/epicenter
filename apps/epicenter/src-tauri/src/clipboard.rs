@@ -47,7 +47,9 @@ const CONCEALED_TYPE: &str = "org.nspasteboard.ConcealedType";
 
 /// One captured pasteboard item: each declared type's UTI paired with its raw
 /// bytes. Owned plain data (not retained Objective-C objects) so the snapshot
-/// is `Send` and can be held across the paste-consume `await` in `write_text`.
+/// is `Send + 'static`, which it has to be: it outlives the command that took
+/// it, parked in `delivery`'s pending-borrow slot until the deferred restore
+/// runs or a later dictation takes the borrow over and inherits it.
 struct CapturedItem {
     types: Vec<(String, Vec<u8>)>,
 }

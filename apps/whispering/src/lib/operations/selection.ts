@@ -6,8 +6,7 @@ import { services } from '$lib/services';
  * How long to wait after the synthetic copy before reading the clipboard. The OS
  * writes the selection to the clipboard asynchronously once the foreground app
  * handles the keystroke, so reading immediately can return the prior clipboard.
- * Mirrors the paste delay in the Rust `write_text` command; tune if a slow app
- * loses selections.
+ * Tune if a slow app loses selections.
  */
 const COPY_SETTLE_MS = 100;
 

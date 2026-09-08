@@ -16,4 +16,26 @@
  */
 export type DeliveryReach = 'output' | 'clipboard';
 
-export type DeliveryOutcome = { reach: DeliveryReach };
+import type { SinkKind } from './sink';
+
+export type DeliveryOutcome = {
+	reach: DeliveryReach;
+	sinkKind: SinkKind;
+	pressedEnter: boolean;
+	/**
+	 * True when the secure-field guard withheld a cursor or clipboard delivery
+	 * because a password field had focus at paste time. The text was routed to
+	 * the ledger sink instead (still in history, nothing on the clipboard), so
+	 * `reach` reads `output` for the substituted sink; this flag is what tells
+	 * feedback the configured output was deliberately refused. A refusal
+	 * announced to the user is not the accidental stranding ADR-0040 abolished.
+	 */
+	withheld: boolean;
+	/**
+	 * The app that held focus when the text was written, from the probe delivery
+	 * already takes for the secure-field guard. Null when the platform, the
+	 * grant, or the probe could not say. "Scratch that" holds onto it so it can
+	 * refuse rather than backspace into a window the dictation never reached.
+	 */
+	deliveredToAppId: string | null;
+};

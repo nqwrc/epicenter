@@ -57,7 +57,12 @@ pub mod download;
 use download::{cancel_download, DownloadManager};
 
 mod delivery;
-use delivery::{simulate_copy_keystroke, simulate_enter_keystroke, write_text};
+use delivery::{
+    simulate_backspaces, simulate_copy_keystroke, simulate_enter_keystroke, write_text,
+};
+
+mod foreground;
+use foreground::get_foreground_context;
 
 mod keyring_storage;
 use keyring_storage::{read_auth_cell, write_auth_cell};
@@ -76,7 +81,7 @@ use shell::{
 #[cfg(desktop)]
 pub mod keyboard;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub mod overlay;
 
 #[cfg(target_os = "macos")]
@@ -345,6 +350,7 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             write_text,
             simulate_enter_keystroke,
             simulate_copy_keystroke,
+            simulate_backspaces,
             enumerate_recording_devices,
             start_recording,
             stop_recording,
@@ -371,6 +377,7 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             resume_playback,
             keyboard::commands::set_auto_paste_enabled,
             keyboard::commands::get_dictation_capability,
+            get_foreground_context,
             replace_global_shortcuts,
             is_autostart_enabled,
             set_autostart_enabled,
@@ -700,6 +707,12 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
+        // Registered with no static scope on purpose. The dialog plugin calls
+        // `allow_file` on this scope for every path a person picks, so a
+        // download or an import reaches exactly the file they chose in a native
+        // dialog and nothing else. Granting a directory here would widen that
+        // to paths nobody selected.
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
@@ -782,6 +795,11 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to build Epicenter")
         .run(|app, event| match event {
+            // `Reopen` is a macOS-only variant (the Dock-icon click that asks a
+            // still-running app for a window back). It is absent from `RunEvent`
+            // on every other platform, so matching on it unconditionally fails
+            // to compile off macOS; gate the arm rather than the whole match.
+            #[cfg(target_os = "macos")]
             RunEvent::Reopen { .. } => request_window(app, BuiltInApp::Home),
             RunEvent::Exit => shutdown_host(app),
             _ => {}
@@ -1049,6 +1067,23 @@ fn launch_host(app: &DesktopAppHandle, port: u16) -> Result<LaunchedHost> {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::from(log.try_clone()?));
+
+    // The bundled host is a console-subsystem executable, because `bun build
+    // --compile` produces one and it stays runnable from a terminal that way.
+    // The desktop binary is a GUI one, so it owns no console to lend the child,
+    // and Windows answers by allocating a fresh one: a command prompt opened
+    // beside the app and sat there for as long as the host lived. Say the child
+    // gets no console instead. This does not touch the pipes above, which is
+    // the whole protocol with the host (the boot frame, the auth frames, and
+    // stderr into the log file); a console is only ever where a console
+    // program's output goes when nobody has redirected it, and everything here
+    // is redirected.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
 
     let mut child = command
         .spawn()
@@ -1387,7 +1422,7 @@ fn create_windows_on_main_thread(
     let token = token.to_string();
     app.clone().run_on_main_thread(move || {
         let result = (|| {
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             create_recording_overlay(&app, port, &token)?;
 
             ensure_window(&app, BuiltInApp::Whispering, port, &token, false)?;
@@ -1403,7 +1438,7 @@ fn create_windows_on_main_thread(
         .context("the main thread stopped before creating Epicenter windows")?
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn create_recording_overlay(app: &DesktopAppHandle, port: u16, token: &str) -> Result<()> {
     let origin = origin(port);
     let url: tauri::Url = format!("{origin}/apps/whispering/recording-overlay/").parse()?;
@@ -1484,7 +1519,7 @@ fn invalidate_windows(app: &DesktopAppHandle) {
                 let _ = window.hide();
             }
         }
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
         if let Some(window) = app.get_webview_window(overlay::WINDOW_LABEL) {
             if window.destroy().is_err() {
                 let _ = window.hide();
@@ -1793,7 +1828,15 @@ mod tests {
         // only offers IDs from the list Bun served it, and an ID that names no
         // member opens a window Bun answers with 404. Re-deriving membership
         // here would be a second catalog with a second answer.
-        for accepted in ["hello-http", "a", "notes2", "x-y-z", "0-", "never-admitted"] {
+        for accepted in [
+            "hello-http",
+            "a",
+            "notes2",
+            "x-y-z",
+            "0",
+            "so.epicenter.hello",
+            "never-admitted",
+        ] {
             assert!(
                 matches!(parse_application_id(accepted), Some(Application::Admitted(id)) if id == accepted),
                 "expected {accepted:?} to resolve to the app-window path"
@@ -1804,9 +1847,10 @@ mod tests {
             "",
             "Hello",
             "hello_http",
-            "hello.http",
             "hello/http",
             "..",
+            "0-",
+            "-a",
             "hello http",
             "héllo",
             // Reserved windows Home does not list: the shell itself, and

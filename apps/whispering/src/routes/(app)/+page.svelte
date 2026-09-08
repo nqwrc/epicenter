@@ -44,7 +44,7 @@
 	import CaptureBehaviorPopover from './_components/CaptureBehaviorPopover.svelte';
 	import CapturePipeline from './_components/CapturePipeline.svelte';
 	import ManualRecordingAction from './_components/ManualRecordingAction.svelte';
-	import PolishStatusLink from './_components/PolishStatusLink.svelte';
+	import PolishToggle from './_components/PolishToggle.svelte';
 	import RecordingResult from './_components/RecordingResult.svelte';
 	import VadRecordingAction from './_components/VadRecordingAction.svelte';
 
@@ -251,7 +251,7 @@
 								variant="pipeline"
 								iconViewTransitionName={viewTransition.pipeline.transcription}
 							/>
-							<PolishStatusLink />
+							<PolishToggle />
 							<CaptureBehaviorPopover />
 						</CapturePipeline>
 					{/snippet}
@@ -269,7 +269,7 @@
 								variant="pipeline"
 								iconViewTransitionName={viewTransition.pipeline.transcription}
 							/>
-							<PolishStatusLink />
+							<PolishToggle />
 							<CaptureBehaviorPopover />
 						</CapturePipeline>
 					{/snippet}
@@ -302,7 +302,7 @@
 						variant="pipeline"
 						iconViewTransitionName={viewTransition.pipeline.transcription}
 					/>
-					<PolishStatusLink />
+					<PolishToggle />
 				</CapturePipeline>
 			</div>
 		{/if}

@@ -33,6 +33,7 @@ import { defineData, type KvOf, type RowOf } from '@epicenter/data/definition';
 /** Runtime-minted structural row ids. */
 export type RecordingId = string;
 export type RecipeId = string;
+export type SnippetId = string;
 
 const recordingsTable = {
 	/**
@@ -75,6 +76,71 @@ const recipesTable = {
 	name: field.string(),
 	instructions: field.string(),
 	icon: field.nullable(field.string()),
+	/**
+	 * Whether these instructions may speak with the application's authority.
+	 *
+	 * A recipe's instructions are a directive, not content: they occupy the slot
+	 * in `buildRecipeSystemPrompt` that decides what the model does with the
+	 * text, and a per-app rule can auto-run one over every dictation and paste
+	 * the result at the cursor. That is the person's own authority when the
+	 * person wrote them, and somebody else's when the row came out of a settings
+	 * bundle, which is a file whose author need not be the person importing it.
+	 * So where the directive came from is stored with the directive: `false`
+	 * demotes it into a delimited block the fixed rules outrank.
+	 *
+	 * It rides the row rather than a device setting because recipes travel
+	 * (ADR-0233). A trust list kept per device would demote, on the second
+	 * machine, a recipe the person wrote on the first.
+	 */
+	trusted: field.boolean(),
+} as const;
+
+const snippetsTable = {
+	/** What the person says. Matched whole-word and case-insensitively. */
+	trigger: field.string(),
+	/** What gets delivered, verbatim. Plain text: delivery has no rich text. */
+	replacement: field.string(),
+} as const;
+
+/**
+ * A per-application dictation rule: when the foreground app at recording start
+ * matches, the rule reshapes what Polish is told and may auto-run a recipe.
+ *
+ * One rule carries both platform identifiers, so a "Terminal" rule syncs
+ * across devices (ADR-0233) and simply never matches on a platform whose
+ * field is null. Matching is a pure function (`operations/match-app-rule.ts`).
+ */
+const appRulesTable = {
+	/** What the person calls this rule ("Terminal", "Email"). */
+	name: field.string(),
+	/** Lowercased exe file name matched on Windows ("wt.exe"), or null. */
+	matchWindowsExe: field.nullable(field.string()),
+	/** Bundle identifier matched on macOS ("com.googlecode.iterm2"), or null. */
+	matchMacosBundleId: field.nullable(field.string()),
+	/**
+	 * Replaces the global Polish directive inside its fixed anti-injection
+	 * scaffold (`buildPolishSystemPrompt`); null keeps the global directive.
+	 */
+	polishInstructions: field.nullable(field.string()),
+	/**
+	 * A recipe auto-run over the polished text: a `builtin:` id or a recipes
+	 * row id; null for none. Resolved at use; a dangling id degrades to plain
+	 * Polish rather than failing the dictation.
+	 */
+	recipeId: field.nullable(field.string()),
+	enabled: field.boolean(),
+	/**
+	 * Whether `polishInstructions` may command the pass, on the recipes table's
+	 * terms and for the same reason: a rule minted by a settings bundle carries
+	 * a directive the person did not write, and this rule's directive replaces
+	 * the global one over every dictation into the app it matches.
+	 *
+	 * `enabled` is a different question. Off means the rule does not run at all,
+	 * which is where an imported rule starts; `trusted` decides what its
+	 * directive is allowed to be once it does. Turning a rule on is not the same
+	 * act as vouching for the words inside it.
+	 */
+	trusted: field.boolean(),
 } as const;
 
 /**
@@ -117,6 +183,16 @@ const settingsKv = {
 	recordingPausePlayback: field.boolean(),
 	recordingAutoUpload: field.boolean(),
 
+	/**
+	 * Where the floating recording pill sits, as a 3x3 anchor grid with a margin
+	 * per axis rather than one hardcoded formula. The defaults reproduce the
+	 * formula this replaced: centered, 72px above the usable bottom edge.
+	 */
+	recordingOverlayXAnchor: field.select(['left', 'center', 'right']),
+	recordingOverlayXMarginPx: field.number(),
+	recordingOverlayYAnchor: field.select(['top', 'center', 'bottom']),
+	recordingOverlayYMarginPx: field.number(),
+
 	transcriptionService: field.select([
 		'epicenter',
 		'OpenAI',
@@ -156,6 +232,22 @@ const settingsKv = {
 	dictionary: field.nullable(field.tags()),
 	polishEnabled: field.boolean(),
 	polishInstructions: field.string(),
+	commandModeEnabled: field.boolean(),
+
+	/**
+	 * Withhold delivery when the focused element is a detected password field:
+	 * no paste, no clipboard write, the transcript stays in history. Detection
+	 * is best-effort and fail-open, so only an affirmative secure verdict
+	 * withholds (`operations/secure-field-guard.ts`).
+	 */
+	secureFieldGuardEnabled: field.boolean(),
+	/**
+	 * Also refuse to start a recording while a detected password field has
+	 * focus. Opt-in: this is the only gate that keeps a dictated secret from
+	 * reaching a cloud transcription or Polish provider, but it is also the
+	 * only one that can visibly refuse a recording, so it ships off.
+	 */
+	secureFieldCaptureGateEnabled: field.boolean(),
 	analyticsEnabled: field.boolean(),
 
 	shortcutPushToTalkModifiers: shortcut.modifiers,
@@ -178,7 +270,12 @@ export const whisperingDefinition = defineData({
 	id: 'so.epicenter.whispering',
 	title: 'Whispering',
 	kv: settingsKv,
-	tables: { recordings: recordingsTable, recipes: recipesTable },
+	tables: {
+		recordings: recordingsTable,
+		recipes: recipesTable,
+		snippets: snippetsTable,
+		appRules: appRulesTable,
+	},
 });
 
 /** The typed view of one store through Whispering's workspace. */
@@ -186,6 +283,8 @@ export type WhisperingData = DataView<typeof whisperingDefinition>;
 
 export type Recording = RowOf<typeof recordingsTable>;
 export type Recipe = RowOf<typeof recipesTable>;
+export type Snippet = RowOf<typeof snippetsTable>;
+export type AppRule = RowOf<typeof appRulesTable>;
 /**
  * The settings values an application composes after a read.
  *
@@ -193,21 +292,3 @@ export type Recipe = RowOf<typeof recipesTable>;
  * (a record of descriptors) wearing the name of the values.
  */
 export type WhisperingSettingValues = KvOf<typeof whisperingDefinition>;
-
-/**
- * Default shortcuts, applied by the app rather than declared in the definition.
- *
- * The definition does not own initialization, so `keys` uses null for "no shortcut
- * configured" and the app applies shipped shortcuts separately.
- * These are release-local product policy anyway, which is where they were
- * before (`definition.ts`), and they are the only part of that file worth
- * keeping.
- */
-export const DEFAULT_SHORTCUT_KEYS = {
-	toggleManualRecording: ['space'],
-	cancelRecording: ['keyC'],
-	toggleVadRecording: ['keyV'],
-	openRecipePicker: ['keyT'],
-	runRecipeOnClipboard: ['keyR'],
-	openSettings: ['comma'],
-} as const;

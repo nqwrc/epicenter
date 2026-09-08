@@ -89,4 +89,16 @@ export type TextService = {
 	 * simulate keystrokes for security reasons.
 	 */
 	simulateCopyKeystroke: () => Promise<Result<void, TextError>>;
+
+	/**
+	 * Simulates pressing Backspace `count` times, to remove text a previous
+	 * synthetic paste delivered.
+	 *
+	 * One press deletes one grapheme cluster, so `count` is a grapheme count.
+	 * The host refuses above 2000 rather than deleting part of the request.
+	 *
+	 * Note: only supported on desktop (Tauri). Web browsers cannot simulate
+	 * keystrokes for security reasons.
+	 */
+	simulateBackspaces: (count: number) => Promise<Result<void, TextError>>;
 };

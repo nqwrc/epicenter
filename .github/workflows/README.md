@@ -7,7 +7,7 @@ All workflows live flat in `.github/workflows/` (GitHub Actions requirement). We
 | Prefix | Purpose | Scope |
 |---|---|---|
 | `release.{app}` | Tag-triggered desktop builds + GitHub Release | Per Tauri app (expensive 3-platform matrix) |
-| `pr-preview.{app}` | PR preview desktop builds | Per Tauri app (expensive 3-platform matrix) |
+| `pr-preview.{app}` | Desktop compile gate producing downloadable builds | Per Tauri app (expensive native matrix, one leg per platform the app bundles for) |
 | `deploy.{target}` | Web app deployment | Deployed web targets |
 | `ci.{name}` | Code quality checks | Whole repo |
 | `auto.{name}` | Automated repo maintenance | Whole repo |
@@ -16,6 +16,8 @@ All workflows live flat in `.github/workflows/` (GitHub Actions requirement). We
 Tauri desktop apps get **separate per-app workflows** when their native release
 matrix earns one. Whispering no longer owns a desktop workflow: its only native
 host is Epicenter, while its independent browser build stays in Cloudflare CI.
+Epicenter owns `pr-preview.epicenter.yml`, the one workflow in this repo that
+compiles Rust.
 
 Web apps (Cloudflare Workers) deploy **together in one workflow** because deploys are fast (~2 min on a single runner) and share the same runtime setup. Each worker's build lives in its own `wrangler.jsonc` `build.command`, which Wrangler runs for both `deploy` and `versions upload`, so production, previews, and local `wrangler deploy` build through one definition. Repo-wide lint, typecheck, and unrelated package builds belong to CI.
 
@@ -27,6 +29,30 @@ Web apps (Cloudflare Workers) deploy **together in one workflow** because deploy
 |---|---|---|
 | `deploy.cloudflare.yml` | Push to `main`, manual | Deploys Whispering, Landing, and API to Cloudflare Workers. Each `wrangler deploy` runs that worker's `build.command` first, so a deploy can never ship stale assets. Posts Discord notification. |
 | `deploy.cloudflare-preview.yml` | Pull requests touching `apps/whispering/**`, `apps/landing/**`, `packages/**` | Uploads preview versions via `wrangler versions upload --preview-alias`. Posts PR comment with preview URLs. No cleanup needed (aliases auto-expire at 1000). |
+
+### Desktop (Tauri)
+
+| File | Trigger | What it does |
+|---|---|---|
+| `pr-preview.epicenter.yml` | Pull requests, push to `main`, manual | Compiles the Epicenter Tauri host on Windows and macOS and uploads the `.msi`, NSIS `.exe`, and ad-hoc-signed `.app` as build artifacts. Audits the Windows installers for the transcribe-cpp runtime DLLs before uploading them. Cancels older runs for the same PR. |
+
+This is the only workflow that compiles Rust, so it is what catches a native
+compile error before merge. It runs on every pull request, not only those based
+on `main`, so a stacked branch cannot merge uncompiled Rust into its parent.
+It publishes nothing: no release, no tag, no secrets. `auto.release.yml` owns
+publishing and is still disabled. There is no Linux leg because
+`bundle.targets` resolves to an empty list on Linux; adding one means choosing
+deb/rpm/AppImage targets and a `bundle.linux` files mapping first. There is no
+macOS Intel leg because the Bun sidecar cannot be cross-compiled; that needs an
+x86_64 runner.
+
+The Windows installer audit is not optional decoration. On Windows x86_64 the
+ggml runtime ships as loose DLLs that reach the bundle only because
+tauri-bundler packs whatever `.dll` files sit beside the executable, an
+implicit contract no config file states. Without the audit a build can compile,
+link, bundle, and go green while producing an installer whose app registers
+zero compute devices. Tauri v2 has no `bundle.windows` files mapping, so if
+that audit ever fails the fix is in the build, not in `tauri.conf.json`.
 
 ### CI
 

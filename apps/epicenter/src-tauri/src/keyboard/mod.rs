@@ -53,9 +53,12 @@ const MAIN_WINDOW: &str = "whispering";
 /// trust input, folded with tap liveness into the `DictationCapability` the
 /// paste path reads. Consumers deciding whether a paste can land must read that
 /// capability, not this bare probe: a `Broken` grant reads as trusted here but
-/// cannot actually paste (see `write_text`).
+/// cannot actually paste (see `write_text`). Consumers asking only whether the
+/// process may read the AX tree (the focused-field probe in `foreground.rs`)
+/// read this bare probe, because that question is about TCC trust alone and
+/// must not depend on whether the paste tap happens to be running.
 #[cfg(target_os = "macos")]
-fn is_trusted() -> bool {
+pub(crate) fn is_trusted() -> bool {
     // SAFETY: `AXIsProcessTrusted` is an argument-free, thread-safe TCC query
     // with no side effects (unlike the `WithOptions` form, it never prompts).
     unsafe { accessibility_sys::AXIsProcessTrusted() }

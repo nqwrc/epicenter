@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-simulate-backspaces"
+description = "Enables the simulate_backspaces command without any pre-configured scope."
+commands.allow = ["simulate_backspaces"]
+
+[[permission]]
+identifier = "deny-simulate-backspaces"
+description = "Denies the simulate_backspaces command without any pre-configured scope."
+commands.deny = ["simulate_backspaces"]

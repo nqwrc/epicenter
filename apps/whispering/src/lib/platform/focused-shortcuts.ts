@@ -9,10 +9,7 @@ import {
 	type KeyBinding,
 } from '$lib/utils/key-binding';
 import type { WhisperingApp } from '$lib/whispering/app';
-import {
-	DEFAULT_SHORTCUT_KEYS,
-	type WhisperingSettingValues,
-} from '$lib/workspace';
+import type { WhisperingSettingValues } from '$lib/workspace';
 import { createShortcuts } from './shortcuts.shared';
 import type { Shortcuts } from './types';
 
@@ -104,21 +101,31 @@ export function createFocusedShortcuts({
 		);
 
 	/**
-	 * The shipped binding, which is release-local product policy rather than a
-	 * application policy: the definition stores null when no shortcut is configured,
-	 * and "no shortcut configured" and "the shipped shortcut" would otherwise be
-	 * the same stored value (`workspace/index.ts`).
+	 * The shipped binding: the settings defaults, composed exactly the way
+	 * `readBinding` composes the stored ones.
+	 *
+	 * It used to read the `keys` half from a `DEFAULT_SHORTCUT_KEYS` table
+	 * instead, and that table was the whole bug. Nothing seeded it: every
+	 * `shortcut*Keys` default is null, and a clean kv read takes the stored object
+	 * as-is, so no install has ever had those bindings. Its one consumer was
+	 * `reset()`, which meant the "Reset shortcuts" button *added* bare Space, C,
+	 * V, T, R and comma that the app never shipped, while the settings page's own
+	 * reset (`settings/+layout.svelte`) restored the nulls. Two buttons, two
+	 * answers, and the global tier had neither problem because its defaults table
+	 * is also its device-config schema default, so there reset really does mean
+	 * "back to how it shipped".
+	 *
+	 * Composed rather than short-circuited to null, even though every default is
+	 * null today. Seeding a real in-app default is a live product question, and
+	 * this way answering it is one edit to `APPLICATION_DEFAULTS` rather than an
+	 * edit plus the discovery that reset ignores it.
 	 */
 	const readDefaultBinding = (id: Command['id']): KeyBinding | null =>
 		compose(
 			settings.getDefault(SHORTCUT_KEYS[id].modifiers) as
 				| readonly string[]
 				| null,
-			id in DEFAULT_SHORTCUT_KEYS
-				? DEFAULT_SHORTCUT_KEYS[id as keyof typeof DEFAULT_SHORTCUT_KEYS]
-				: (settings.getDefault(SHORTCUT_KEYS[id].keys) as
-						| readonly string[]
-						| null),
+			settings.getDefault(SHORTCUT_KEYS[id].keys) as readonly string[] | null,
 		);
 
 	return createShortcuts({

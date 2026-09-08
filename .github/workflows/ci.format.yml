@@ -27,7 +27,13 @@ concurrency:
 
 jobs:
   quality:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # GitHub-hosted, not Blacksmith. The runner plan belongs to the upstream
+    # repository and does not reach a fork, and an uninstalled label queues
+    # until GitHub reaps the run rather than failing, so the authoritative
+    # merge gate reported nothing at all here. The workflows still carrying
+    # Blacksmith labels are the ones a fork cannot run anyway: they need
+    # Cloudflare secrets or a PAT, or sit behind `if: false`.
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:

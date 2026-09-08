@@ -5,10 +5,12 @@ import {
 	transcribe,
 } from '@epicenter/client';
 import { API_ROUTES } from '@epicenter/constants/api-routes';
+import { containsSpeech } from '@epicenter/recorder';
 import { type AnyTaggedError, defineErrors } from 'wellcrafted/error';
 import { createLogger } from 'wellcrafted/logger';
 import { Err, Ok, type Result } from 'wellcrafted/result';
 import { auth } from '#platform/auth';
+import { WHISPERING_BASE_PATHNAME } from '#platform/base-path';
 import { customFetch } from '#platform/http';
 import { tauri } from '#platform/tauri';
 import {
@@ -16,6 +18,16 @@ import {
 	type SupportedLanguage,
 } from '$lib/constants/languages';
 import { logAnalyticsEvent } from '$lib/operations/analytics';
+import {
+	buildTranscriptionPrompt,
+	recognizerPromptCharBudget,
+} from '$lib/operations/build-transcription-prompt';
+import {
+	type TranscriptionDeadline,
+	transcriptionTimedOut,
+	transcriptionTimeoutMs,
+	withDeadline,
+} from '$lib/operations/transcription-deadline';
 import {
 	recordTranscriptionOutcome,
 	type TranscriptionSuccess,
@@ -27,9 +39,12 @@ import { ElevenLabsTranscriptionServiceLive } from '$lib/services/transcription/
 import { MistralTranscriptionServiceLive } from '$lib/services/transcription/cloud/mistral';
 import {
 	isOnDeviceProviderId,
+	type OnDeviceProviderId,
 	PROVIDERS,
+	type TranscriptionServiceId,
 	type UploadProviderId,
 } from '$lib/services/transcription/providers';
+import { getTranscriptionPreflightBlocker } from '$lib/settings/transcription-validation';
 import { deviceConfig } from '$lib/state/device-config.svelte';
 import { type SecretKey, secrets } from '$lib/state/secrets.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
@@ -62,6 +77,13 @@ const TranscriptionOperationError = defineErrors({
 	LocalTranscriptionUnavailableOnWeb: () => ({
 		message:
 			'Local transcription is only available in the desktop app. Choose a cloud or self-hosted provider on web.',
+	}),
+	/** Whispering already knows this cannot succeed: nothing is selected, or the
+	 *  selected provider has no usable credential. Carries the same sentence the
+	 *  record screen shows, so a missing key reads as a missing key instead of
+	 *  arriving as a provider's 401 after the audio has already been sent. */
+	TranscriptionNotSetUp: ({ issue }: { issue: string }) => ({
+		message: issue,
 	}),
 });
 
@@ -120,7 +142,8 @@ function secretApiKey(key: SecretKey): string | undefined {
  * default; Speaches stores a bare host, so its `/v1` is appended; a keyless local
  * box sends no key. Bespoke entries (ElevenLabs, Deepgram, Mistral) keep their own
  * clients because they do not speak the wire (Deepgram's raw body + `Authorization:
- * Token`, ElevenLabs' `xi-api-key`, Mistral's `context_bias`); ADR-0060 blesses it.
+ * Token`, ElevenLabs' `xi-api-key`, Mistral's own `@mistralai/mistralai` SDK);
+ * ADR-0060 blesses it.
  */
 const uploadDispatch = (app: WhisperingApp) =>
 	({
@@ -246,10 +269,18 @@ async function loadForUpload(
  * Local transcription always goes through `transcribe_recording(id)`.
  * Upload (non-on-device) transcription uploads compressed bytes derived from the
  * saved file when possible, falling back to the raw blob.
+ *
+ * `deadline` says which situation is waiting, and so how long this is willing to
+ * wait before giving up on the route: tight for a live dictation, generous for
+ * an import or a retry. Required rather than defaulted, because guessing wrong
+ * in either direction has a real cost (a killed import, or a dictation session
+ * held behind a route that is never coming back) and every caller knows which
+ * one it is.
  */
 export async function transcribeAudio(
 	app: WhisperingApp,
 	audioBlobId: BlobId,
+	{ deadline }: { deadline: TranscriptionDeadline },
 ): Promise<Result<string, TranscriptionError>> {
 	const selectedService = app.settings.get('transcriptionService');
 
@@ -259,12 +290,84 @@ export async function transcribeAudio(
 		provider: selectedService,
 	});
 
-	// The one place on-device-ness is decided. The type guard narrows `selectedService`
-	// to `OnDeviceProviderId` in one arm and `UploadProviderId` in the other, so each
-	// helper receives an already-narrowed id and neither re-checks.
-	const transcriptionResult = isOnDeviceProviderId(selectedService)
-		? await transcribeOnDevice(app, audioBlobId)
-		: await transcribeViaUpload(app, audioBlobId, selectedService);
+	// The capture paths refuse before recording, but they are not the only way
+	// in: a file import and a retry from the recordings list both arrive here
+	// with audio already in hand. Answering with the known blocker costs nothing
+	// and beats uploading the clip to collect a 401 that names the provider
+	// rather than the fix.
+	const blocker = getTranscriptionPreflightBlocker(app);
+	if (blocker !== null) {
+		const notSetUp = TranscriptionOperationError.TranscriptionNotSetUp({
+			issue: blocker,
+		});
+		void logAnalyticsEvent(app, {
+			type: 'transcription_failed',
+			provider: selectedService,
+			error_name: notSetUp.error.name,
+			error_message: notSetUp.error.message,
+		});
+		return notSetUp;
+	}
+
+	// One wait covers everything that can hang: the silence gate, the FFI call,
+	// the upload. It is a ceiling for a route that is never coming back, not a
+	// latency budget, and it cancels nothing (see `withDeadline`).
+	//
+	// Inside `transcribeAudio` rather than around it, so an expiry is an
+	// ordinary transcription failure: the analytics branch below reports it by
+	// name, and `transcribeAndPersist` marks the row failed. That leaves the
+	// audio retryable from the recordings list, which is the only recovery there
+	// is, because unlike a polish pass there is no raw text to fall back on.
+	//
+	// On the on-device route the abandoned call keeps Rust's model mutex, which
+	// is held across load and inference (`model_cache.rs`), so every later local
+	// run blocks on it and expires too until the app restarts. That wedge is
+	// there with or without this deadline. What changes is that it is reported
+	// rather than silent.
+	const transcriptionResult = await withDeadline(
+		transcriptionTimeoutMs(deadline),
+		() => transcriptionTimedOut(deadline),
+		async () => {
+			// Silence never reaches a recognizer, whichever one is selected.
+			//
+			// Whisper cannot decline to answer: given a clip with no speech
+			// in it, the decoder still emits its highest-prior caption, which
+			// is why a tap of push-to-talk with nothing said pastes "Thank
+			// you." at the cursor. The on-device route already refused to run
+			// a model on empty audio and reported `empty-audio`; the upload
+			// route had no equivalent and posted the clip anyway. That made
+			// one policy two implementations, and only the route nobody was
+			// using was protected.
+			//
+			// So the gate sits above the fork, in the one place that already
+			// decides on-device-ness, and both arms inherit it. An empty
+			// transcript is the same honest answer `empty-audio` gives, so
+			// this adds no new outcome for callers to learn.
+			// `containsSpeech` answers `true` whenever it cannot tell, so a
+			// broken gate transcribes rather than discards.
+			//
+			// The cost is that the on-device arm now reads the blob here to
+			// be asked the question and Rust reads it again to transcribe.
+			// That is the price of one gate instead of two, and it is worth
+			// naming rather than discovering.
+			//
+			// It sits inside the deadline rather than above it, which bounds
+			// `containsSpeech` too: it fetches a VAD model over the network
+			// on first use, so it is one more thing that can fail to come
+			// back. An empty transcript still reports
+			// `transcription_completed` from the tail below, the same event
+			// this gate used to send on its own.
+			if (await isSilent(app, audioBlobId)) return Ok('');
+
+			// The one place on-device-ness is decided. The type guard narrows
+			// `selectedService` to `OnDeviceProviderId` in one arm and
+			// `UploadProviderId` in the other, so each helper receives an
+			// already-narrowed id and neither re-checks.
+			return isOnDeviceProviderId(selectedService)
+				? transcribeOnDevice(app, audioBlobId, selectedService)
+				: transcribeViaUpload(app, audioBlobId, selectedService);
+		},
+	);
 
 	const duration = Date.now() - startTime;
 	if (transcriptionResult.error) {
@@ -286,6 +389,33 @@ export async function transcribeAudio(
 }
 
 /**
+ * Whether a saved recording has no speech in it.
+ *
+ * Reads the raw local blob rather than the upload-encoded bytes: the question is
+ * about the audio, not about what a provider is willing to accept, and going
+ * through the opus encode would make the answer depend on which route was
+ * selected. A blob that cannot be read is not evidence of silence, so it
+ * transcribes, matching `containsSpeech`'s own refusal to fail closed.
+ */
+async function isSilent(
+	app: WhisperingApp,
+	audioBlobId: BlobId,
+): Promise<boolean> {
+	const { data: audio, error } = await services.blobs.local.get(audioBlobId);
+	if (error) return false;
+	const speech = await containsSpeech({
+		audio,
+		assetBaseUrl: `${WHISPERING_BASE_PATHNAME}/vad/`,
+	});
+	if (!speech) {
+		log.info('Skipped transcription: the recording contains no speech', {
+			audioBlobId,
+		});
+	}
+	return !speech;
+}
+
+/**
  * Transcribe a saved recording by id and attempt to persist the outcome to the
  * recordings table. Successful text remains successful when history cannot be
  * confirmed: callers receive that secondary Result and choose how to warn.
@@ -296,11 +426,12 @@ export async function transcribeAndPersist(
 	app: WhisperingApp,
 	recordingId: RecordingId,
 	audioBlobId: BlobId,
+	{ deadline }: { deadline: TranscriptionDeadline },
 ): Promise<Result<TranscriptionSuccess, TranscriptionError>> {
 	return recordTranscriptionOutcome(
 		app,
 		recordingId,
-		await transcribeAudio(app, audioBlobId),
+		await transcribeAudio(app, audioBlobId, { deadline }),
 	);
 }
 
@@ -327,22 +458,44 @@ export function prewarmOnDeviceModel(app: WhisperingApp): void {
 }
 
 /**
- * Fold the user's Dictionary into a transcription prompt. Both the cloud `prompt`
- * and the local `initialPrompt` are freeform context the recognizer biases
- * toward, so appending the terms as a glossary nudges it to spell proper nouns
- * and jargon the way the user wrote them. Composition stays here in the app, not
- * in `@epicenter/client`: the wire just carries one prompt string. An empty
- * Dictionary returns the prompt unchanged. See ADR-0099.
+ * Read the recognizer's advisory prompt from settings, Dictionary folded in.
+ *
+ * Every arm composes it the same way, so it is composed here, and each passes the
+ * route it is about to call. The Whisper prompt ceiling is Whisper's alone, so a
+ * Deepgram keyterm list and a `gpt-4o-transcribe` prompt go out whole while a
+ * Whisper route is clipped; `recognizerPromptCharBudget` owns which is which.
+ *
+ * When the route does carry the bound, a long Dictionary loses its tail, and that
+ * loss is what the log line exists for. It is deliberately not a toast: the
+ * transcript still succeeds, this runs on every dictation, and a standing
+ * `report.warning` per dictation would be louder than the problem. The present
+ * tense surface is the Dictionary card on the dictation settings page, which
+ * calls the same pair of functions and says which terms do not reach the
+ * recognizer while the person is standing in front of the list. This line is the
+ * after-the-fact record, alongside the applied-hints log below, so "my Dictionary
+ * had no effect" has an answer here too.
  */
-function withDictionaryTerms(
-	prompt: string,
-	/** Null when the person has added no terms: the definition cannot default an array. */
-	dictionary: readonly string[] | null,
+function recognizerPrompt(
+	app: WhisperingApp,
+	service: TranscriptionServiceId,
+	/** The model about to run, where the caller has resolved one. */
+	model: string | null,
 ): string {
-	if (dictionary === null || dictionary.length === 0) return prompt;
-	const glossary = dictionary.join(', ');
-	const trimmed = prompt.trim();
-	return trimmed ? `${trimmed} ${glossary}` : glossary;
+	const { prompt, dropped } = buildTranscriptionPrompt(
+		app.settings.get('transcriptionPrompt'),
+		app.settings.get('dictionary'),
+		recognizerPromptCharBudget(service, model),
+	);
+	if (dropped.length > 0) {
+		// The count and the boundary term are the whole answer. The tail itself can
+		// run to hundreds of the person's proper nouns, and this line is written on
+		// every dictation, so logging the array would trade volume for nothing.
+		log.info('Dictionary terms did not fit the recognizer prompt budget', {
+			droppedCount: dropped.length,
+			firstDropped: dropped[0],
+		});
+	}
+	return prompt;
 }
 
 /**
@@ -360,6 +513,7 @@ function withDictionaryTerms(
 async function transcribeOnDevice(
 	app: WhisperingApp,
 	audioBlobId: BlobId,
+	selectedService: OnDeviceProviderId,
 ): Promise<Result<string, TranscriptionError>> {
 	if (!tauri) {
 		return TranscriptionOperationError.LocalTranscriptionUnavailableOnWeb();
@@ -368,12 +522,12 @@ async function transcribeOnDevice(
 	// Read-at-use: the hints are built right here, where they are consumed, so
 	// there is no ambient config to go stale. `auto` language and an empty prompt
 	// map to the wire's "unset" (an omitted optional field). The Dictionary terms
-	// fold into the prompt so local recognition spells them the user's way.
+	// fold into the prompt, up to the local route's Whisper prompt budget, so local
+	// recognition spells them the user's way. No model is named here (ADR-0180), so
+	// none is passed: the budget question is answered by the route, and a local
+	// model that takes no prompt has it stripped by the host either way.
 	const language = app.settings.get('transcriptionLanguage');
-	const prompt = withDictionaryTerms(
-		app.settings.get('transcriptionPrompt'),
-		app.settings.get('dictionary'),
-	);
+	const prompt = recognizerPrompt(app, selectedService, null);
 	const { data: outcome, error } =
 		await tauri.transcription.transcribeRecording(audioBlobId, {
 			language: language === 'auto' ? undefined : language,
@@ -412,8 +566,8 @@ async function transcribeViaUpload(
 	// `auto` language and an empty prompt map to the wire's "unset" (omitted from
 	// the form). No per-provider key-format pre-check: no key just means no header,
 	// and the server answers 401, surfaced as a RequestFailed carrying that detail.
-	// The Dictionary terms fold into the prompt so cloud recognition spells them
-	// the user's way.
+	// The Dictionary terms fold into the prompt, up to whatever budget the selected
+	// recognizer has, so cloud recognition spells them the user's way.
 	// Narrowed here rather than in the workspace: the stored code is a plain string so
 	// a hand-written union could never drift from `constants/languages.ts`, and a
 	// code this release no longer supports falls back to letting the provider
@@ -422,15 +576,17 @@ async function transcribeViaUpload(
 	const spokenLanguage: SupportedLanguage = isSupportedLanguage(stored)
 		? stored
 		: 'auto';
-	const prompt = withDictionaryTerms(
-		app.settings.get('transcriptionPrompt'),
-		app.settings.get('dictionary'),
-	);
+	// The prompt is built inside each arm rather than above the switch, because one
+	// provider's budget depends on which model it is pointed at and only the wire
+	// arm resolves a model. A bespoke entry owns its model privately and none of
+	// them is a Whisper decoder, so passing null there costs nothing.
 	const entry = uploadDispatch(app)[selectedService];
 	switch (entry.kind) {
 		case 'wire': {
+			const model = entry.model();
+			const prompt = recognizerPrompt(app, selectedService, model);
 			const result = await transcribe(audio, entry.resolve(), {
-				model: entry.model(),
+				model,
 				language: spokenLanguage === 'auto' ? undefined : spokenLanguage,
 				prompt: prompt || undefined,
 			});
@@ -448,6 +604,9 @@ async function transcribeViaUpload(
 			return result;
 		}
 		case 'bespoke':
-			return entry.transcribe(audio, { prompt, spokenLanguage });
+			return entry.transcribe(audio, {
+				prompt: recognizerPrompt(app, selectedService, null),
+				spokenLanguage,
+			});
 	}
 }

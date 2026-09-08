@@ -1,5 +1,5 @@
 import { defineErrors, type InferErrors } from 'wellcrafted/error';
-import { pushToTalk } from '../operations/push-to-talk';
+import { handsFreePushToTalk } from '../operations/hands-free-instance';
 import { watchManualRecordingEnded } from '../operations/recording';
 import { createWhisperingQueries } from '../queries';
 import { createWhisperingQueryRuntime } from '../queries/client';
@@ -32,7 +32,9 @@ function createWhisperingUiSession(core: WhisperingApp) {
 		[Symbol.asyncDispose]() {
 			disposal ??= (async () => {
 				try {
-					await pushToTalk.dispose(app);
+					// Goes through the hands-free wrapper, not `pushToTalk` directly, so a
+					// torn-down session cannot leave the next one starting locked.
+					await handsFreePushToTalk.dispose(app);
 				} finally {
 					queryRuntime.queryClient.clear();
 					await core[Symbol.asyncDispose]();
