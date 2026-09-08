@@ -326,13 +326,48 @@ never merged back into it, so the upstream slices stay clean.
    the most common look in generated design work; the assets answer it with a
    dark warm-neutral system, so the risk note is retired rather than left open.
 
-Not yet implemented: the seven Vivavoce screens themselves. Retrieving
-`Vivavoce Screens.dc.html` needs `/design-login` run once from an interactive
-`claude` terminal on this machine, which is not something this session can do.
-Two decisions are open on those screens and are recorded here so they are not
-made by default: the assets carry the wordmark **Vivavoce** and Italian UI copy,
-while the app's name is Tironian and its interface is English with no i18n
-layer.
+6. The token system applied as the app's brand layer, in
+   `apps/whispering/src/app.css`, with Instrument Sans and IBM Plex Mono bundled
+   through fontsource.
+7. A message layer, so Italian is a locale rather than a fork of the source.
+
+### Decisions taken on the assets
+
+- **The name stays Tironian.** The assets carry the wordmark *Vivavoce*, and it
+  reaches delivered copy there ("Apri vivavoce"). The system is adopted; the
+  name is not.
+- **English stays the source language.** The Italian in the assets is the
+  language they were mocked in, not a product decision. It is now a locale
+  instead: `interfaceLocale` defaults to `en`, and `messages/it.json` carries the
+  translation. A locale is a choice a person makes, never a guess from the host,
+  which is why nothing reads the browser's preferred language.
+- **The mark stays U+204A.** The assets draw a waveform stroke as the monogram.
+  This document rejects a soundwave by name, on the grounds that every competitor
+  in the category ships one, and that reasoning does not change because an asset
+  drew one. The system is taken; the monogram is not. This is the one visible
+  place where the shipped identity and the artboards differ, and it is deliberate
+  rather than an oversight.
+- **The tokens live in the app, not the toolkit.** The design's stated delivery
+  was a patch to `packages/ui/src/app.css`. That package is MIT and shared with
+  Honeycrisp, so patching it would rebrand an app that is not ours. The app's own
+  stylesheet already loads after the shared theme, so the same variable names win
+  with no component changes, which is what the design actually asked for.
+- **The accent is `--voce`, not shadcn's `--accent`.** The design names its
+  accent "accent", but in this component library that token means "subtle hover
+  surface": menu rows, ghost buttons and command items all fill with it. Pointing
+  it at coral would turn every hover into a brand moment. `--voce` drives
+  `--ring` and the recording state; `--accent` stays a warm neutral.
+
+### Still open
+
+The thirteen Vivavoce artboards are not implemented as screens. The token
+system repaints the app underneath the existing layouts, which is the change
+that is verifiable today; rebuilding thirteen layouts is not, because this app
+has no browser render path (`#platform/os` resolves unconditionally to the Tauri
+implementation) and a layout rewrite that cannot be looked at is work thrown
+away. String extraction is in the same position: the mechanism is in place and a
+vertical slice is converted, and the remaining strings are mechanical work gated
+on being able to see the app.
 
 Not changed: any transcription default. The defaults were checked rather than
 assumed, and local-first plus Polish-on were already shipping. The one default
