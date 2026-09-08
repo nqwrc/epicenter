@@ -9,6 +9,8 @@
 	nav chrome and ContentShell swap on a breakpoint change.
 -->
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { Loading } from '@epicenter/ui/loading';
 	import * as Sidebar from '@epicenter/ui/sidebar';
@@ -85,7 +87,7 @@
 	</WhisperingUiSessionProvider>
 {:catch error}
 	<div class="flex h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
-		<h1 class="text-lg font-semibold">Tironian could not start</h1>
+		<h1 class="text-lg font-semibold">{m.boot_failed_title({ productName: PRODUCT_NAME })}</h1>
 		<p class="text-muted-foreground max-w-md text-sm">
 			{error instanceof Error ? error.message : String(error)}
 		</p>

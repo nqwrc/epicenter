@@ -6,6 +6,7 @@
 	import { logAppStarted } from '../_app-effects/log-app-started';
 	import { notifyDictationFailures } from '../_app-effects/notify-dictation-failures.svelte';
 	import { synchronizeAutoPasteIntent } from '../_app-effects/synchronize-auto-paste-intent.svelte';
+	import { synchronizeInterfaceLocale } from '../_app-effects/synchronize-interface-locale.svelte';
 	import { synchronizeShortcuts } from '../_app-effects/synchronize-shortcuts';
 
 	// Headless component: mounts Tironian's page-lifetime listeners and
@@ -20,5 +21,6 @@
 	synchronizeShortcuts(app);
 	notifyDictationFailures();
 	synchronizeAutoPasteIntent(app);
+	synchronizeInterfaceLocale(app);
 	dictationCapability.track();
 </script>

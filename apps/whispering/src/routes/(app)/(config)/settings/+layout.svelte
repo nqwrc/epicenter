@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { confirmationDialog } from '@epicenter/ui/confirmation-dialog';
 	import * as SectionHeader from '@epicenter/ui/section-header';
@@ -23,7 +25,7 @@
 				>Settings</SectionHeader.Title
 			>
 			<SectionHeader.Description>
-				Customize your Tironian experience.
+				{m.settings_customize({ productName: PRODUCT_NAME })}
 			</SectionHeader.Description>
 		</SectionHeader.Root>
 		<Button

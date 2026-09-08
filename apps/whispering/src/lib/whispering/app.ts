@@ -132,6 +132,11 @@ const APPLICATION_DEFAULTS: Partial<WhisperingSettingValues> = {
 	transcriptionElevenlabsModel: 'scribe_v2',
 	transcriptionDeepgramModel: 'nova-3',
 	transcriptionMistralModel: 'voxtral-mini-latest',
+	// English is the source language: it is what the messages are authored in and
+	// what an untranslated string falls back to. A locale is a choice, never a
+	// guess from the host, which is why this does not read the browser's
+	// preferred language.
+	interfaceLocale: 'en',
 	transcriptionLanguage: 'auto',
 	transcriptionPrompt: '',
 	completionProvider: 'Google',

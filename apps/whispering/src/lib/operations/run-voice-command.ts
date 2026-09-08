@@ -4,6 +4,12 @@
  *
  * See `specs/20260829T120000-command-mode.md`.
  */
+// Relative rather than `$lib` for these two alone. Every other `$lib` import in
+// this file is faked by the suite, which is the repo's convention because `$lib`
+// has no runtime resolution under `bun test`. Faking the product name or the
+// message catalogue would make the delivered-copy assertions circular: the test
+// would compare a string against the same string it just supplied.
+
 import { createLogger } from 'wellcrafted/logger';
 import { probeForegroundContext } from '$lib/operations/foreground-probe';
 import type { VoiceCommandId } from '$lib/operations/match-command';
@@ -16,6 +22,8 @@ import { report } from '$lib/report';
 import { services } from '$lib/services';
 import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { PRODUCT_NAME } from '../constants/brand';
+import { m } from '../paraglide/messages';
 
 const log = createLogger('whispering/voice-command');
 
@@ -77,8 +85,7 @@ async function scratchThat(): Promise<void> {
 		// rather than a silent no-op in case that ever changes.
 		report.info({
 			title: 'Nothing to undo',
-			description:
-				'There is no dictation at your cursor to remove. Only text Tironian pasted at the cursor can be taken back.',
+			description: m.undo_nothing_at_cursor({ productName: PRODUCT_NAME }),
 		});
 		return;
 	}
@@ -121,8 +128,7 @@ async function scratchThat(): Promise<void> {
 	if (target === 'unknown') {
 		report.info({
 			title: "Couldn't tell which window to undo in",
-			description:
-				'Tironian could not confirm the app the last dictation went to, so it sent no backspaces. Select the text and delete it instead.',
+			description: m.undo_unknown_app({ productName: PRODUCT_NAME }),
 		});
 		return;
 	}

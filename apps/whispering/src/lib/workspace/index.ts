@@ -216,6 +216,17 @@ const settingsKv = {
 	 * against the const; the three SMALL selects above are spelled out because
 	 * a two-to-eight-member union is worth checking at the storage boundary.
 	 */
+	/**
+	 * The language the interface speaks, which is a different question from
+	 * {@link transcriptionLanguage}: that one is what the speaker says, this one is
+	 * what the app says back. Someone dictating Italian into an English interface
+	 * is an ordinary setup, so the two never derive from each other.
+	 *
+	 * A select rather than a string, unlike the transcription language: the app
+	 * ships a fixed set of translated locales and the storage boundary is the right
+	 * place to refuse one that has no messages behind it.
+	 */
+	interfaceLocale: field.select(['en', 'it']),
 	transcriptionLanguage: field.string(),
 	transcriptionPrompt: field.string(),
 

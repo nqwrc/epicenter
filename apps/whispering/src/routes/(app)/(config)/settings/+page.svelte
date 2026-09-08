@@ -9,7 +9,9 @@
 	microphone is hot is already looking.
 -->
 <script lang="ts">
-	import { pageTitle } from '$lib/constants/brand';
+	import { PRODUCT_NAME, pageTitle } from '$lib/constants/brand';
+	import { INTERFACE_LOCALE_OPTIONS } from '$lib/constants/locales';
+	import { m } from '$lib/paraglide/messages';
 	import * as Alert from '@epicenter/ui/alert';
 	import { Button } from '@epicenter/ui/button';
 	import * as Field from '@epicenter/ui/field';
@@ -64,6 +66,26 @@
 </script>
 
 <svelte:head> <title>{pageTitle('Capture Settings')}</title> </svelte:head>
+
+<!--
+	Interface language leads the settings, above Capture, because it changes every
+	other label on the page. It is a preference about the app rather than about a
+	capture, which is why it is its own set instead of a row inside one.
+-->
+<Field.Set>
+	<Field.Legend>Interface</Field.Legend>
+	<Field.Group>
+		<SettingSelect
+			store={app.settings}
+			key="interfaceLocale"
+			label={m.settings_interface_language()}
+			items={INTERFACE_LOCALE_OPTIONS}
+			description={m.settings_interface_language_description({
+				productName: PRODUCT_NAME,
+			})}
+		/>
+	</Field.Group>
+</Field.Set>
 
 <Field.Set>
 	<Field.Legend>Capture</Field.Legend>

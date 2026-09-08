@@ -1,0 +1,36 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+
+	"nav_dictate": "Dictate",
+	"nav_recordings": "Recordings",
+	"nav_dictation": "Dictation",
+	"nav_recipes": "Recipes",
+	"nav_snippets": "Snippets",
+	"nav_settings": "Settings",
+
+	"settings_customize": "Customize your {productName} experience.",
+	"settings_title_capture": "Capture Settings",
+	"settings_title_account": "Account & Data",
+	"settings_title_app_rules": "App rules",
+	"settings_title_processing": "Privacy & Processing",
+	"settings_title_shortcuts": "Keyboard Shortcuts",
+
+	"settings_machine_legend": "{productName} on this machine",
+	"settings_machine_description": "Whether {productName} is running and ready to capture, and where it shows up.",
+
+	"shortcuts_description": "Set a shortcut for any command, in {productName} or everywhere.",
+	"shortcut_reach_focused": "Works in {productName}, synced across your devices",
+	"shortcut_reach_hint": "A bare key works in {productName}, a chord works everywhere.",
+
+	"boot_failed_title": "{productName} could not start",
+
+	"undo_nothing_at_cursor": "There is no dictation at your cursor to remove. Only text {productName} pasted at the cursor can be taken back.",
+	"undo_unknown_app": "{productName} could not confirm the app the last dictation went to, so it sent no backspaces. Select the text and delete it instead.",
+
+	"pill_open_app": "Open {productName}",
+
+	"language_en": "English",
+	"language_it": "Italiano",
+	"settings_interface_language": "Interface language",
+	"settings_interface_language_description": "The language {productName} speaks. Changing it reloads the app so every screen switches at once."
+}

@@ -8,6 +8,7 @@ import {
 	vadAssetSources,
 } from '@epicenter/recorder/vad-assets';
 import { workspaceAppViteConfig } from '@epicenter/vite-config';
+import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defaultClientConditions, defineConfig, mergeConfig } from 'vite';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
@@ -17,6 +18,25 @@ const isEpicenterHost = process.env.EPICENTER_HOST === '1';
 export default defineConfig(
 	mergeConfig(workspaceAppViteConfig(APPS.WHISPERING), {
 		plugins: [
+			// Compile-time i18n. Messages become tree-shaken ESM functions, so a
+			// locale nobody selected costs nothing in the bundle.
+			//
+			// No `url` strategy on purpose: this app has no locale in its routes and
+			// must not grow one. The two base paths it already ships (`/` in the
+			// browser build, `/apps/whispering` under the Epicenter host) are enough
+			// surface without a locale segment on top.
+			//
+			// `localStorage` before `baseLocale` because the locale must resolve
+			// synchronously on the first paint. The store holds the authority for the
+			// setting and syncs it between devices; localStorage is the local cache
+			// that is readable before the store opens. `app.html` already does exactly
+			// this for the theme, for the same reason.
+			paraglideVitePlugin({
+				project: './project.inlang',
+				outdir: './src/lib/paraglide',
+				strategy: ['localStorage', 'baseLocale'],
+				emitTsDeclarations: true,
+			}),
 			devtoolsJson(),
 			viteStaticCopy({
 				// `stripBase` drops the source's directory segments so each file

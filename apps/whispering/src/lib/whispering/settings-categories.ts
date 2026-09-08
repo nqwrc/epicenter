@@ -13,6 +13,7 @@
 import type { WhisperingSettingValues } from '../workspace';
 
 export const PREFERENCE_CATEGORIES = [
+	'language',
 	'sounds',
 	'outputDelivery',
 	'recording',
@@ -27,6 +28,7 @@ export const PREFERENCE_CATEGORIES = [
 export type PreferenceCategory = (typeof PREFERENCE_CATEGORIES)[number];
 
 export const PREFERENCE_CATEGORY_LABELS: Record<PreferenceCategory, string> = {
+	language: 'Language',
 	sounds: 'Sounds',
 	outputDelivery: 'Output delivery',
 	recording: 'Recording',
@@ -80,6 +82,13 @@ export const PREFERENCE_CATEGORY_KEYS: Record<
 		'transcriptionLanguage',
 		'transcriptionPrompt',
 	],
+	/**
+	 * The language the interface speaks, kept apart from `transcription` on
+	 * purpose: that category is about what the speaker says, this is about what
+	 * the app says back, and someone dictating Italian into an English interface
+	 * is an ordinary setup rather than a misconfiguration.
+	 */
+	language: ['interfaceLocale'],
 	processing: [
 		'completionProvider',
 		'completionModel',
