@@ -60,12 +60,12 @@
 		const { error } = await startOverlayRepositionSession(app);
 		repositioning = false;
 		if (error) {
-			report.error({ title: "Couldn't start repositioning", cause: error });
+			report.error({ title: m.settings_couldn_t_start_repositioning(), cause: error });
 		}
 	}
 </script>
 
-<svelte:head> <title>{pageTitle('Capture Settings')}</title> </svelte:head>
+<svelte:head> <title>{pageTitle(m.page_title_capture_settings())}</title> </svelte:head>
 
 <!--
 	Interface language leads the settings, above Capture, because it changes every
@@ -73,7 +73,7 @@
 	capture, which is why it is its own set instead of a row inside one.
 -->
 <Field.Set>
-	<Field.Legend>Interface</Field.Legend>
+	<Field.Legend>{m.settings_interface()}</Field.Legend>
 	<Field.Group>
 		<SettingSelect
 			store={app.settings}
@@ -88,23 +88,22 @@
 </Field.Set>
 
 <Field.Set>
-	<Field.Legend>Capture</Field.Legend>
+	<Field.Legend>{m.settings_capture()}</Field.Legend>
 	<Field.Description>
-		How this machine records, what it sounds like, and where the text goes when
-		a capture finishes.
+		{m.settings_how_this_machine_records_what_it_sounds_like()}
 	</Field.Description>
 	<Field.Separator />
 	<Field.Group>
 		<Field.Set id="recording" class="scroll-mt-20">
-			<Field.Legend variant="label">Recording</Field.Legend>
+			<Field.Legend variant="label">{m.settings_recording()}</Field.Legend>
 			<Field.Description>
-				How a capture starts and what it does to the rest of your machine.
+				{m.settings_how_a_capture_starts_and_what_it_does()}
 			</Field.Description>
 			<Field.Group>
 				<SettingSelect
 					store={app.settings}
 					key="recordingTrigger"
-					label="Recording Trigger"
+					label={m.settings_recording_trigger()}
 					items={RECORDING_TRIGGER_OPTIONS}
 					description="Choose how recording starts: {RECORDING_TRIGGER_OPTIONS.map(
 						(option) => option.label.toLowerCase(),
@@ -113,15 +112,15 @@
 
 				<SettingSwitch
 					key="recordingPausePlayback"
-					label="Pause playback while recording"
-					description="Tironian pauses media playing on your computer (music, video, browser tabs) while your voice is being captured, then tries to resume it after. In voice activated mode it pauses only while you actually speak, so music keeps playing between phrases. Works with most apps in your system media controls. A few can't be paused, and on macOS the resume can occasionally wake a different app that was already paused."
+					label={m.settings_pause_playback_while_recording()}
+					description={m.settings_tironian_pauses_media_playing_on_your({ productName: PRODUCT_NAME })}
 				/>
 
 				{#if app.recordings.remoteAvailable}
 					<SettingSwitch
 						key="recordingAutoUpload"
-						label="Upload new recordings"
-						description="After saving a new recording on this device, try once to copy its audio to your online storage. Failed uploads stay local and are not retried automatically."
+						label={m.settings_upload_new_recordings()}
+						description={m.settings_after_saving_a_new_recording_on_this_device()}
 					/>
 				{/if}
 
@@ -129,17 +128,14 @@
 					{#if os.isLinux}
 						<Alert.Root variant="destructive">
 							<InfoIcon class="size-4" />
-							<Alert.Title>Voice Activated not supported on Linux</Alert.Title>
+							<Alert.Title>{m.settings_voice_activated_not_supported_on_linux()}</Alert.Title>
 							<Alert.Description>
-								Voice Activated Detection (VAD) requires the browser's Navigator
-								API, which is not fully supported in Tauri on Linux. Device
-								enumeration and recording will fail. Please use Manual recording
-								instead.
+								{m.settings_voice_activated_detection_vad_requires_the()}
 								<Link
 									href="https://github.com/EpicenterHQ/epicenter/issues/839"
 									target="_blank"
 								>
-									Learn more →
+									{m.settings_learn_more()}
 								</Link>
 							</Alert.Description>
 						</Alert.Root>
@@ -147,20 +143,17 @@
 						{#if tauri && os.isApple}
 							<Alert.Root variant="warning">
 								<InfoIcon class="size-4" />
-								<Alert.Title>Global Shortcuts May Be Unreliable</Alert.Title>
+								<Alert.Title>{m.settings_global_shortcuts_may_be_unreliable()}</Alert.Title>
 								<Alert.Description>
-									VAD uses browser-owned capture. macOS App Nap may delay
-									browser recording logic when Tironian is not in focus.
+									{m.settings_vad_uses_browser_owned_capture_macos_app_nap({ productName: PRODUCT_NAME })}
 								</Alert.Description>
 							</Alert.Root>
 						{/if}
 						<Alert.Root>
 							<InfoIcon class="size-4" />
-							<Alert.Title>Voice Activated Detection</Alert.Title>
+							<Alert.Title>{m.settings_voice_activated_detection()}</Alert.Title>
 							<Alert.Description>
-								VAD uses the browser's Web Audio API for real-time voice
-								detection. Captured speech is encoded to uncompressed WAV
-								format.
+								{m.settings_vad_uses_the_browser_s_web_audio_api()}
 							</Alert.Description>
 						</Alert.Root>
 					{/if}
@@ -170,9 +163,9 @@
 					<SettingSelect
 						store={deviceConfig}
 						key="recording.navigator.bitrateKbps"
-						label="Bitrate"
+						label={m.settings_bitrate()}
 						items={BITRATE_OPTIONS}
-						description="The bitrate of the recording. Higher values mean better quality but larger file sizes."
+						description={m.settings_the_bitrate_of_the_recording_higher_values()}
 					/>
 				{/if}
 			</Field.Group>
@@ -181,13 +174,13 @@
 		<Field.Separator />
 
 		<Field.Set id="output" class="scroll-mt-20">
-			<Field.Legend variant="label">Output</Field.Legend>
-			<Field.Description>Where the text goes once it is ready.</Field.Description>
+			<Field.Legend variant="label">{m.settings_output()}</Field.Legend>
+			<Field.Description>{m.settings_where_the_text_goes_once_it_is_ready()}</Field.Description>
 			<Field.Group>
 				<Field.Set>
-					<Field.Legend variant="label">Transcription output</Field.Legend>
+					<Field.Legend variant="label">{m.settings_transcription_output()}</Field.Legend>
 					<Field.Description>
-						Applies immediately after an audio transcription finishes.
+						{m.settings_applies_immediately_after_an_audio()}
 					</Field.Description>
 					<Field.Group>
 						<OutputDeliveryControls scope="transcription" />
@@ -195,9 +188,9 @@
 				</Field.Set>
 
 				<Field.Set>
-					<Field.Legend variant="label">Recipe output</Field.Legend>
+					<Field.Legend variant="label">{m.settings_recipe_output()}</Field.Legend>
 					<Field.Description>
-						Applies after you run a Recipe on your selection or clipboard.
+						{m.settings_applies_after_you_run_a_recipe_on_your()}
 					</Field.Description>
 					<Field.Group>
 						<OutputDeliveryControls scope="recipe" />
@@ -209,40 +202,39 @@
 		<Field.Separator />
 
 		<Field.Set id="sounds" class="scroll-mt-20">
-			<Field.Legend variant="label">Sounds</Field.Legend>
+			<Field.Legend variant="label">{m.settings_sounds()}</Field.Legend>
 			<Field.Description>
-				Audio cues for the moments you cannot see, like a capture that started
-				while another window has focus.
+				{m.settings_audio_cues_for_the_moments_you_cannot_see()}
 			</Field.Description>
 			<Field.Group>
 				<SettingSwitch
 					key="soundManualStart"
-					label="Play sound when starting manual recording"
+					label={m.settings_play_sound_when_starting_manual_recording()}
 				/>
 				<SettingSwitch
 					key="soundManualStop"
-					label="Play sound when stopping manual recording"
+					label={m.settings_play_sound_when_stopping_manual_recording()}
 				/>
 				<SettingSwitch
 					key="soundManualCancel"
-					label="Play sound when canceling manual recording"
+					label={m.settings_play_sound_when_canceling_manual_recording()}
 				/>
 				<SettingSwitch
 					key="soundVadStart"
-					label="Play sound when starting VAD recording session"
+					label={m.settings_play_sound_when_starting_vad_recording()}
 				/>
-				<SettingSwitch key="soundVadCapture" label="Play sound on VAD capture" />
+				<SettingSwitch key="soundVadCapture" label={m.settings_play_sound_on_vad_capture()} />
 				<SettingSwitch
 					key="soundVadStop"
-					label="Play sound when stopping VAD recording session"
+					label={m.settings_play_sound_when_stopping_vad_recording()}
 				/>
 				<SettingSwitch
 					key="soundTranscriptionComplete"
-					label="Play sound after transcription"
+					label={m.settings_play_sound_after_transcription()}
 				/>
 				<SettingSwitch
 					key="soundRecipeComplete"
-					label="Play sound after a recipe runs"
+					label={m.settings_play_sound_after_a_recipe_runs()}
 				/>
 			</Field.Group>
 		</Field.Set>
@@ -251,16 +243,15 @@
 			<Field.Separator />
 
 			<Field.Set id="app" class="scroll-mt-20">
-				<Field.Legend variant="label">Tironian on this machine</Field.Legend>
+				<Field.Legend variant="label">{m.settings_machine_legend({ productName: PRODUCT_NAME })}</Field.Legend>
 				<Field.Description>
-					Whether Tironian is running and ready to capture, and where it shows
-					that it is.
+					{m.settings_whether_tironian_is_running_and_ready_to({ productName: PRODUCT_NAME })}
 				</Field.Description>
 				<Field.Group>
 					<AutostartSwitch autostart={tauri.autostart} />
 
 					<Field.Field>
-						<Field.Label>Recording pill position</Field.Label>
+						<Field.Label>{m.settings_recording_pill_position()}</Field.Label>
 						<Field.Description>
 							Where the floating pill appears while you dictate. Currently: {overlayAnchorLabel}.
 						</Field.Description>
@@ -276,7 +267,7 @@
 						</div>
 						{#if repositioning}
 							<p class="text-muted-foreground text-sm">
-								Drag the pill on your screen, then save it there.
+								{m.settings_drag_the_pill_on_your_screen_then_save()}
 							</p>
 						{/if}
 					</Field.Field>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
+	import { m } from '$lib/paraglide/messages';
 	import { pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import * as SectionHeader from '@epicenter/ui/section-header';
@@ -17,27 +19,27 @@
 	function reset() {
 		createAppShortcuts(getWhisperingApp()).reset();
 		report.success({
-			title: 'Shortcuts reset',
-			description: 'All shortcuts have been reset to defaults.',
+			title: m.shortcuts_shortcuts_reset(),
+			description: m.shortcuts_all_shortcuts_have_been_reset_to_defaults(),
 		});
 	}
 </script>
 
-<svelte:head> <title>{pageTitle('Keyboard Shortcuts')}</title> </svelte:head>
+<svelte:head> <title>{pageTitle(m.settings_title_shortcuts())}</title> </svelte:head>
 
 <section class="mx-auto max-w-4xl py-6">
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<SectionHeader.Root>
 			<SectionHeader.Title level={1} class="text-3xl">
-				Keyboard Shortcuts
+				{m.settings_title_shortcuts()}
 			</SectionHeader.Title>
 			<SectionHeader.Description class="mt-2">
-				Set a shortcut for any command, in Tironian or everywhere.
+				{m.shortcuts_description({ productName: PRODUCT_NAME })}
 			</SectionHeader.Description>
 		</SectionHeader.Root>
 		<Button variant="outline" size="sm" onclick={reset} class="shrink-0">
 			<RotateCcw class="size-4" />
-			Reset shortcuts
+			{m.shortcuts_reset_shortcuts()}
 		</Button>
 	</div>
 

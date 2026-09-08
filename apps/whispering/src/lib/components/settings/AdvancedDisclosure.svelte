@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import * as Collapsible from '@epicenter/ui/collapsible';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import type { Snippet } from 'svelte';
@@ -22,7 +23,7 @@
 		class="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm [&[data-state=open]>svg]:rotate-180"
 	>
 		<ChevronDownIcon class="size-4 transition-transform" />
-		Advanced
+		{m.advanced_disclosure_advanced()}
 	</Collapsible.Trigger>
 	<Collapsible.Content class="pt-3">
 		{@render children()}

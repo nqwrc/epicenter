@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { Card } from '@epicenter/ui/card';
 	import { confirmationDialog } from '@epicenter/ui/confirmation-dialog';
@@ -59,21 +60,21 @@
 		const replacement = working.replacement.trim();
 		if (!trigger) {
 			report.info({
-				title: 'Name your trigger',
-				description: 'The phrase you will say, like "my address".',
+				title: m.snippets_name_your_trigger(),
+				description: m.snippets_the_phrase_you_will_say_like_my_address(),
 			});
 			return;
 		}
 		if (!replacement) {
 			report.info({
-				title: 'Add a replacement',
-				description: 'The text to deliver when you say the trigger.',
+				title: m.snippets_add_a_replacement(),
+				description: m.snippets_the_text_to_deliver_when_you_say_the(),
 			});
 			return;
 		}
 		if (replacement.length > MAX_REPLACEMENT_LENGTH) {
 			report.info({
-				title: 'Replacement is too long',
+				title: m.snippets_replacement_is_too_long(),
 				description: `Keep it under ${MAX_REPLACEMENT_LENGTH} characters.`,
 			});
 			return;
@@ -86,11 +87,11 @@
 	function remove(snippet: Snippet) {
 		confirmationDialog.open({
 			title: `Delete ${snippet.trigger}?`,
-			description: 'This removes the snippet everywhere. It cannot be undone.',
+			description: m.snippets_this_removes_the_snippet_everywhere_it(),
 			confirm: { text: 'Delete', variant: 'destructive' },
 			onConfirm: async () => {
 				await app.snippets.delete(snippet.id);
-				report.success({ title: 'Snippet deleted' });
+				report.success({ title: m.snippets_snippet_deleted() });
 			},
 		});
 	}
@@ -98,11 +99,11 @@
 	async function exportLibrary() {
 		const { data, error } = await exportSnippets(app);
 		if (error) {
-			report.error({ title: 'Export failed', cause: error });
+			report.error({ title: m.account_export_failed(), cause: error });
 			return;
 		}
 		if (data.written === 0) {
-			report.info({ title: 'Nothing to export', description: 'Add a snippet first.' });
+			report.info({ title: m.account_nothing_to_export(), description: m.snippets_add_a_snippet_first() });
 			return;
 		}
 		report.success({ title: `Exported ${data.written} snippet${data.written === 1 ? '' : 's'}` });
@@ -122,7 +123,7 @@
 		const { data, error } = importSnippets(app, text);
 		if (error) {
 			report.info({
-				title: 'Import failed',
+				title: m.snippets_import_failed(),
 				description:
 					error.type === 'NotJson'
 						? 'That file is not valid JSON.'
@@ -140,7 +141,7 @@
 	}
 </script>
 
-<svelte:head> <title>Snippets</title> </svelte:head>
+<svelte:head> <title>{m.nav_snippets()}</title> </svelte:head>
 
 <main class="flex w-full flex-1 flex-col gap-2 px-4 py-4 sm:px-8 mx-auto">
 	<SectionHeader.Root>
@@ -148,23 +149,22 @@
 			level={1}
 			class="scroll-m-20 text-4xl tracking-tight lg:text-5xl"
 		>
-			Snippets
+			{m.nav_snippets()}
 		</SectionHeader.Title>
 		<SectionHeader.Description>
-			Say a short phrase and deliver saved text. Expansion happens after
-			Polish and is exact, so a snippet arrives word for word.
+			{m.snippets_say_a_short_phrase_and_deliver_saved_text()}
 		</SectionHeader.Description>
 	</SectionHeader.Root>
 
 	<Card class="flex flex-col gap-4 p-6">
 		<div class="flex items-center justify-between gap-2">
-			<h2 class="text-lg font-semibold">Your library</h2>
+			<h2 class="text-lg font-semibold">{m.recipes_your_library()}</h2>
 			<div class="flex items-center gap-1">
-				<Button tooltip="Export snippets as JSON" variant="ghost" size="icon" onclick={exportLibrary}>
+				<Button tooltip={m.snippets_export_snippets_as_json()} variant="ghost" size="icon" onclick={exportLibrary}>
 					<DownloadIcon class="size-4" />
 				</Button>
 				<Button
-					tooltip="Import snippets from JSON"
+					tooltip={m.snippets_import_snippets_from_json()}
 					variant="ghost"
 					size="icon"
 					onclick={() => importInput?.click()}
@@ -172,7 +172,7 @@
 					<UploadIcon class="size-4" />
 				</Button>
 				<Button variant="outline" onclick={openNew}>
-					<PlusIcon class="size-4" /> New snippet
+					<PlusIcon class="size-4" /> {m.snippets_new_snippet()}
 				</Button>
 			</div>
 		</div>
@@ -186,7 +186,7 @@
 
 		{#if app.snippets.count === 0}
 			<p class="text-muted-foreground text-sm">
-				No snippets yet. Add one to speak a phrase and deliver saved text.
+				{m.snippets_no_snippets_yet_add_one_to_speak_a()}
 			</p>
 		{:else}
 			<ul class="flex flex-col divide-y">
@@ -200,7 +200,7 @@
 						</div>
 						<div class="flex shrink-0 items-center gap-1">
 							<Button
-								tooltip="Edit snippet"
+								tooltip={m.snippets_edit_snippet()}
 								variant="ghost"
 								size="icon"
 								onclick={() => openEdit(snippet)}
@@ -208,7 +208,7 @@
 								<PencilIcon class="size-4" />
 							</Button>
 							<Button
-								tooltip="Delete snippet"
+								tooltip={m.snippets_delete_snippet()}
 								variant="ghost"
 								size="icon"
 								onclick={() => remove(snippet)}
@@ -228,29 +228,28 @@
 		<Modal.Header>
 			<Modal.Title>{isEditing ? 'Edit snippet' : 'New snippet'}</Modal.Title>
 			<Modal.Description>
-				A trigger phrase and the text it delivers. Expansion is exact, so the
-				replacement arrives word for word.
+				{m.snippets_a_trigger_phrase_and_the_text_it_delivers()}
 			</Modal.Description>
 		</Modal.Header>
 		<div class="space-y-4 p-4">
 			<div class="grid gap-2">
-				<Label for="snippet-trigger">Trigger phrase</Label>
+				<Label for="snippet-trigger">{m.snippets_trigger_phrase()}</Label>
 				<Input
 					id="snippet-trigger"
-					placeholder="e.g. my address"
+					placeholder={m.snippets_e_g_my_address()}
 					bind:value={working.trigger}
 				/>
 				{#if duplicateTrigger}
 					<p class="text-destructive text-sm">
-						Two snippets share this trigger. The one saved first wins.
+						{m.snippets_two_snippets_share_this_trigger_the_one()}
 					</p>
 				{/if}
 			</div>
 			<div class="grid gap-2">
-				<Label for="snippet-replacement">Replacement</Label>
+				<Label for="snippet-replacement">{m.snippets_replacement()}</Label>
 				<Textarea
 					id="snippet-replacement"
-					placeholder="123 Main St, Springfield"
+					placeholder={m.snippets_123_main_st_springfield()}
 					rows={4}
 					maxlength={MAX_REPLACEMENT_LENGTH}
 					bind:value={working.replacement}
@@ -261,7 +260,7 @@
 			</div>
 		</div>
 		<Modal.Footer>
-			<Button variant="outline" onclick={() => (editorOpen = false)}>Cancel</Button>
+			<Button variant="outline" onclick={() => (editorOpen = false)}>{m.recording_pill_reposition_cancel()}</Button>
 			<Button onclick={save}>{isEditing ? 'Save' : 'Create'}</Button>
 		</Modal.Footer>
 	</Modal.Content>

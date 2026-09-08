@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { CopyButton } from '@epicenter/ui/copy-button';
 	import * as InputGroup from '@epicenter/ui/input-group';
@@ -80,7 +81,7 @@
 		<Textarea readonly value={text} rows={20} />
 		<Modal.Footer>
 			<Button variant="outline" onclick={() => (isDialogOpen = false)}>
-				Close
+				{m.text_preview_dialog_close()}
 			</Button>
 			<CopyButton
 				{text}
@@ -91,7 +92,7 @@
 					if (status === 'success') isDialogOpen = false;
 				}}
 			>
-				Copy Text
+				{m.text_preview_dialog_copy_text()}
 			</CopyButton>
 		</Modal.Footer>
 	</Modal.Content>

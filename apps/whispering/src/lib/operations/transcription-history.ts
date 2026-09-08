@@ -10,6 +10,7 @@ import { Err, isErr, Ok, type Result, trySync } from 'wellcrafted/result';
 import type { WhisperingApp } from '$lib/whispering/app';
 import type { Recording } from '$lib/whispering/recording';
 import type { RecordingId } from '$lib/workspace';
+import { m } from '../paraglide/messages';
 
 const defaultLog = createLogger('whispering/transcription-history');
 
@@ -21,7 +22,7 @@ export const RecordingHistoryError = defineErrors({
 		recordingId: RecordingId;
 		cause: unknown;
 	}) => ({
-		message: 'The transcription may not appear in recording history.',
+		message: m.transcription_history_the_transcription_may_not(),
 		recordingId,
 		cause,
 	}),

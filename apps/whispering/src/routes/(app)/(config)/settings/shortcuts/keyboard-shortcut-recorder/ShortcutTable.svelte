@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Input } from '@epicenter/ui/input';
 	import * as Table from '@epicenter/ui/table';
 	import Search from '@lucide/svelte/icons/search';
@@ -28,7 +29,7 @@
 		/>
 		<Input
 			type="search"
-			placeholder="Search commands..."
+			placeholder={m.shortcut_table_search_commands()}
 			class="pl-10"
 			bind:value={searchQuery}
 		/>
@@ -39,8 +40,8 @@
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head class="min-w-[150px]">Command</Table.Head>
-					<Table.Head class="text-right min-w-[200px]">Shortcut</Table.Head>
+					<Table.Head class="min-w-[150px]">{m.shortcut_table_command()}</Table.Head>
+					<Table.Head class="text-right min-w-[200px]">{m.shortcut_table_shortcut()}</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>

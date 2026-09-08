@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import * as Empty from '@epicenter/ui/empty';
@@ -27,5 +28,5 @@
 			{/if}
 		</Empty.Description>
 	</Empty.Header>
-	<Empty.Content> <Button href={whisperingPath('/')}>Go Home</Button> </Empty.Content>
+	<Empty.Content> <Button href={whisperingPath('/')}>{m.app_go_home()}</Button> </Empty.Content>
 </Empty.Root>

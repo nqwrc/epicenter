@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { Card } from '@epicenter/ui/card';
 	import * as Field from '@epicenter/ui/field';
@@ -89,7 +91,7 @@
 	}
 </script>
 
-<svelte:head> <title>Dictation</title> </svelte:head>
+<svelte:head> <title>{m.nav_dictation()}</title> </svelte:head>
 
 <main class="mx-auto flex w-full flex-1 flex-col gap-2 px-4 py-4 sm:px-8">
 	<SectionHeader.Root>
@@ -97,28 +99,24 @@
 			level={1}
 			class="scroll-m-20 text-4xl tracking-tight lg:text-5xl"
 		>
-			Dictation
+			{m.nav_dictation()}
 		</SectionHeader.Title>
 		<SectionHeader.Description>
-			What happens to your words between the transcript and your cursor:
-			the cleanup pass, the phrases that act instead of typing, and the
-			spellings Tironian should already know.
+			{m.dictation_what_happens_to_your_words_between_the({ productName: PRODUCT_NAME })}
 		</SectionHeader.Description>
 	</SectionHeader.Root>
 
 	<Card class="flex flex-col gap-4 p-6">
 		<Field.Set>
-			<Field.Legend variant="label">Polish</Field.Legend>
+			<Field.Legend variant="label">{m.dictation_polish()}</Field.Legend>
 			<Field.Description>
-				An always-on AI pass that fixes grammar and punctuation, drops the
-				"um"s and the words you stumbled over, and keeps only the corrected
-				half when you say something twice. Your wording otherwise stays yours.
+				{m.dictation_an_always_on_ai_pass_that_fixes_grammar()}
 			</Field.Description>
 			<Field.Group>
 				<SettingSwitch
 					key="polishEnabled"
-					label="Polish transcripts with AI"
-					description="Turn off for speed mode: the raw transcript ships instantly, with no AI call."
+					label={m.dictation_polish_transcripts_with_ai()}
+					description={m.dictation_turn_off_for_speed_mode_the_raw_transcript()}
 				/>
 				{#if app.settings.get('polishEnabled')}
 					<p class="text-muted-foreground text-sm">{destination}</p>
@@ -130,11 +128,10 @@
 					>
 						<KeyRoundIcon class="mt-0.5 size-4 shrink-0 text-amber-500" />
 						<p>
-							Polish is on, but the completion provider is not ready, so
-							transcripts still ship raw. <Link
+							{m.dictation_polish_is_on_but_the_completion_provider_is()} <Link
 								href={whisperingPath('/settings/processing')}
-								>Check completion settings</Link
-							> to start cleaning them up.
+								>{m.dictation_check_completion_settings()}</Link
+							> {m.dictation_to_start_cleaning_them_up()}
 						</p>
 					</div>
 				{/if}
@@ -143,7 +140,7 @@
 					<AdvancedDisclosure>
 						<Field.Field>
 							<Field.Label for="polish-instructions">
-								Polish instructions
+								{m.dictation_polish_instructions()}
 							</Field.Label>
 							<Textarea
 								id="polish-instructions"
@@ -156,9 +153,7 @@
 								}}
 							/>
 							<Field.Description>
-								What Polish does to every transcript. Keep it
-								meaning-preserving; reshaping (email, to-dos) belongs in
-								recipes.
+								{m.dictation_what_polish_does_to_every_transcript_keep()}
 							</Field.Description>
 						</Field.Field>
 					</AdvancedDisclosure>
@@ -169,28 +164,27 @@
 
 	<Card class="flex flex-col gap-4 p-6">
 		<Field.Set>
-			<Field.Legend variant="label">Command Mode</Field.Legend>
+			<Field.Legend variant="label">{m.dictation_command_mode()}</Field.Legend>
 			<Field.Description>
-				A short list of spoken phrases that do something instead of being
-				typed. Say one on its own, with nothing else in the same breath.
+				{m.dictation_a_short_list_of_spoken_phrases_that_do()}
 			</Field.Description>
 			<Field.Group>
 				<SettingSwitch
 					key="commandModeEnabled"
-					label="Act on spoken commands"
-					description="Off by default, because these phrases stop being text the moment you turn this on."
+					label={m.dictation_act_on_spoken_commands()}
+					description={m.dictation_off_by_default_because_these_phrases_stop()}
 				/>
 				{#if app.settings.get('commandModeEnabled')}
 					<ul class="text-muted-foreground space-y-1 text-sm">
 						<li>
-							<span class="text-foreground font-medium">"scratch that"</span>
+							<span class="text-foreground font-medium">{m.dictation_scratch_that()}</span>
 							or
-							<span class="text-foreground font-medium">"undo that"</span>
-							removes what was just typed at your cursor.
+							<span class="text-foreground font-medium">{m.dictation_undo_that()}</span>
+							{m.dictation_removes_what_was_just_typed_at_your_cursor()}
 						</li>
 						<li>
-							<span class="text-foreground font-medium">"stop listening"</span>
-							ends a voice activated session.
+							<span class="text-foreground font-medium">{m.dictation_stop_listening()}</span>
+							{m.dictation_ends_a_voice_activated_session()}
 						</li>
 					</ul>
 				{/if}
@@ -200,11 +194,9 @@
 
 	<Card class="flex flex-col gap-4 p-6">
 		<Field.Set>
-			<Field.Legend variant="label">Dictionary</Field.Legend>
+			<Field.Legend variant="label">{m.dictation_dictionary()}</Field.Legend>
 			<Field.Description>
-				Proper nouns and domain terms Tironian should know: names, jargon,
-				product names. The AI keeps these spellings and maps obvious mishearings
-				onto them.
+				{m.dictation_proper_nouns_and_domain_terms_tironian({ productName: PRODUCT_NAME })}
 			</Field.Description>
 			<Field.Group>
 				<form
@@ -214,9 +206,9 @@
 						addTerm();
 					}}
 				>
-					<Input placeholder="e.g. Kubernetes" bind:value={newTerm} />
+					<Input placeholder={m.dictation_e_g_kubernetes()} bind:value={newTerm} />
 					<Button type="submit" variant="outline">
-						<PlusIcon class="size-4" /> Add
+						<PlusIcon class="size-4" /> {m.dictation_add()}
 					</Button>
 				</form>
 
@@ -245,7 +237,7 @@
 						>
 							<TriangleAlertIcon class="mt-0.5 size-4 shrink-0 text-amber-500" />
 							<p>
-								Everything from <span class="font-medium">{unreached[0]}</span>
+								{m.dictation_everything_from()} <span class="font-medium">{unreached[0]}</span>
 								onward ({unreached.length}
 								{unreached.length === 1 ? 'term' : 'terms'}) does not reach the
 								transcription model: it accepts only a short prompt, and your
@@ -253,7 +245,7 @@
 								term.
 								{#if systemPrompt}
 									Your <Link href={whisperingPath('/settings/processing')}
-										>transcription System Prompt</Link
+										>{m.dictation_transcription_system_prompt()}</Link
 									> is sent first and takes part of the same room, so remove terms
 									above the cut-off, or shorten that prompt, to make room.
 								{:else}
@@ -264,7 +256,7 @@
 					{/if}
 				{:else}
 					<Field.Description>
-						No terms yet. Add the names and jargon you dictate often.
+						{m.dictation_no_terms_yet_add_the_names_and_jargon()}
 					</Field.Description>
 				{/if}
 			</Field.Group>

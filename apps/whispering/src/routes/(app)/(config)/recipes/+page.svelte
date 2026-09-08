@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Badge } from '@epicenter/ui/badge';
 	import { Button } from '@epicenter/ui/button';
 	import { Card } from '@epicenter/ui/card';
@@ -42,11 +43,11 @@
 		const name = working.name.trim();
 		const instructions = working.instructions.trim();
 		if (!name) {
-			report.info({ title: 'Name your recipe', description: 'Give it a short name like "Email" or "Standup".' });
+			report.info({ title: m.recipes_name_your_recipe(), description: m.recipes_give_it_a_short_name_like_email_or() });
 			return;
 		}
 		if (!instructions) {
-			report.info({ title: 'Add an instruction', description: 'One line telling the AI what to do with the text.' });
+			report.info({ title: m.recipes_add_an_instruction(), description: m.recipes_one_line_telling_the_ai_what_to_do() });
 			return;
 		}
 		await app.recipes.set({ ...$state.snapshot(working), name, instructions });
@@ -57,17 +58,17 @@
 	function remove(recipe: Recipe) {
 		confirmationDialog.open({
 			title: `Delete ${recipe.name}?`,
-			description: 'This removes the recipe everywhere. It cannot be undone.',
+			description: m.recipes_this_removes_the_recipe_everywhere_it_cannot(),
 			confirm: { text: 'Delete', variant: 'destructive' },
 			onConfirm: async () => {
 				await app.recipes.delete(recipe.id);
-				report.success({ title: 'Recipe deleted' });
+				report.success({ title: m.recipes_recipe_deleted() });
 			},
 		});
 	}
 </script>
 
-<svelte:head> <title>Recipes</title> </svelte:head>
+<svelte:head> <title>{m.nav_recipes()}</title> </svelte:head>
 
 <main class="flex w-full flex-1 flex-col gap-2 px-4 py-4 sm:px-8 mx-auto">
 	<SectionHeader.Root>
@@ -75,20 +76,18 @@
 			level={1}
 			class="scroll-m-20 text-4xl tracking-tight lg:text-5xl"
 		>
-			Recipes
+			{m.nav_recipes()}
 		</SectionHeader.Title>
 		<SectionHeader.Description>
-			Reusable text actions you run on demand over a selection, your clipboard,
-			or a transcript. Cleanup is automatic (that is Polish); recipes are the
-			reshapes you pick.
+			{m.recipes_reusable_text_actions_you_run_on_demand_over()}
 		</SectionHeader.Description>
 	</SectionHeader.Root>
 
 	<Card class="flex flex-col gap-4 p-6">
 		<div class="flex items-center justify-between gap-2">
-			<h2 class="text-lg font-semibold">Your library</h2>
+			<h2 class="text-lg font-semibold">{m.recipes_your_library()}</h2>
 			<Button variant="outline" onclick={openNew}>
-				<PlusIcon class="size-4" /> New recipe
+				<PlusIcon class="size-4" /> {m.recipes_new_recipe()}
 			</Button>
 		</div>
 
@@ -105,7 +104,7 @@
 							{#if builtin}
 								<Badge variant="secondary">Built-in</Badge>
 							{:else if !recipe.trusted}
-								<Badge variant="outline">From a file</Badge>
+								<Badge variant="outline">{m.recipes_from_a_file()}</Badge>
 							{/if}
 						</div>
 						<p class="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
@@ -115,7 +114,7 @@
 					{#if !builtin}
 						<div class="flex shrink-0 items-center gap-1">
 							<Button
-								tooltip="Edit recipe"
+								tooltip={m.recipes_edit_recipe()}
 								variant="ghost"
 								size="icon"
 								onclick={() => openEdit(recipe)}
@@ -123,7 +122,7 @@
 								<PencilIcon class="size-4" />
 							</Button>
 							<Button
-								tooltip="Delete recipe"
+								tooltip={m.recipes_delete_recipe()}
 								variant="ghost"
 								size="icon"
 								onclick={() => remove(recipe)}
@@ -143,14 +142,13 @@
 		<Modal.Header>
 			<Modal.Title>{isEditing ? 'Edit recipe' : 'New recipe'}</Modal.Title>
 			<Modal.Description>
-				A name and one instruction. The instruction is the whole recipe: text in,
-				text out.
+				{m.recipes_a_name_and_one_instruction_the_instruction_is()}
 			</Modal.Description>
 		</Modal.Header>
 		<div class="space-y-4 p-4">
 			<div class="flex gap-2">
 				<div class="grid w-20 shrink-0 gap-2">
-					<Label for="recipe-icon">Icon</Label>
+					<Label for="recipe-icon">{m.recipes_icon()}</Label>
 					<Input
 						id="recipe-icon"
 						placeholder="🪄"
@@ -162,19 +160,19 @@
 					/>
 				</div>
 				<div class="grid flex-1 gap-2">
-					<Label for="recipe-name">Name</Label>
+					<Label for="recipe-name">{m.recipes_name()}</Label>
 					<Input
 						id="recipe-name"
-						placeholder="e.g. Email"
+						placeholder={m.recipes_e_g_email()}
 						bind:value={working.name}
 					/>
 				</div>
 			</div>
 			<div class="grid gap-2">
-				<Label for="recipe-instructions">Instruction</Label>
+				<Label for="recipe-instructions">{m.recipes_instruction()}</Label>
 				<Textarea
 					id="recipe-instructions"
-					placeholder="Rewrite the text as a clear, friendly email."
+					placeholder={m.recipes_rewrite_the_text_as_a_clear_friendly_email()}
 					rows={4}
 					bind:value={working.instructions}
 				/>
@@ -187,23 +185,21 @@
 			-->
 			{#if isEditing && !working.trusted}
 				<div class="rounded-md border border-dashed p-3">
-					<p class="text-sm font-medium">This recipe came from a file</p>
+					<p class="text-sm font-medium">{m.recipes_this_recipe_came_from_a_file()}</p>
 					<p class="text-muted-foreground mt-1 text-sm">
-						Its instruction runs as a description of the change to make, not as
-						something the AI takes orders from, and it cannot introduce a link
-						or an address your own text does not already contain.
+						{m.recipes_its_instruction_runs_as_a_description_of_the()}
 					</p>
 					<div class="mt-3 flex items-center gap-2">
 						<Switch id="recipe-trusted" bind:checked={working.trusted} />
 						<Label for="recipe-trusted" class="text-sm font-normal">
-							I have read this instruction and want it to run as my own
+							{m.recipes_i_have_read_this_instruction_and_want_it()}
 						</Label>
 					</div>
 				</div>
 			{/if}
 		</div>
 		<Modal.Footer>
-			<Button variant="outline" onclick={() => (editorOpen = false)}>Cancel</Button>
+			<Button variant="outline" onclick={() => (editorOpen = false)}>{m.recording_pill_reposition_cancel()}</Button>
 			<Button onclick={save}>{isEditing ? 'Save' : 'Create'}</Button>
 		</Modal.Footer>
 	</Modal.Content>

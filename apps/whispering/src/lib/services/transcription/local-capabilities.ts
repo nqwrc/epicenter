@@ -22,6 +22,7 @@
 import { extractErrorMessage } from 'wellcrafted/error';
 import { Err, Ok, type Result } from 'wellcrafted/result';
 import type { LocalTranscriptionReadiness } from '$lib/tauri/commands.types';
+import { m } from '../../paraglide/messages';
 
 /** What the route accepts when it is usable. */
 export type TranscriptionCapabilities = {
@@ -58,8 +59,7 @@ export async function readLocalCapabilities(
 	if (!read) {
 		return Err({
 			reason: 'host-unavailable',
-			message:
-				'Local transcription needs the Epicenter desktop app. Choose a cloud or self-hosted provider here.',
+			message: m.local_capabilities_local_transcription_needs_the(),
 		});
 	}
 	try {

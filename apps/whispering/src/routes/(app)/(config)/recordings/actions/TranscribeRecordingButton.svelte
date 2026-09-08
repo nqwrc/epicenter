@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import PlayIcon from '@lucide/svelte/icons/play';
@@ -82,7 +83,7 @@
 	function transcribe() {
 		const loading = report.loading({
 			title: 'Transcribing...',
-			description: 'Your recording is being transcribed...',
+			description: m.pipeline_your_recording_is_being_transcribed(),
 		});
 		transcribeRecording.mutate(recording, {
 			onError: (error) => {
@@ -93,7 +94,7 @@
 				// "OpenAI API key is required") instead of a generic line.
 				loading.reject({
 					cause: error,
-					title: 'Failed to transcribe recording',
+					title: m.transcribe_recording_button_failed_to_transcribe(),
 				});
 			},
 			onSuccess: async ({ text, history }) => {
@@ -105,7 +106,7 @@
 				loading.resolve(notice);
 				if (history.error !== null) {
 					report.info({
-						title: 'Transcription delivered, but history may be incomplete',
+						title: m.pipeline_transcription_delivered_but_history_may_be(),
 						description: history.error.message,
 					});
 				}

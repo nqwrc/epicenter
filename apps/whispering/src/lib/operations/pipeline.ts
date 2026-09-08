@@ -20,6 +20,7 @@ import { dictationLifecycle } from '$lib/state/dictation-lifecycle.svelte';
 import { lastDelivery } from '$lib/state/last-delivery.svelte';
 import { polishHud } from '$lib/state/polish-hud.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../paraglide/messages';
 import type { ForegroundSnapshot } from './foreground-context';
 import { matchAppRule } from './match-app-rule';
 import { deadlineForCapture } from './transcription-deadline';
@@ -134,13 +135,13 @@ async function runRecordingPipeline(
 			.then(({ error }) => {
 				if (error !== null) {
 					report.info({
-						title: 'Recording kept on this device',
+						title: m.pipeline_recording_kept_on_this_device(),
 						description: error.message,
 					});
 				}
 			})
 			.catch((cause) => {
-				report.error({ title: 'Automatic upload failed', cause });
+				report.error({ title: m.pipeline_automatic_upload_failed(), cause });
 			});
 	}
 
@@ -149,8 +150,8 @@ async function runRecordingPipeline(
 	const transcribeLoading = isDictation
 		? null
 		: report.loading({
-				title: '📋 Transcribing...',
-				description: 'Your recording is being transcribed...',
+				title: m.pipeline_transcribing(),
+				description: m.pipeline_your_recording_is_being_transcribed(),
 			});
 
 	// A live dictation takes the tight deadline, a file import or a long manual
@@ -201,8 +202,8 @@ async function runRecordingPipeline(
 			dictationLifecycle.reset();
 		} else {
 			transcribeLoading?.resolve({
-				title: 'No speech detected',
-				description: 'The recording had nothing to transcribe.',
+				title: m.pipeline_no_speech_detected(),
+				description: m.pipeline_the_recording_had_nothing_to_transcribe(),
 			});
 		}
 		return;
@@ -229,7 +230,7 @@ async function runRecordingPipeline(
 			// history-error report at the end of this function, so it needs its own.
 			if (history.error !== null) {
 				report.info({
-					title: 'Transcription delivered, but history may be incomplete',
+					title: m.pipeline_transcription_delivered_but_history_may_be(),
 					description: history.error.message,
 				});
 			}
@@ -292,7 +293,7 @@ async function runRecordingPipeline(
 	let polishOutput = polishError ? polishError.fallback : polishedText;
 	if (polishError) {
 		report.info({
-			title: 'Polishing skipped',
+			title: m.pipeline_polishing_skipped(),
 			description: polishError.message,
 		});
 	}
@@ -315,7 +316,7 @@ async function runRecordingPipeline(
 		);
 		if (recipe === undefined) {
 			report.info({
-				title: 'App rule recipe missing',
+				title: m.pipeline_app_rule_recipe_missing(),
 				description: `The "${appRule.name}" rule names a recipe that no longer exists, so the text shipped un-reshaped.`,
 			});
 		} else {
@@ -333,7 +334,7 @@ async function runRecordingPipeline(
 			if (reshaped.error !== null) {
 				if (!recipeSignal?.aborted) {
 					report.info({
-						title: 'Recipe skipped',
+						title: m.pipeline_recipe_skipped(),
 						description: reshaped.error.message,
 					});
 				}
@@ -416,7 +417,7 @@ async function runRecordingPipeline(
 	}
 	if (history.error !== null) {
 		report.info({
-			title: 'Transcription delivered, but history may be incomplete',
+			title: m.pipeline_transcription_delivered_but_history_may_be(),
 			description: history.error.message,
 		});
 	}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import * as Field from '@epicenter/ui/field';
 	import { Switch } from '@epicenter/ui/switch';
 	import {
@@ -35,9 +36,9 @@
 
 <Field.Field orientation="horizontal">
 	<Field.Content>
-		<Field.Label for="autostart">Launch on Startup</Field.Label>
+		<Field.Label for="autostart">{m.autostart_switch_launch_on_startup()}</Field.Label>
 		<Field.Description>
-			Automatically open Epicenter when you log in
+			{m.autostart_switch_automatically_open_epicenter_when()}
 		</Field.Description>
 	</Field.Content>
 	<Switch

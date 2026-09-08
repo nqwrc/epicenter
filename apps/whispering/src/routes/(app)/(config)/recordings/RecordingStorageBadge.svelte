@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Badge } from '@epicenter/ui/badge';
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { Recording } from '$lib/state/recordings.svelte';
@@ -29,7 +30,7 @@
 		{labels[availability.data]}
 	</Badge>
 {:else if availability.isError}
-	<Badge variant="destructive">Storage error</Badge>
+	<Badge variant="destructive">{m.recording_storage_badge_storage_error()}</Badge>
 {:else}
 	<Badge variant="secondary">Checking...</Badge>
 {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import { IMPORT_ACCEPT } from '$lib/constants/import-formats';
@@ -24,7 +25,7 @@
 </script>
 
 <Button
-	tooltip="Upload an audio or video file"
+	tooltip={m.import_file_button_upload_an_audio_or_video_file()}
 	onclick={() => fileInput?.click()}
 	variant="ghost"
 	size="icon"

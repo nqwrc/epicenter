@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Loading } from '@epicenter/ui/loading';
 	import { goto } from '$app/navigation';
 	import { auth } from '#platform/auth';
@@ -25,5 +26,5 @@
 		{errorMessage}
 	</div>
 {:else}
-	<Loading class="h-dvh" label="Signing in…" />
+	<Loading class="h-dvh" label={m.callback_signing_in()} />
 {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { PRODUCT_NAME } from '$lib/constants/brand';
 	import * as Sidebar from '@epicenter/ui/sidebar';
 	import { useSidebar } from '@epicenter/ui/sidebar';
@@ -37,7 +38,7 @@
 							>
 								<span class="truncate font-semibold">{PRODUCT_NAME}</span>
 								<span class="truncate text-xs text-muted-foreground"
-									>Speech to text</span
+									>{m.vertical_nav_speech_to_text()}</span
 								>
 							</div>
 						</button>
@@ -50,7 +51,7 @@
 	<Sidebar.Content>
 		<!-- Navigation Group -->
 		<Sidebar.Group>
-			<Sidebar.GroupLabel>Navigation</Sidebar.GroupLabel>
+			<Sidebar.GroupLabel>{m.vertical_nav_navigation()}</Sidebar.GroupLabel>
 			<Sidebar.GroupContent>
 				<Sidebar.Menu>
 					{#each NAV_ITEMS as item}
@@ -96,7 +97,7 @@
 							<MoonIcon
 								class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
 							/>
-							<span>Toggle theme</span>
+							<span>{m.vertical_nav_toggle_theme()}</span>
 						</button>
 					{/snippet}
 				</Sidebar.MenuButton>

@@ -13,6 +13,7 @@ import {
 	type InferErrors,
 } from 'wellcrafted/error';
 import { Err, Ok, type Result, tryAsync } from 'wellcrafted/result';
+import { m } from '../paraglide/messages';
 import type { Recording } from './recording.js';
 
 /**
@@ -33,11 +34,11 @@ export type RecordingAudioAvailability =
 
 export const RecordingAudioError = defineErrors({
 	RecordingNotFound: ({ recordingId }: { recordingId: Recording['id'] }) => ({
-		message: 'This recording no longer exists.',
+		message: m.recording_audio_this_recording_no_longer_exists(),
 		recordingId,
 	}),
 	RemoteUnavailable: ({ recordingId }: { recordingId: Recording['id'] }) => ({
-		message: 'Online audio storage is not available right now.',
+		message: m.recording_audio_online_audio_storage_is_not_available(),
 		recordingId,
 	}),
 	RemoteAudioUnavailable: ({
@@ -45,7 +46,7 @@ export const RecordingAudioError = defineErrors({
 	}: {
 		recordingId: Recording['id'];
 	}) => ({
-		message: 'This recording has no known online audio copy.',
+		message: m.recording_audio_this_recording_has_no_known_online(),
 		recordingId,
 	}),
 	RowUpdateFailed: ({
@@ -68,8 +69,7 @@ export const RecordingAudioError = defineErrors({
 		updateError: unknown;
 		purgeError: unknown;
 	}) => ({
-		message:
-			'Audio uploaded, but its recording could not be updated and the online copy could not be rolled back.',
+		message: m.recording_audio_audio_uploaded_but_its_recording(),
 		recordingId,
 		updateError,
 		purgeError,

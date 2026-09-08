@@ -1,4 +1,5 @@
 <script lang="ts" module>
+	import { m } from '$lib/paraglide/messages';
 	import { defineErrors } from 'wellcrafted/error';
 
 	/**
@@ -10,7 +11,7 @@
 	 */
 	const RecordingOverlayPageError = defineErrors({
 		RepositionFailed: ({ cause }: { cause: unknown }) => ({
-			message: 'Recording overlay reposition step failed',
+			message: m.recording_overlay_recording_overlay_reposition_step(),
 			cause,
 		}),
 	});
@@ -332,8 +333,7 @@
 		</div>
 
 		<p class="reposition-hint">
-			Drag the pill where you want it, then save. Click anywhere else to
-			cancel.
+			{m.recording_overlay_drag_the_pill_where_you_want_it()}
 		</p>
 	</div>
 {:else}

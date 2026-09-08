@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Badge } from '@epicenter/ui/badge';
 	import * as Command from '@epicenter/ui/command';
 	import * as Modal from '@epicenter/ui/modal';
@@ -26,7 +27,7 @@
 		recipePicker.close();
 		const loading = report.loading({
 			title: `Running ${recipe.name}...`,
-			description: 'Reshaping your text with AI.',
+			description: m.recipe_picker_reshaping_your_text_with_ai(),
 		});
 		const { data, error } = await runRecipe(app, { input, recipe });
 		if (error) {
@@ -52,14 +53,14 @@
 	}
 >
 	<Modal.Content class="overflow-hidden p-0">
-		<Modal.Title class="sr-only">Run a recipe</Modal.Title>
+		<Modal.Title class="sr-only">{m.recipe_picker_run_a_recipe_2()}</Modal.Title>
 		<Modal.Description class="sr-only">
-			Pick a recipe to run on your captured text.
+			{m.recipe_picker_pick_a_recipe_to_run_on_your_captured()}
 		</Modal.Description>
 		<Command.Root loop>
-			<Command.Input placeholder="Run a recipe..." />
+			<Command.Input placeholder={m.recipe_picker_run_a_recipe()} />
 			<Command.List>
-				<Command.Empty>No recipes found.</Command.Empty>
+				<Command.Empty>{m.recipe_picker_no_recipes_found()}</Command.Empty>
 				<Command.Group>
 					{#each app.recipes.pickable as recipe (recipe.id)}
 						<Command.Item value={recipe.name} onSelect={() => run(recipe)}>

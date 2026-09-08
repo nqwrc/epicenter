@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import * as Command from '@epicenter/ui/command';
 	import { useCombobox } from '@epicenter/ui/hooks';
@@ -68,15 +69,15 @@
 	</Popover.Trigger>
 	<Popover.Content class="p-0">
 		<Command.Root loop>
-			<Command.Input placeholder="Select VAD recording device..." />
-			<Command.Empty>No recording devices found.</Command.Empty>
+			<Command.Input placeholder={m.vad_device_selector_select_vad_recording_device()} />
+			<Command.Empty>{m.manual_device_selector_no_recording_devices_found()}</Command.Empty>
 			<div class="px-3 py-2 text-xs text-muted-foreground bg-muted/30 border-b">
-				Voice detection uses Web Audio API
+				{m.vad_device_selector_voice_detection_uses_web_audio()}
 			</div>
 			<Command.Group class="overflow-y-auto max-h-[400px]">
 				{#if getDevicesQuery.isPending}
 					<div class="p-4 text-center text-sm text-muted-foreground">
-						Loading VAD devices...
+						{m.vad_device_selector_loading_vad_devices()}
 					</div>
 				{:else if getDevicesQuery.isError}
 					<div class="p-4 text-center text-sm text-destructive">

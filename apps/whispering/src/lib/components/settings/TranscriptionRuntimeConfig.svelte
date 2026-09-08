@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
+	import { m } from '$lib/paraglide/messages';
 	import { Badge } from '@epicenter/ui/badge';
 	import { Button } from '@epicenter/ui/button';
 	import * as Card from '@epicenter/ui/card';
@@ -140,7 +142,7 @@
 				<h3 class="text-sm font-medium">{section.heading}</h3>
 				<Badge variant="outline" class="text-xs">{section.badge}</Badge>
 				{#if activeAccess === section.access}
-					<Badge class="text-xs">Active</Badge>
+					<Badge class="text-xs">{m.transcription_runtime_config_active()}</Badge>
 				{/if}
 			</div>
 
@@ -173,7 +175,7 @@
 	     this app is not given. -->
 	<Field.Field orientation="horizontal">
 		<Field.Content>
-			<Field.Label>On-device transcription</Field.Label>
+			<Field.Label>{m.transcription_runtime_config_on_device_transcription()}</Field.Label>
 			<Field.Description>
 				{#if !localRouteChecked}
 					Checking whether this device can transcribe locally.
@@ -186,14 +188,14 @@
 			</Field.Description>
 		</Field.Content>
 		{#if localRouteChecked && !localRouteBlocker}
-			<Badge variant="secondary" class="text-xs">Ready</Badge>
+			<Badge variant="secondary" class="text-xs">{m.transcription_runtime_config_ready()}</Badge>
 		{:else if localRouteBlocker}
 			<Button
 				variant="outline"
 				size="sm"
 				onclick={() => localRoute.openHomeTranscription()}
 			>
-				Open Home
+				{m.transcription_runtime_config_open_home()}
 			</Button>
 		{/if}
 	</Field.Field>
@@ -203,13 +205,13 @@
 	{#if isSignedIn}
 		<Field.Field orientation="horizontal">
 			<Field.Content>
-				<Field.Label>Signed in</Field.Label>
+				<Field.Label>{m.transcription_runtime_config_signed_in()}</Field.Label>
 				<Field.Description>
-					Your Epicenter account is connected. Manage it in
-					<Link href={whisperingPath('/settings/account')}>Account settings</Link>.
+					{m.transcription_runtime_config_your_epicenter_account()}
+					<Link href={whisperingPath('/settings/account')}>{m.transcription_runtime_config_account_settings()}</Link>.
 				</Field.Description>
 			</Field.Content>
-			<Badge variant="secondary" class="text-xs">Ready</Badge>
+			<Badge variant="secondary" class="text-xs">{m.transcription_runtime_config_ready()}</Badge>
 		</Field.Field>
 	{:else}
 		<Field.Field>
@@ -220,7 +222,7 @@
 			{/if}
 			{#if accountLocked}
 				<Field.Description class="text-muted-foreground">
-					Stop recording to sign in.
+					{m.transcription_runtime_config_stop_recording_to_sign()}
 				</Field.Description>
 			{/if}
 			<Button
@@ -253,7 +255,7 @@
 				{@render renderServiceIcon(entry)}
 				<Card.Title class="text-base">{entry.label}</Card.Title>
 				{#if activeService === entry.id}
-					<Badge class="text-xs">Active</Badge>
+					<Badge class="text-xs">{m.transcription_runtime_config_active()}</Badge>
 				{/if}
 			</div>
 			{#if entry.description}
@@ -293,7 +295,7 @@
 				</Select.Root>
 				{#if entry.modelsDoc}
 					<Field.Description>
-						You can find more details about the models in the <Link
+						{m.transcription_runtime_config_you_can_find_more()} <Link
 							href={entry.modelsDoc.href}
 							target="_blank"
 							rel="noopener noreferrer"
@@ -314,9 +316,7 @@
 			<Card.Header>
 				<Card.Title class="text-lg">Speaches</Card.Title>
 				<Card.Description>
-					Install Speaches server and configure Tironian. Speaches is the
-					successor to faster-whisper-server with improved features and active
-					development.
+					{m.transcription_runtime_config_install_speaches_server({ productName: PRODUCT_NAME })}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-6">
@@ -326,7 +326,7 @@
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						Installation Guide
+						{m.transcription_runtime_config_installation_guide()}
 					</Button>
 					<Button
 						variant="outline"
@@ -334,37 +334,36 @@
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						Speech-to-Text Guide
+						{m.transcription_runtime_config_speech_to_text_guide()}
 					</Button>
 				</div>
 
 				<div class="space-y-4">
 					<div>
 						<p class="text-sm font-medium">
-							<span class="text-muted-foreground">Step 1:</span>
-							Install Speaches server
+							<span class="text-muted-foreground">{m.transcription_runtime_config_step_1()}</span>
+							{m.transcription_runtime_config_install_speaches_server_2()}
 						</p>
 						<ul class="ml-6 mt-2 space-y-2 text-sm text-muted-foreground">
 							<li class="list-disc">
-								Download the necessary docker compose files from the <Link
+								{m.transcription_runtime_config_download_the_necessary()} <Link
 									href="https://speaches.ai/installation/"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
-									installation guide
+									{m.transcription_runtime_config_installation_guide_2()}
 								</Link>
 							</li>
 							<li class="list-disc">
-								Choose CUDA, CUDA with CDI, or CPU variant depending on your
-								system
+								{m.transcription_runtime_config_choose_cuda_cuda_with()}
 							</li>
 						</ul>
 					</div>
 
 					<div>
 						<p class="text-sm font-medium mb-2">
-							<span class="text-muted-foreground">Step 2:</span>
-							Start Speaches container
+							<span class="text-muted-foreground">{m.transcription_runtime_config_step_2()}</span>
+							{m.transcription_runtime_config_start_speaches_container()}
 						</p>
 						<CopyablePre
 							copyableText="docker compose up --detach"
@@ -374,21 +373,21 @@
 
 					<div>
 						<p class="text-sm font-medium">
-							<span class="text-muted-foreground">Step 3:</span>
-							Download a speech recognition model
+							<span class="text-muted-foreground">{m.transcription_runtime_config_step_3()}</span>
+							{m.transcription_runtime_config_download_a_speech()}
 						</p>
 						<ul class="ml-6 mt-2 space-y-2 text-sm text-muted-foreground">
 							<li class="list-disc">
-								View available models in the <Link
+								{m.transcription_runtime_config_view_available_models_in()} <Link
 									href="https://speaches.ai/usage/speech-to-text/"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
-									speech-to-text guide
+									{m.transcription_runtime_config_speech_to_text_guide_2()}
 								</Link>
 							</li>
 							<li class="list-disc">
-								Run the following command to download a model:
+								{m.transcription_runtime_config_run_the_following()}
 							</li>
 						</ul>
 						<div class="mt-2">
@@ -401,12 +400,12 @@
 
 					<div>
 						<p class="text-sm font-medium">
-							<span class="text-muted-foreground">Step 4:</span>
-							Configure the settings below
+							<span class="text-muted-foreground">{m.transcription_runtime_config_step_4()}</span>
+							{m.transcription_runtime_config_configure_the_settings()}
 						</p>
 						<ul class="ml-6 mt-2 space-y-1 text-sm text-muted-foreground">
-							<li class="list-disc">Enter your Speaches server URL</li>
-							<li class="list-disc">Enter the model ID you downloaded</li>
+							<li class="list-disc">{m.transcription_runtime_config_enter_your_speaches()}</li>
+							<li class="list-disc">{m.transcription_runtime_config_enter_the_model_id_you()}</li>
 						</ul>
 					</div>
 				</div>
@@ -414,7 +413,7 @@
 		</Card.Root>
 
 		<Field.Field>
-			<Field.Label for="speaches-base-url">Base URL</Field.Label>
+			<Field.Label for="speaches-base-url">{m.transcription_runtime_config_base_url()}</Field.Label>
 			<Input
 				id="speaches-base-url"
 				placeholder="http://localhost:8000"
@@ -425,9 +424,9 @@
 				}
 			/>
 			<Field.Description>
-				The URL where your Speaches server is running (<code>
+				{m.transcription_runtime_config_the_url_where_your()}<code>
 					SPEACHES_BASE_URL
-				</code>), typically
+				</code>{m.transcription_runtime_config_typically()}
 				<CopyButton
 					text="http://localhost:8000"
 					copyFn={createCopyFn('speaches base url')}
@@ -441,7 +440,7 @@
 		</Field.Field>
 
 		<Field.Field>
-			<Field.Label for="speaches-model-id">Model ID</Field.Label>
+			<Field.Label for="speaches-model-id">{m.transcription_runtime_config_model_id()}</Field.Label>
 			<Input
 				id="speaches-model-id"
 				placeholder="Systran/faster-distil-whisper-small.en"
@@ -452,7 +451,7 @@
 				}
 			/>
 			<Field.Description>
-				The model you downloaded in step 3 (<code>MODEL_ID</code>), e.g.
+				{m.transcription_runtime_config_the_model_you_downloaded()}<code>MODEL_ID</code>), e.g.
 				<CopyButton
 					text="Systran/faster-distil-whisper-small.en"
 					copyFn={createCopyFn('speaches model id')}
@@ -469,7 +468,7 @@
 
 {#snippet advancedFields()}
 	<Field.Field>
-		<Field.Label for="spoken-language">Spoken Language</Field.Label>
+		<Field.Label for="spoken-language">{m.transcription_runtime_config_spoken_language()}</Field.Label>
 		<Select.Root
 			type="single"
 			bind:value={
@@ -489,21 +488,20 @@
 		</Select.Root>
 		{#if !currentServiceCapabilities.supportsLanguage}
 			<Field.Description>
-				This model detects the spoken language automatically.
+				{m.transcription_runtime_config_this_model_detects_the()}
 			</Field.Description>
 		{:else}
 			<Field.Description>
-				Auto lets the provider detect the spoken language. Pick a language only
-				when you want to send a specific hint.
+				{m.transcription_runtime_config_auto_lets_the_provider()}
 			</Field.Description>
 		{/if}
 	</Field.Field>
 
 	<Field.Field>
-		<Field.Label for="transcription-prompt">System Prompt</Field.Label>
+		<Field.Label for="transcription-prompt">{m.transcription_runtime_config_system_prompt()}</Field.Label>
 		<Textarea
 			id="transcription-prompt"
-			placeholder="e.g., This is an academic lecture about quantum physics with technical terms like 'eigenvalue' and 'Schrödinger'"
+			placeholder={m.transcription_runtime_config_e_g_this_is_an_academic()}
 			disabled={!currentServiceCapabilities.supportsPrompt}
 			value={app.settings.get('transcriptionPrompt')}
 			onblur={(e) => {

@@ -16,10 +16,12 @@
  * join live in `./provider-ui.ts` (icons being the one field heavy enough to
  * pollute that import).
  */
+
 import type {
 	DeviceConfigKey,
 	SecretKey,
 } from '$lib/state/device-config.svelte';
+import { m } from '../../paraglide/messages';
 import type { TranscriptionServiceId } from './provider-ids';
 
 export {
@@ -140,15 +142,14 @@ export const PROVIDERS = {
 	epicenter: {
 		access: 'session',
 		label: 'Epicenter',
-		description:
-			'Transcription through your connected Epicenter. Sign in required.',
+		description: m.providers_transcription_through_your_connected(),
 		capabilities: { supportsPrompt: true, supportsLanguage: true },
 		model: 'whisper-1',
 	},
 	OpenAI: {
 		access: 'key',
 		label: 'OpenAI',
-		description: 'Industry-standard Whisper API',
+		description: m.providers_industry_standard_whisper_api(),
 		capabilities: { supportsPrompt: true, supportsLanguage: true },
 		apiKeyConfigKey: 'providers.openai.apiKey',
 		modelSettingKey: 'transcriptionOpenaiModel',
@@ -161,20 +162,17 @@ export const PROVIDERS = {
 		models: [
 			{
 				name: 'whisper-1',
-				description:
-					"OpenAI's flagship speech-to-text model with multilingual support. Reliable and accurate transcription for a wide variety of use cases.",
+				description: m.providers_openai_s_flagship_speech_to_text_model_with(),
 				cost: '$0.36/hour',
 			},
 			{
 				name: 'gpt-4o-transcribe',
-				description:
-					'GPT-4o powered transcription with enhanced understanding and context. Best for complex audio requiring deep comprehension.',
+				description: m.providers_gpt_4o_powered_transcription_with_enhanced(),
 				cost: '$0.36/hour',
 			},
 			{
 				name: 'gpt-4o-mini-transcribe',
-				description:
-					'Cost-effective GPT-4o mini transcription model. Good balance of performance and cost for standard transcription needs.',
+				description: m.providers_cost_effective_gpt_4o_mini_transcription(),
 				cost: '$0.18/hour',
 			},
 		],
@@ -182,7 +180,7 @@ export const PROVIDERS = {
 	Groq: {
 		access: 'key',
 		label: 'Groq',
-		description: 'Lightning-fast cloud transcription',
+		description: m.providers_lightning_fast_cloud_transcription(),
 		capabilities: { supportsPrompt: true, supportsLanguage: true },
 		apiKeyConfigKey: 'providers.groq.apiKey',
 		modelSettingKey: 'transcriptionGroqModel',
@@ -195,14 +193,12 @@ export const PROVIDERS = {
 		models: [
 			{
 				name: 'whisper-large-v3',
-				description:
-					'Best accuracy (10.3% WER) and full multilingual support, including translation. Recommended for error-sensitive applications requiring multilingual support.',
+				description: m.providers_best_accuracy_10_3_wer_and_full(),
 				cost: '$0.111/hour',
 			},
 			{
 				name: 'whisper-large-v3-turbo',
-				description:
-					'Fast multilingual model with good accuracy (12% WER). Best price-to-performance ratio for multilingual applications.',
+				description: m.providers_fast_multilingual_model_with_good_accuracy(),
 				cost: '$0.04/hour',
 			},
 		],
@@ -210,7 +206,7 @@ export const PROVIDERS = {
 	ElevenLabs: {
 		access: 'key',
 		label: 'ElevenLabs',
-		description: 'Voice AI platform with transcription',
+		description: m.providers_voice_ai_platform_with_transcription(),
 		capabilities: { supportsPrompt: true, supportsLanguage: true },
 		apiKeyConfigKey: 'providers.elevenlabs.apiKey',
 		endpointConfigKey: null,
@@ -223,20 +219,17 @@ export const PROVIDERS = {
 		models: [
 			{
 				name: 'scribe_v2',
-				description:
-					'Latest flagship transcription model with 97% accuracy. Features speaker diarization (up to 48 speakers), entity detection, keyterm prompting, and dynamic audio tagging across 90+ languages.',
+				description: m.providers_latest_flagship_transcription_model_with_97(),
 				cost: '$0.40/hour',
 			},
 			{
 				name: 'scribe_v1',
-				description:
-					'Previous generation transcription model with 96.7% accuracy for English. Supports 99 languages with word-level timestamps and speaker diarization.',
+				description: m.providers_previous_generation_transcription_model(),
 				cost: '$0.40/hour',
 			},
 			{
 				name: 'scribe_v1_experimental',
-				description:
-					'Experimental version of Scribe with latest features and improvements. May include cutting-edge capabilities but with potential instability.',
+				description: m.providers_experimental_version_of_scribe_with_latest(),
 				cost: '$0.40/hour',
 			},
 		],
@@ -244,7 +237,7 @@ export const PROVIDERS = {
 	Deepgram: {
 		access: 'key',
 		label: 'Deepgram',
-		description: 'Real-time speech recognition API',
+		description: m.providers_real_time_speech_recognition_api(),
 		capabilities: { supportsPrompt: true, supportsLanguage: true },
 		apiKeyConfigKey: 'providers.deepgram.apiKey',
 		endpointConfigKey: null,
@@ -254,31 +247,27 @@ export const PROVIDERS = {
 		models: [
 			{
 				name: 'nova-3',
-				description:
-					"Deepgram's most advanced speech-to-text model with superior accuracy and speed. Best for high-quality transcription needs.",
+				description: m.providers_deepgram_s_most_advanced_speech_to_text(),
 				cost: '$0.0043/minute',
 			},
 			{
 				name: 'nova-2',
-				description: "Deepgram's previous best speech-to-text model.",
+				description: m.providers_deepgram_s_previous_best_speech_to_text(),
 				cost: '$0.0043/minute',
 			},
 			{
 				name: 'nova',
-				description:
-					'Deepgram Nova model with excellent accuracy and performance. Good balance of speed and quality.',
+				description: m.providers_deepgram_nova_model_with_excellent_accuracy(),
 				cost: '$0.0043/minute',
 			},
 			{
 				name: 'enhanced',
-				description:
-					'Enhanced general-purpose model with good accuracy for most use cases. Cost-effective option.',
+				description: m.providers_enhanced_general_purpose_model_with_good(),
 				cost: '$0.0025/minute',
 			},
 			{
 				name: 'base',
-				description:
-					'Base model for standard transcription needs. Most cost-effective option with reasonable accuracy.',
+				description: m.providers_base_model_for_standard_transcription_needs(),
 				cost: '$0.0020/minute',
 			},
 		],
@@ -286,7 +275,7 @@ export const PROVIDERS = {
 	Mistral: {
 		access: 'key',
 		label: 'Mistral AI',
-		description: 'Advanced Voxtral speech understanding',
+		description: m.providers_advanced_voxtral_speech_understanding(),
 		capabilities: { supportsPrompt: true, supportsLanguage: true },
 		apiKeyConfigKey: 'providers.mistral.apiKey',
 		endpointConfigKey: null,
@@ -299,14 +288,12 @@ export const PROVIDERS = {
 		models: [
 			{
 				name: 'voxtral-mini-latest',
-				description:
-					'API-optimized Voxtral Mini model delivering unparalleled cost and latency efficiency. Supports multilingual transcription with high accuracy.',
+				description: m.providers_api_optimized_voxtral_mini_model_delivering(),
 				cost: '$0.12/hour',
 			},
 			{
 				name: 'voxtral-small-latest',
-				description:
-					'Voxtral Small model for higher accuracy and broader language support. Suitable for most transcription needs with a balance of cost and performance.',
+				description: m.providers_voxtral_small_model_for_higher_accuracy_and(),
 				cost: '$0.24/hour',
 			},
 		],
@@ -315,13 +302,13 @@ export const PROVIDERS = {
 	local: {
 		access: 'onDevice',
 		label: 'Local',
-		description: 'Private on-device transcription, no internet required',
+		description: m.providers_private_on_device_transcription_no_internet(),
 	},
 
 	speaches: {
 		access: 'endpoint',
 		label: 'Speaches',
-		description: 'Self-hosted transcription server',
+		description: m.providers_self_hosted_transcription_server(),
 		capabilities: { supportsPrompt: true, supportsLanguage: true },
 		endpointConfigKey: 'providers.speaches.endpoint',
 		modelIdConfigKey: 'providers.speaches.modelId',

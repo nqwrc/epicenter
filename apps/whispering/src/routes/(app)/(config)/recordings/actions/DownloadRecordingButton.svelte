@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { Spinner } from '@epicenter/ui/spinner';
 	import DownloadIcon from '@lucide/svelte/icons/download';
@@ -36,21 +37,21 @@
 			onError: (error) => {
 				report.error({
 					cause: error,
-					title: 'Failed to download recording!',
-					description: 'Your recording could not be downloaded.',
+					title: m.download_recording_button_failed_to_download(),
+					description: m.download_recording_button_your_recording_could_not_be(),
 				});
 			},
 			onSuccess: () => {
 				report.success({
-					title: 'Recording downloaded!',
-					description: 'Your recording has been downloaded.',
+					title: m.download_recording_button_recording_downloaded(),
+					description: m.download_recording_button_your_recording_has_been(),
 				});
 			},
 		});
 	}
 </script>
 
-<Button tooltip="Download recording" onclick={download} {variant} {size}>
+<Button tooltip={m.download_recording_button_download_recording()} onclick={download} {variant} {size}>
 	{#if downloadRecording.isPending}
 		<Spinner />
 	{:else}

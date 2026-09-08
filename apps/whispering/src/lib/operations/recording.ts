@@ -29,6 +29,7 @@ import { dictationLifecycle } from '$lib/state/dictation-lifecycle.svelte';
 import { manualRecorder } from '$lib/state/manual-recorder.svelte';
 import { vadRecorder } from '$lib/state/vad-recorder.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../paraglide/messages';
 
 const log = createLogger('whispering/recording');
 
@@ -53,7 +54,7 @@ function canStartCapture(app: WhisperingApp): boolean {
 	if (blocker === null) return true;
 
 	report.info({
-		title: 'Recording not started',
+		title: m.recording_recording_not_started(),
 		description: blocker,
 		action: {
 			label: 'Set up transcription',
@@ -83,9 +84,8 @@ function reportDeviceAcquisitionOutcome(
 		// longer carries a device selector.
 		case 'no-device-selected':
 			report.info({
-				title: 'Switched to available microphone',
-				description:
-					'No microphone was selected, so we automatically connected to an available one. You can pick a different one on the record screen.',
+				title: m.recording_switched_to_available_microphone(),
+				description: m.recording_no_microphone_was_selected_so_we(),
 				action: {
 					label: 'Choose microphone',
 					onClick: () => goto(whisperingPath('/')),
@@ -94,9 +94,8 @@ function reportDeviceAcquisitionOutcome(
 			return;
 		case 'preferred-device-unavailable':
 			report.info({
-				title: 'Switched to different microphone',
-				description:
-					"Your previously selected microphone wasn't found, so we automatically connected to an available one.",
+				title: m.recording_switched_to_different_microphone(),
+				description: m.recording_your_previously_selected_microphone_wasn_t(),
 				action: {
 					label: 'Choose microphone',
 					onClick: () => goto(whisperingPath('/')),
@@ -151,7 +150,7 @@ export function watchManualRecordingEnded(app: WhisperingApp): void {
 		const { error } = RecorderError.RecorderFailed({
 			cause: ENDED_NOTICE[reason],
 		});
-		report.error({ title: 'Recording stopped', cause: error });
+		report.error({ title: m.push_to_talk_recording_stopped(), cause: error });
 		void stopManualRecording(app);
 	});
 }
@@ -223,9 +222,8 @@ export async function startManualRecording(
 		const decision = decideSecureFieldGuard({ focusedField, enabled: true });
 		if (decision === 'withhold') {
 			report.info({
-				title: 'Recording not started',
-				description:
-					'A password field has focus. Move focus elsewhere and try again, or turn the capture gate off in Privacy & Processing.',
+				title: m.recording_recording_not_started(),
+				description: m.recording_a_password_field_has_focus_move_focus(),
 			});
 			return null;
 		}
@@ -354,7 +352,10 @@ export async function cancelRecording(app: WhisperingApp) {
 	// A manual recording is the live capture: discard it.
 	const { data, error } = await manualRecorder.cancelRecording();
 	if (error) {
-		report.error({ title: 'Failed to cancel recording', cause: error });
+		report.error({
+			title: m.recording_failed_to_cancel_recording(),
+			cause: error,
+		});
 		return;
 	}
 	if (data.status === 'cancelled') {
@@ -512,8 +513,8 @@ export async function stopVadRecording(app: WhisperingApp) {
 		// carve-out). The session may still be live, so the user must know it did
 		// not stop.
 		report.error({
-			title: "Couldn't stop voice activated capture",
-			description: 'The session may still be running. Try stopping it again.',
+			title: m.recording_couldn_t_stop_voice_activated_capture(),
+			description: m.recording_the_session_may_still_be_running_try(),
 			cause: error,
 		});
 		return;

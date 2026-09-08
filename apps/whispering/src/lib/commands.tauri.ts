@@ -1,5 +1,6 @@
 import type { SatisfiedCommand, ShortcutEventState } from '$lib/commands';
 import { openRecipePicker } from '$lib/operations/recipe-picker';
+import { m } from './paraglide/messages';
 
 /**
  * Desktop-only commands, spread into the registry by the `#platform/commands`
@@ -10,7 +11,7 @@ import { openRecipePicker } from '$lib/operations/recipe-picker';
 export const platformCommands = [
 	{
 		id: 'openRecipePicker',
-		title: 'Open recipe picker',
+		title: m.commands_tauri_open_recipe_picker(),
 		category: 'Recipe',
 		reach: 'global',
 		// Fire on release, not press: the global accelerator carries a Cmd/Ctrl+Shift

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { Recording } from '$lib/state/recordings.svelte';
 	import RenderAudioUrl from './RenderAudioUrl.svelte';
@@ -15,5 +16,5 @@
 {#if availability.data === 'local-only' || availability.data === 'local-and-remote'}
 	<RenderAudioUrl id={recording.id} audioBlobId={recording.audioBlobId} />
 {:else if availability.data}
-	<span class="text-muted-foreground text-sm">Not on this device</span>
+	<span class="text-muted-foreground text-sm">{m.recording_audio_cell_not_on_this_device()}</span>
 {/if}

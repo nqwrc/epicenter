@@ -2,6 +2,7 @@ import { tauri } from '#platform/tauri';
 import { report } from '$lib/report';
 import { services } from '$lib/services';
 import { recipePicker } from '$lib/state/recipe-picker.svelte';
+import { m } from '../paraglide/messages';
 
 /**
  * Read the clipboard, then raise the in-app recipe picker over it. The user
@@ -12,14 +13,17 @@ import { recipePicker } from '$lib/state/recipe-picker.svelte';
 export async function runRecipeOnClipboard() {
 	const { data: clipboard, error } = await services.text.readFromClipboard();
 	if (error) {
-		report.error({ title: "Couldn't read your clipboard", cause: error });
+		report.error({
+			title: m.recipe_clipboard_couldn_t_read_your_clipboard(),
+			cause: error,
+		});
 		return;
 	}
 	const input = clipboard?.trim() ? clipboard : '';
 	if (!input) {
 		report.info({
-			title: 'Your clipboard is empty',
-			description: 'Copy some text, then run a recipe on it.',
+			title: m.recipe_clipboard_your_clipboard_is_empty(),
+			description: m.recipe_clipboard_copy_some_text_then_run_a_recipe_on(),
 		});
 		return;
 	}

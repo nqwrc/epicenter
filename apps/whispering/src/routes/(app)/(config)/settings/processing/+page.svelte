@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { pageTitle } from '$lib/constants/brand';
 	import * as Field from '@epicenter/ui/field';
 	import {
@@ -8,21 +9,19 @@
 	} from '$lib/components/settings';
 </script>
 
-<svelte:head> <title>{pageTitle('Privacy & Processing')}</title> </svelte:head>
+<svelte:head> <title>{pageTitle(m.settings_title_processing())}</title> </svelte:head>
 
 <Field.Set>
-	<Field.Legend>Privacy &amp; Processing</Field.Legend>
+	<Field.Legend>{m.processing_privacy_amp_processing()}</Field.Legend>
 	<Field.Description>
-		Choose where each stage of the pipeline runs. Audio is transcribed first,
-		then Polish and Recipes clean up the text. Each stage can stay on this
-		device or go to a provider you pick.
+		{m.processing_choose_where_each_stage_of_the_pipeline()}
 	</Field.Description>
 	<Field.Separator />
 	<Field.Group>
 		<Field.Set>
-			<Field.Legend variant="label">Audio (transcription)</Field.Legend>
+			<Field.Legend variant="label">{m.processing_audio_transcription()}</Field.Legend>
 			<Field.Description>
-				Where your recording is turned into text.
+				{m.processing_where_your_recording_is_turned_into_text()}
 			</Field.Description>
 			<TranscriptionRuntimeConfig />
 		</Field.Set>
@@ -30,9 +29,9 @@
 		<Field.Separator />
 
 		<Field.Set>
-			<Field.Legend variant="label">Text (Polish &amp; Recipes)</Field.Legend>
+			<Field.Legend variant="label">{m.processing_text_polish_amp_recipes()}</Field.Legend>
 			<Field.Description>
-				Where transcript text goes for AI cleanup.
+				{m.processing_where_transcript_text_goes_for_ai_cleanup()}
 			</Field.Description>
 			<CompletionRuntimeConfig />
 		</Field.Set>
@@ -40,21 +39,20 @@
 		<Field.Separator />
 
 		<Field.Set>
-			<Field.Legend variant="label">Password fields</Field.Legend>
+			<Field.Legend variant="label">{m.processing_password_fields()}</Field.Legend>
 			<Field.Description>
-				Detection is best-effort: it blocks when a password field is detected,
-				and passes when the system cannot say. Not a security guarantee.
+				{m.processing_detection_is_best_effort_it_blocks_when_a()}
 			</Field.Description>
 			<Field.Group>
 				<SettingSwitch
 					key="secureFieldGuardEnabled"
-					label="Hold delivery when a password field has focus"
-					description="The transcript stays in your history instead of being pasted or copied."
+					label={m.processing_hold_delivery_when_a_password_field_has()}
+					description={m.processing_the_transcript_stays_in_your_history()}
 				/>
 				<SettingSwitch
 					key="secureFieldCaptureGateEnabled"
-					label="Also refuse to start recording"
-					description="Stops a dictated secret from ever reaching a transcription or AI provider, but can visibly refuse a recording. Manual recording only."
+					label={m.processing_also_refuse_to_start_recording()}
+					description={m.processing_stops_a_dictated_secret_from_ever_reaching()}
 				/>
 			</Field.Group>
 		</Field.Set>

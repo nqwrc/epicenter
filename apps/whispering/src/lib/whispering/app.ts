@@ -12,6 +12,7 @@ import {
 	type SyncConnectionStatus,
 } from '@epicenter/data/sync';
 import { defineErrors, type InferErrors } from 'wellcrafted/error';
+import { m } from '../paraglide/messages';
 import {
 	type WhisperingSettingValues,
 	whisperingDefinition,
@@ -56,7 +57,7 @@ export type WhisperingAccountData = DataOf<
  */
 export const WhisperingBackgroundError = defineErrors({
 	AppFailed: ({ cause }: { cause: unknown }) => ({
-		message: 'Whispering app background work failed',
+		message: m.app_whispering_app_background_work_failed(),
 		cause,
 	}),
 });

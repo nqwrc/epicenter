@@ -11,6 +11,7 @@ import {
 import { completeWithGlobalDefault } from '$lib/operations/completion';
 import type { WhisperingApp } from '$lib/whispering/app';
 import type { Recipe } from '$lib/workspace';
+import { m } from '../paraglide/messages';
 
 export const RunRecipeError = defineErrors({
 	InvalidInput: ({ message }: { message: string }) => ({ message }),
@@ -62,12 +63,12 @@ export async function runRecipe(
 ): Promise<Result<string, RunRecipeError>> {
 	if (!input.trim()) {
 		return RunRecipeError.InvalidInput({
-			message: 'Empty input. Please enter some text to run a recipe on.',
+			message: m.run_recipe_empty_input_please_enter_some_text_to_run(),
 		});
 	}
 	if (!recipe.instructions.trim()) {
 		return RunRecipeError.Empty({
-			message: 'This recipe has no instructions. Add an instruction to run it.',
+			message: m.run_recipe_this_recipe_has_no_instructions_add_an(),
 		});
 	}
 

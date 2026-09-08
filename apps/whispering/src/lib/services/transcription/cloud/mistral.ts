@@ -8,12 +8,13 @@ import {
 } from 'wellcrafted/error';
 import { Err, Ok, type Result, tryAsync, trySync } from 'wellcrafted/result';
 import { getAudioExtension } from '$lib/services/transcription/utils';
+import { m } from '../../../paraglide/messages';
 
 const MAX_FILE_SIZE_MB = 25 as const;
 
 export const MistralTranscriptionError = defineErrors({
 	MissingApiKey: () => ({
-		message: 'Mistral API key is required',
+		message: m.mistral_mistral_api_key_is_required(),
 	}),
 	FileTooLarge: ({ sizeMb, maxMb }: { sizeMb: number; maxMb: number }) => ({
 		message: `File size ${sizeMb.toFixed(1)}MB exceeds ${maxMb}MB limit`,
@@ -56,7 +57,7 @@ export const MistralTranscriptionError = defineErrors({
 		cause,
 	}),
 	InvalidResponse: () => ({
-		message: 'Mistral API returned an invalid response format',
+		message: m.mistral_mistral_api_returned_an_invalid_response(),
 	}),
 	Unexpected: ({ cause }: { cause: unknown }) => ({
 		message: extractErrorMessage(cause),

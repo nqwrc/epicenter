@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import * as Command from '@epicenter/ui/command';
 	import { useCombobox } from '@epicenter/ui/hooks';
@@ -73,14 +74,14 @@
 	</Popover.Trigger>
 	<Popover.Content class="p-0">
 		<Command.Root loop>
-			<Command.Input placeholder="Search devices..." />
+			<Command.Input placeholder={m.manual_device_selector_search_devices()} />
 			<Command.List class="max-h-[40vh]">
-				<Command.Empty>No recording devices found.</Command.Empty>
+				<Command.Empty>{m.manual_device_selector_no_recording_devices_found()}</Command.Empty>
 
-				<Command.Group heading="Recording Device">
+				<Command.Group heading={m.manual_device_selector_recording_device()}>
 					{#if getDevicesQuery.isPending}
 						<div class="p-4 text-center text-sm text-muted-foreground">
-							Loading devices...
+							{m.manual_device_selector_loading_devices()}
 						</div>
 					{:else if getDevicesQuery.isError}
 						<div class="space-y-3 p-4 text-center">
@@ -93,7 +94,7 @@
 									size="sm"
 									onclick={requestMicrophoneAccess}
 								>
-									Grant microphone access
+									{m.manual_device_selector_grant_microphone_access()}
 								</Button>
 							{/if}
 						</div>

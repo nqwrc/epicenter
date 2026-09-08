@@ -4,6 +4,7 @@ import type { AnyTaggedError } from 'wellcrafted/error';
 import { createLogger } from 'wellcrafted/logger';
 import { osNotify } from '#platform/os-notify';
 import { moreDetailsDialog } from '$lib/components/MoreDetailsDialog.svelte';
+import { m } from '../paraglide/messages';
 import { humanize } from './humanize';
 
 export type NoticeAction = {
@@ -124,8 +125,8 @@ function defaultMoreDetailsAction(
 		label: 'More details',
 		onClick: () =>
 			moreDetailsDialog.open({
-				title: 'More details',
-				description: 'The following is the raw error message.',
+				title: m.index_more_details(),
+				description: m.index_the_following_is_the_raw_error_message(),
 				content: cause,
 			}),
 	};

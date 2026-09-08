@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import * as Card from '@epicenter/ui/card';
 	import * as SectionHeader from '@epicenter/ui/section-header';
@@ -46,11 +47,11 @@
 		<SectionHeader.Root>
 			<div class="flex items-center gap-3">
 				<SectionHeader.Title level={3} class="text-xl tracking-tight">
-					Debug
+					{m.debug_debug()}
 				</SectionHeader.Title>
 			</div>
 			<SectionHeader.Description class="max-w-2xl">
-				Workspace metrics. Only visible in development.
+				{m.debug_workspace_metrics_only_visible_in_development()}
 			</SectionHeader.Description>
 		</SectionHeader.Root>
 
@@ -61,12 +62,12 @@
 					<div class="flex items-center gap-2">
 						<DatabaseIcon class="h-4 w-4 text-muted-foreground" />
 						<Card.Title class="text-base font-medium"
-							>Workspace Metrics</Card.Title
+							>{m.debug_workspace_metrics()}</Card.Title
 						>
 					</div>
 					<Button variant="outline" size="sm" onclick={() => metrics.refresh()}>
 						<RefreshCwIcon class="mr-1.5 h-3.5 w-3.5" />
-						Refresh
+						{m.debug_refresh()}
 					</Button>
 				</div>
 			</Card.Header>
@@ -74,7 +75,7 @@
 				<div class="space-y-4">
 					<div class="flex items-center justify-between rounded-md border p-3">
 						<span class="text-sm text-muted-foreground"
-							>Nonconforming canonical records</span
+							>{m.debug_nonconforming_canonical_records()}</span
 						>
 						<span class="font-mono text-sm font-medium">
 							{metrics.current.nonconforming.toLocaleString()}

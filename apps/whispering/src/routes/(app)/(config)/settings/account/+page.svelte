@@ -5,6 +5,8 @@
 	menu entries.
 -->
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
+	import { m } from '$lib/paraglide/messages';
 	import { pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import * as Field from '@epicenter/ui/field';
@@ -102,13 +104,13 @@
 			selectionFrom(exportSelected),
 		);
 		if (error) {
-			report.error({ title: 'Export failed', cause: error });
+			report.error({ title: m.account_export_failed(), cause: error });
 			return;
 		}
 		if (data.categoryCount === 0) {
 			report.info({
-				title: 'Nothing to export',
-				description: 'Check at least one category first.',
+				title: m.account_nothing_to_export(),
+				description: m.account_check_at_least_one_category_first(),
 			});
 			return;
 		}
@@ -229,34 +231,32 @@
 	}
 </script>
 
-<svelte:head> <title>{pageTitle('Account & Data')}</title> </svelte:head>
+<svelte:head> <title>{pageTitle(m.page_title_account_and_data())}</title> </svelte:head>
 
 <Field.Set>
-	<Field.Legend>Account &amp; data</Field.Legend>
+	<Field.Legend>{m.account_account_amp_data()}</Field.Legend>
 	<Field.Description>
-		Who you are signed in as, what moves between installs, and what leaves this
-		machine.
+		{m.account_who_you_are_signed_in_as_what_moves()}
 	</Field.Description>
 	<Field.Separator />
 	<Field.Group>
 		<Field.Set id="account" class="scroll-mt-20">
-			<Field.Legend variant="label">Account</Field.Legend>
+			<Field.Legend variant="label">{m.account_account()}</Field.Legend>
 			<Field.Description>
-				Sign in to your Epicenter account. Tironian works fully offline
-				without one; your account is what device sync will use.
+				{m.account_sign_in_to_your_epicenter_account_tironian({ productName: PRODUCT_NAME })}
 			</Field.Description>
 			<Field.Group>
 				{#if accountLocked}
 					<Field.Description class="text-muted-foreground">
-						Stop recording to change your account.
+						{m.account_stop_recording_to_change_your_account()}
 					</Field.Description>
 				{/if}
 				{#if isSignedIn}
 					<Field.Field orientation="horizontal">
 						<Field.Content>
-							<Field.Label>Signed in</Field.Label>
+							<Field.Label>{m.transcription_runtime_config_signed_in()}</Field.Label>
 							<Field.Description>
-								Your Epicenter account is connected on this device.
+								{m.account_your_epicenter_account_is_connected_on_this()}
 							</Field.Description>
 						</Field.Content>
 						<Button
@@ -297,7 +297,7 @@
 				{/if}
 
 				<Field.Field>
-					<Field.Label>Sync</Field.Label>
+					<Field.Label>{m.account_sync()}</Field.Label>
 					<Field.Description>
 						{#if tauri}
 							On the desktop, your recordings and settings stay on this computer
@@ -316,9 +316,9 @@
 		<Field.Separator />
 
 		<Field.Set id="data" class="scroll-mt-20">
-			<Field.Legend variant="label">Export</Field.Legend>
+			<Field.Legend variant="label">{m.account_export()}</Field.Legend>
 			<Field.Description>
-				Pick what to include, then save it as one file.
+				{m.account_pick_what_to_include_then_save_it_as()}
 			</Field.Description>
 			<Field.Group>
 				<CategoryCheckboxList
@@ -329,12 +329,12 @@
 				<div class="flex">
 					<Button onclick={handleExport} disabled={exportSelected.size === 0}>
 						<DownloadIcon class="size-4" />
-						Export selected
+						{m.account_export_selected()}
 					</Button>
 				</div>
 
 				<Field.Field>
-					<Field.Label>Export recordings</Field.Label>
+					<Field.Label>{m.account_export_recordings()}</Field.Label>
 					<Button
 						variant="outline"
 						class="w-fit"
@@ -370,9 +370,7 @@
 							: 'Export recordings (.zip)'}
 					</Button>
 					<Field.Description>
-						Download every recording as a zip of Markdown files. This is a
-						snapshot: later edits in Tironian do not change the downloaded
-						file.
+						{m.account_download_every_recording_as_a_zip_of_markdown({ productName: PRODUCT_NAME })}
 					</Field.Description>
 				</Field.Field>
 			</Field.Group>
@@ -381,14 +379,9 @@
 		<Field.Separator />
 
 		<Field.Set id="import" class="scroll-mt-20">
-			<Field.Legend variant="label">Import</Field.Legend>
+			<Field.Legend variant="label">{m.account_import()}</Field.Legend>
 			<Field.Description>
-				Checked preferences replace your current values. Snippets and Recipes
-				are added alongside what you already have, never overwriting a trigger
-				or a name you are using. A file is not you: imported recipes and app
-				rules run as descriptions rather than instructions until you read one
-				and say otherwise, and imported app rules arrive switched off on top
-				of that.
+				{m.account_checked_preferences_replace_your_current()}
 			</Field.Description>
 			<Field.Group>
 				<input
@@ -401,7 +394,7 @@
 				<div class="flex">
 					<Button variant="outline" onclick={() => importInput?.click()}>
 						<UploadIcon class="size-4" />
-						Choose file
+						{m.account_choose_file()}
 					</Button>
 				</div>
 
@@ -420,7 +413,7 @@
 							onclick={handleApplyImport}
 							disabled={importSelected.size === 0}
 						>
-							Apply import
+							{m.account_apply_import()}
 						</Button>
 					</div>
 				{/if}
@@ -430,16 +423,14 @@
 		<Field.Separator />
 
 		<Field.Set id="analytics" class="scroll-mt-20">
-			<Field.Legend variant="label">Analytics</Field.Legend>
+			<Field.Legend variant="label">{m.account_analytics()}</Field.Legend>
 			<Field.Description>
-				Off unless you turn it on. With it on, Tironian logs anonymized
-				events so we can see which features are used most, and the switch is
-				the whole of it: off means nothing is sent.
+				{m.account_off_unless_you_turn_it_on_with_it({ productName: PRODUCT_NAME })}
 			</Field.Description>
 			<Field.Group>
 				<SettingSwitch
 					key="analyticsEnabled"
-					label="Share anonymized events"
+					label={m.account_share_anonymized_events()}
 					description={'We log simple events like "recording started" or "transcription completed". No personal data is attached to any of these events.'}
 					onCheckedChange={(checked) => {
 						// Log the change (only actually sends if analytics is now enabled).
@@ -454,46 +445,46 @@
 
 				<div class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
 					<div class="space-y-1.5">
-						<p class="text-sm font-medium">Events we log</p>
+						<p class="text-sm font-medium">{m.account_events_we_log()}</p>
 						<ul class="text-muted-foreground space-y-1 text-sm leading-relaxed">
-							<li>Button clicks (which features you use)</li>
-							<li>Completion times (how long things take)</li>
-							<li>Error messages (when something fails)</li>
+							<li>{m.account_button_clicks_which_features_you_use()}</li>
+							<li>{m.account_completion_times_how_long_things_take()}</li>
+							<li>{m.account_error_messages_when_something_fails()}</li>
 						</ul>
 					</div>
 					<div class="space-y-1.5">
-						<p class="text-sm font-medium">Never collected</p>
+						<p class="text-sm font-medium">{m.account_never_collected()}</p>
 						<ul class="text-muted-foreground space-y-1 text-sm leading-relaxed">
-							<li>Your actual transcriptions or recordings</li>
-							<li>Device IDs or user identifiers</li>
-							<li>API keys or any personal data</li>
+							<li>{m.account_your_actual_transcriptions_or_recordings()}</li>
+							<li>{m.account_device_ids_or_user_identifiers()}</li>
+							<li>{m.account_api_keys_or_any_personal_data()}</li>
 						</ul>
 					</div>
 				</div>
 
 				<Field.Description>
-					All analytics code is open source and auditable:
+					{m.account_all_analytics_code_is_open_source_and()}
 					<Link
 						href="https://github.com/EpicenterHQ/epicenter/blob/main/apps/whispering/src/lib/services/analytics/types.ts"
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						event definitions
+						{m.account_event_definitions()}
 					</Link>,
 					<Link
 						href="https://github.com/search?q=repo%3AEpicenterHQ%2Fepicenter+logEvent&type=code"
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						where events are logged
-					</Link>, and
+						{m.account_where_events_are_logged()}
+					</Link>{m.account_and()}
 					<Link
 						href="https://github.com/aptabase"
 						target="_blank"
 						rel="noopener noreferrer"
 					>
 						Aptabase
-					</Link>, the service that receives them.
+					</Link>{m.account_the_service_that_receives_them()}
 				</Field.Description>
 			</Field.Group>
 		</Field.Set>

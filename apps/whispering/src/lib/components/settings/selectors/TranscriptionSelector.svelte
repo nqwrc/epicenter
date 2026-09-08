@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import * as Command from '@epicenter/ui/command';
 	import * as Empty from '@epicenter/ui/empty';
@@ -179,13 +180,12 @@
 				<Empty.Media variant="icon">
 					<MicIcon class="size-5" />
 				</Empty.Media>
-				<Empty.Title>Set up transcription</Empty.Title>
+				<Empty.Title>{m.transcription_selector_set_up_transcription()}</Empty.Title>
 				<Empty.Description>
-					Sign in to Epicenter or add an API key to transcribe. Nothing uploads
-					your audio until you choose a provider.
+					{m.transcription_selector_sign_in_to_epicenter_or_add_an()}
 				</Empty.Description>
 				<Empty.Content class="flex flex-col gap-2">
-					<Button onclick={() => auth.startSignIn()}>Sign in to Epicenter</Button>
+					<Button onclick={() => auth.startSignIn()}>{m.transcription_selector_sign_in_to_epicenter()}</Button>
 					<Button
 						variant="outline"
 						onclick={() => {
@@ -193,15 +193,15 @@
 							combobox.closeAndFocusTrigger();
 						}}
 					>
-						Add an API key
+						{m.transcription_selector_add_an_api_key()}
 					</Button>
 				</Empty.Content>
 			</Empty.Root>
 		{:else}
 			<Command.Root loop>
-				<Command.Input placeholder="Search models..." class="h-9 text-sm" />
+				<Command.Input placeholder={m.transcription_selector_search_models()} class="h-9 text-sm" />
 				<Command.List class="max-h-[40vh]">
-					<Command.Empty>No model found.</Command.Empty>
+					<Command.Empty>{m.transcription_selector_no_model_found()}</Command.Empty>
 
 					{#each transcribers as transcriber (transcriber.key)}
 						<TranscriberRow
@@ -220,7 +220,7 @@
 						class="flex items-center gap-2 px-2 py-2 text-sm text-muted-foreground"
 					>
 						<PlusIcon class="size-3.5" />
-						Add a model...
+						{m.transcription_selector_add_a_model()}
 					</Command.Item>
 				</Command.List>
 			</Command.Root>

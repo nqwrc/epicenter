@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { cn } from '@epicenter/ui/utils';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import MicOffIcon from '@lucide/svelte/icons/mic-off';
@@ -178,8 +179,8 @@
 				<button
 					type="button"
 					class={cn(actionBase, 'hover:bg-[#faa2ca]/20 hover:text-[#ffd2e4]')}
-					aria-label="Cancel recording"
-					title="Cancel recording"
+					aria-label={m.commands_cancel_recording()}
+					title={m.commands_cancel_recording()}
 					onclick={(event) => {
 						event.stopPropagation();
 						onCancel();
@@ -216,15 +217,15 @@
 		<div class="flex min-w-0 items-center gap-2.5">
 			<span class="shimmer-bar" aria-hidden="true"></span>
 			<span class="truncate text-[13px] font-medium tracking-tight text-white/90"
-				>Flowing…</span
+				>{m.recording_pill_flowing()}</span
 			>
 		</div>
 		{#if status.phase === 'polishing'}
 			<button
 				type="button"
 				class={cn(actionBase, 'hover:bg-[#faa2ca]/20 hover:text-[#ffd2e4]')}
-				aria-label="Ship raw transcript now"
-				title="Ship raw transcript now"
+				aria-label={m.recording_pill_ship_raw_transcript_now()}
+				title={m.recording_pill_ship_raw_transcript_now()}
 				onclick={(event) => {
 					event.stopPropagation();
 					onShipRaw();
@@ -250,7 +251,7 @@
 		     landed text corroborates this outcome. -->
 		<TriangleAlertIcon class="size-4 shrink-0 text-amber-400" />
 		<span class="min-w-0 truncate text-[13px] font-medium tracking-tight text-white/90"
-			>Kept in history · Secure field</span
+			>{m.recording_pill_kept_in_history_secure_field()}</span
 		>
 	{:else if status.phase === 'failed'}
 		<TriangleAlertIcon class="size-4 shrink-0 text-amber-400" />

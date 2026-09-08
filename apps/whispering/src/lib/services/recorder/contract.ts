@@ -15,6 +15,7 @@ import {
 	type InferErrors,
 } from 'wellcrafted/error';
 import type { Result } from 'wellcrafted/result';
+import { m } from '../../paraglide/messages';
 
 /**
  * Recorder failures, named for what went wrong rather than which call surfaced
@@ -24,13 +25,11 @@ import type { Result } from 'wellcrafted/result';
  */
 export const RecorderError = defineErrors({
 	MicrophonePermissionDenied: ({ cause }: { cause?: unknown } = {}) => ({
-		message:
-			'Microphone access was denied. Please grant microphone permission in your system or browser settings and try again.',
+		message: m.contract_microphone_access_was_denied_please_grant(),
 		cause,
 	}),
 	NoInputDevice: ({ cause }: { cause?: unknown } = {}) => ({
-		message:
-			"We couldn't find any microphone to record from. Please connect a microphone and try again.",
+		message: m.contract_we_couldn_t_find_any_microphone_to_record(),
 		cause,
 	}),
 	/**
@@ -39,8 +38,7 @@ export const RecorderError = defineErrors({
 	 * entirely, which is why the message does not assume it was this app.
 	 */
 	AlreadyRecording: ({ cause }: { cause?: unknown } = {}) => ({
-		message:
-			'Something is already recording. Stop that recording before starting a new one.',
+		message: m.contract_something_is_already_recording_stop_that(),
 		cause,
 	}),
 	/**
@@ -53,7 +51,7 @@ export const RecorderError = defineErrors({
 	 * expect a recording can still tell that there wasn't one.
 	 */
 	NoActiveRecording: ({ cause }: { cause?: unknown } = {}) => ({
-		message: 'That recording has already ended.',
+		message: m.contract_that_recording_has_already_ended(),
 		cause,
 	}),
 	/**

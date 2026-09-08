@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import {
@@ -78,7 +79,7 @@
 			class="h-auto p-0 text-sm font-normal"
 			onclick={openSystemSettings}
 		>
-			Open Settings
+			{m.output_delivery_controls_open_settings()}
 		</Button>
 	</div>
 {/if}

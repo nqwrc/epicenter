@@ -49,6 +49,7 @@ import { deviceConfig } from '$lib/state/device-config.svelte';
 import { type SecretKey, secrets } from '$lib/state/secrets.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
 import type { RecordingId } from '$lib/workspace';
+import { m } from '../paraglide/messages';
 
 const log = createLogger('whispering/transcribe');
 
@@ -71,12 +72,10 @@ const TranscriptionOperationError = defineErrors({
 	 *  message instead of the raw provider envelope, so the user knows the one thing
 	 *  that fixes it. */
 	InsufficientCredits: () => ({
-		message:
-			"You're out of Epicenter AI credits. Add credits from the dashboard to keep transcribing, or switch to your own provider in settings.",
+		message: m.transcribe_you_re_out_of_epicenter_ai_credits_add(),
 	}),
 	LocalTranscriptionUnavailableOnWeb: () => ({
-		message:
-			'Local transcription is only available in the desktop app. Choose a cloud or self-hosted provider on web.',
+		message: m.transcribe_local_transcription_is_only_available_in(),
 	}),
 	/** Whispering already knows this cannot succeed: nothing is selected, or the
 	 *  selected provider has no usable credential. Carries the same sentence the
@@ -245,7 +244,7 @@ async function loadForUpload(
 			await tauri.transcription.encodeRecordingForUpload(audioBlobId);
 		if (error === null) return Ok(new Blob([oggBytes], { type: 'audio/ogg' }));
 		report.info({
-			title: 'Audio compression skipped',
+			title: m.transcribe_audio_compression_skipped(),
 			description: `${error}. Uploading uncompressed audio instead.`,
 		});
 		void logAnalyticsEvent(app, {

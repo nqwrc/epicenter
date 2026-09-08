@@ -10,6 +10,7 @@ import {
 } from '$lib/operations/recording';
 import type { Reach } from '$lib/utils/key-binding';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from './paraglide/messages';
 
 /**
  * Registry of available commands in the app.
@@ -66,7 +67,7 @@ export type SatisfiedCommand = {
 const sharedCommands = [
 	{
 		id: 'pushToTalk',
-		title: 'Push to talk',
+		title: m.commands_push_to_talk(),
 		category: 'Recording',
 		reach: 'global',
 		// Hold to record, release to stop. The push-to-talk controller owns the
@@ -89,7 +90,7 @@ const sharedCommands = [
 	},
 	{
 		id: 'toggleManualRecording',
-		title: 'Toggle recording',
+		title: m.commands_toggle_recording(),
 		category: 'Recording',
 		reach: 'global',
 		// Press once to start and again to stop. This is also what the record button
@@ -101,7 +102,7 @@ const sharedCommands = [
 	},
 	{
 		id: 'cancelRecording',
-		title: 'Cancel recording',
+		title: m.commands_cancel_recording(),
 		category: 'Recording',
 		reach: 'global',
 		on: ['Pressed'],
@@ -109,7 +110,7 @@ const sharedCommands = [
 	},
 	{
 		id: 'toggleVadRecording',
-		title: 'Toggle voice activated recording',
+		title: m.commands_toggle_voice_activated_recording(),
 		category: 'Recording',
 		reach: 'global',
 		on: ['Pressed'],
@@ -117,7 +118,7 @@ const sharedCommands = [
 	},
 	{
 		id: 'runRecipeOnClipboard',
-		title: 'Run recipe on clipboard',
+		title: m.commands_run_recipe_on_clipboard(),
 		category: 'Recipe',
 		reach: 'global',
 		on: ['Pressed'],
@@ -125,7 +126,7 @@ const sharedCommands = [
 	},
 	{
 		id: 'openSettings',
-		title: 'Open settings',
+		title: m.commands_open_settings(),
 		category: 'Navigation',
 		// The first focused-reach command: navigation is meaningless from another
 		// app, so its reach ceiling is `focused`. A capable chord like Cmd+, cannot

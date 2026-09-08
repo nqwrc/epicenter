@@ -8,6 +8,7 @@
 	its playback URL acquisition and disposes it on teardown.
 -->
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import type { BlobId } from '@epicenter/blobs';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
@@ -37,8 +38,8 @@
 <div class="flex w-full flex-col gap-2">
 	<TextPreviewDialog
 		id={viewTransition.recording(recordingId).transcript}
-		title="Transcript"
-		label="transcript"
+		title={m.recording_result_transcript_2()}
+		label={m.recording_result_transcript()}
 		text={transcript}
 		{rows}
 		disabled={!transcript.trim()}
@@ -58,8 +59,8 @@
 					class="ml-auto"
 					variant="ghost-destructive"
 					size="icon-sm"
-					tooltip="Delete recording"
-					aria-label="Delete recording"
+					tooltip={m.recording_result_delete_recording()}
+					aria-label={m.recording_result_delete_recording()}
 					onclick={onDelete}
 				>
 					<TrashIcon class="size-4" />

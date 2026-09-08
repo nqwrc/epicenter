@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Badge } from '@epicenter/ui/badge';
 	import type { RecordingId } from '$lib/workspace';
 	import { getWhisperingApp } from '$lib/whispering/context';
@@ -17,7 +18,7 @@
 
 {#if recording?.transcriptionStatus === 'failed'}
 	<div class="flex max-w-[280px] items-center gap-2">
-		<Badge variant="status.failed">Failed</Badge>
+		<Badge variant="status.failed">{m.transcription_status_badge_failed()}</Badge>
 		<span
 			class="truncate text-muted-foreground text-xs"
 			title={recording.transcriptionError ?? undefined}
@@ -26,5 +27,5 @@
 		</span>
 	</div>
 {:else if recording?.transcriptionStatus === 'completed'}
-	<Badge variant="status.completed">Transcribed</Badge>
+	<Badge variant="status.completed">{m.transcription_status_badge_transcribed()}</Badge>
 {/if}

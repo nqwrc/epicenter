@@ -10,6 +10,7 @@
 	what is missing is a provider, and no toggle on this row can supply one.
 -->
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { Link } from '@epicenter/ui/link';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
@@ -28,11 +29,11 @@
 {#if status === 'needs-key'}
 	<Link
 		href={whisperingPath('/settings/processing')}
-		tooltip="Polish needs setup; transcripts currently ship raw"
+		tooltip={m.polish_toggle_polish_needs_setup_transcripts()}
 		class="inline-flex {triggerClass} hover:bg-accent items-center rounded-md no-underline hover:no-underline"
 	>
 		<KeyRoundIcon class="size-4 text-warning" />
-		Raw output
+		{m.polish_toggle_raw_output()}
 	</Link>
 {:else}
 	<Button

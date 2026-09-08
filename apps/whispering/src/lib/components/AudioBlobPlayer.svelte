@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import type { BlobId, BlobSource } from '@epicenter/blobs';
 	import { services } from '$lib/services';
 
@@ -52,6 +53,6 @@
 		controls
 		src={handle.url}
 	>
-		Your browser does not support the audio element.
+		{m.audio_blob_player_your_browser_does_not_support_the()}
 	</audio>
 {/if}

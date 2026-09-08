@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import * as Alert from '@epicenter/ui/alert';
 	import * as Field from '@epicenter/ui/field';
 	import { Input } from '@epicenter/ui/input';
@@ -60,7 +61,7 @@
 
 <Field.Group>
 	<Field.Field>
-		<Field.Label for="completion-provider">Text AI provider</Field.Label>
+		<Field.Label for="completion-provider">{m.completion_runtime_config_text_ai_provider()}</Field.Label>
 		<Select.Root
 			type="single"
 			bind:value={() => provider,
@@ -93,7 +94,7 @@
 		     model is an advanced detail, not a required input. -->
 		<AdvancedDisclosure>
 			<Field.Field>
-				<Field.Label for="completion-model">Model</Field.Label>
+				<Field.Label for="completion-model">{m.completion_runtime_config_model()}</Field.Label>
 				<Select.Root
 					type="single"
 					bind:value={() => app.settings.get('completionModel'),
@@ -109,7 +110,7 @@
 					</Select.Content>
 				</Select.Root>
 				<Field.Description>
-					The model Polish and Recipes call on this provider.
+					{m.completion_runtime_config_the_model_polish_and()}
 				</Field.Description>
 			</Field.Field>
 		</AdvancedDisclosure>
@@ -117,10 +118,10 @@
 		<!-- Free-form providers (OpenRouter, Custom) have no default model, so the
 		     id is a required primary input the endpoint must serve, kept inline. -->
 		<Field.Field>
-			<Field.Label for="completion-model">Model</Field.Label>
+			<Field.Label for="completion-model">{m.completion_runtime_config_model()}</Field.Label>
 			<Input
 				id="completion-model"
-				placeholder="e.g. llama3.1"
+				placeholder={m.completion_runtime_config_e_g_llama3_1()}
 				autocomplete="off"
 				value={app.settings.get('completionModel')}
 				onblur={(e) => {
@@ -130,7 +131,7 @@
 				}}
 			/>
 			<Field.Description>
-				The model id your endpoint serves.
+				{m.completion_runtime_config_the_model_id_your_endpoint()}
 			</Field.Description>
 		</Field.Field>
 	{/if}

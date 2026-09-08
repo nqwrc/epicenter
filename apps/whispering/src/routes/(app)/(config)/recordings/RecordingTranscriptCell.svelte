@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { CopyButton } from '@epicenter/ui/copy-button';
 	import * as InputGroup from '@epicenter/ui/input-group';
@@ -40,11 +41,11 @@
 					class="flex-1 min-w-0 resize-none rounded-none border-0 bg-transparent py-2 px-3 shadow-none focus-visible:ring-0 focus:outline-none dark:bg-transparent text-sm leading-snug hover:cursor-pointer hover:bg-accent/50 transition-colors min-h-0"
 					readonly
 					value={transcript}
-					placeholder="Empty transcript, click to open"
+					placeholder={m.recording_transcript_cell_empty_transcript_click_to()}
 					style:view-transition-name={viewTransition.recording(recordingId)
 						.transcript}
 					rows={1}
-					aria-label="Click to open this recording"
+					aria-label={m.recording_transcript_cell_click_to_open_this()}
 				></textarea>
 			{/snippet}
 		</RecordingDetailModal>

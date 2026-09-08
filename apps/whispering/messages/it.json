@@ -1,36 +1,22 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-
-	"nav_dictate": "Detta",
 	"nav_recordings": "Registrazioni",
 	"nav_dictation": "Dettatura",
 	"nav_recipes": "Ricette",
 	"nav_snippets": "Snippet",
 	"nav_settings": "Impostazioni",
-
 	"settings_customize": "Personalizza la tua esperienza con {productName}.",
-	"settings_title_capture": "Impostazioni di cattura",
-	"settings_title_account": "Account e dati",
-	"settings_title_app_rules": "Regole per app",
 	"settings_title_processing": "Privacy ed elaborazione",
 	"settings_title_shortcuts": "Scorciatoie da tastiera",
-
 	"settings_machine_legend": "{productName} su questa macchina",
-	"settings_machine_description": "Se {productName} è in esecuzione e pronto a catturare, e dove compare.",
-
 	"shortcuts_description": "Imposta una scorciatoia per qualsiasi comando, in {productName} o ovunque.",
-	"shortcut_reach_focused": "Funziona in {productName}, sincronizzata su tutti i tuoi dispositivi",
 	"shortcut_reach_hint": "Un tasto singolo funziona in {productName}, una combinazione ovunque.",
-
 	"boot_failed_title": "{productName} non è riuscito ad avviarsi",
-
 	"undo_nothing_at_cursor": "Non c'è nessuna dettatura da rimuovere al cursore. Solo il testo che {productName} ha incollato al cursore può essere ritirato.",
 	"undo_unknown_app": "{productName} non ha potuto confermare in quale app è finita l'ultima dettatura, quindi non ha inviato backspace. Seleziona il testo ed eliminalo a mano.",
-
-	"pill_open_app": "Apri {productName}",
-
-	"language_en": "English",
-	"language_it": "Italiano",
 	"settings_interface_language": "Lingua dell'interfaccia",
-	"settings_interface_language_description": "La lingua che {productName} parla. Cambiarla ricarica l'app, così ogni schermata passa alla nuova lingua insieme."
+	"settings_interface_language_description": "La lingua che {productName} parla. Cambiarla ricarica l'app, così ogni schermata passa alla nuova lingua insieme.",
+	"page_title_app_rules": "Regole per app",
+	"page_title_capture_settings": "Impostazioni di cattura",
+	"page_title_account_and_data": "Account e dati"
 }

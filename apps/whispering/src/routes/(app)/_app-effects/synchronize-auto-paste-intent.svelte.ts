@@ -2,6 +2,7 @@ import { tauri } from '#platform/tauri';
 import { outputWritesToCursor } from '$lib/operations/delivery';
 import { report } from '$lib/report';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../../../lib/paraglide/messages';
 
 /**
  * Tell Rust whether delivery writes at the cursor. Cursor delivery uses a
@@ -20,7 +21,7 @@ export function synchronizeAutoPasteIntent(app: WhisperingApp): void {
 			.setAutoPasteEnabled(outputWritesToCursor(app))
 			.catch((cause) => {
 				report.error({
-					title: 'Failed to update paste-at-cursor intent',
+					title: m.synchronize_auto_paste_intent_failed_to_update_paste(),
 					cause,
 				});
 			});

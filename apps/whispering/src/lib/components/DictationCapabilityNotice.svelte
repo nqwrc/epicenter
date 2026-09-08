@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import * as Item from '@epicenter/ui/item';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
@@ -42,15 +43,14 @@
 			<TriangleAlertIcon class="text-warning size-4" aria-hidden="true" />
 		</Item.Media>
 		<Item.Content>
-			<Item.Title>Paste at cursor isn't working</Item.Title>
+			<Item.Title>{m.dictation_capability_notice_paste_at_cursor_isn_t()}</Item.Title>
 			<Item.Description>
-				Re-granting macOS Accessibility usually fixes it. Until then, transcripts
-				go to your clipboard.
+				{m.dictation_capability_notice_re_granting_macos()}
 			</Item.Description>
 		</Item.Content>
 		<Item.Actions>
 			<Button size="sm" onclick={() => accessibilityGuide.open()}>
-				Show me how
+				{m.dictation_capability_notice_show_me_how()}
 			</Button>
 		</Item.Actions>
 	</Item.Root>
@@ -60,15 +60,14 @@
 			<TriangleAlertIcon class="text-warning size-4" aria-hidden="true" />
 		</Item.Media>
 		<Item.Content>
-			<Item.Title>Paste at cursor needs macOS Accessibility</Item.Title>
+			<Item.Title>{m.dictation_capability_notice_paste_at_cursor_needs()}</Item.Title>
 			<Item.Description>
-				You've turned on paste at cursor, but it isn't granted yet. Until you
-				grant it, transcripts go to your clipboard.
+				{m.dictation_capability_notice_you_ve_turned_on_paste_at()}
 			</Item.Description>
 		</Item.Content>
 		<Item.Actions>
 			<Button size="sm" onclick={() => accessibilityGuide.open()}>
-				Show me how
+				{m.dictation_capability_notice_show_me_how()}
 			</Button>
 		</Item.Actions>
 	</Item.Root>

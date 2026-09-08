@@ -1,4 +1,5 @@
 <script module lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { toast } from '@epicenter/ui/sonner';
 	import { tauri } from '#platform/tauri';
 
@@ -55,13 +56,13 @@
 		if (error) {
 			toast.info('Open System Settings manually', {
 				description:
-					'Apple menu → System Settings → Privacy & Security → Accessibility',
+					m.macos_accessibility_guide_dialog_apple_menu_system(),
 				duration: 10000,
 			});
 			return;
 		}
 		toast.info('System Settings opened', {
-			description: 'Turn on Epicenter in Privacy & Security > Accessibility.',
+			description: m.macos_accessibility_guide_dialog_turn_on_epicenter_in(),
 			duration: 8000,
 		});
 	}
@@ -116,15 +117,15 @@
 			{#if isGranted}
 				<Badge variant="success">
 					<CheckIcon class="size-4" aria-hidden="true" />
-					Accessibility granted
+					{m.macos_accessibility_guide_dialog_accessibility()}
 				</Badge>
 				<Button variant="outline" onclick={() => accessibilityGuide.close()}>
-					Done
+					{m.macos_accessibility_guide_dialog_done()}
 				</Button>
 			{:else}
 				<Button onclick={openSystemSettings}>
 					<SettingsIcon class="size-4" aria-hidden="true" />
-					Open System Settings
+					{m.macos_accessibility_guide_dialog_open_system_settings()}
 				</Button>
 			{/if}
 		</Dialog.Footer>

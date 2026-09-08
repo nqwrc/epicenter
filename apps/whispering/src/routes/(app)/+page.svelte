@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { PRODUCT_NAME, pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import { FileDropZone } from '@epicenter/ui/file-drop-zone';
@@ -129,8 +130,8 @@
 
 						if (validPaths.length === 0) {
 							report.info({
-								title: 'No valid files',
-								description: 'Please drop audio or video files',
+								title: m.app_no_valid_files(),
+								description: m.app_please_drop_audio_or_video_files(),
 							});
 							return;
 						}
@@ -139,7 +140,7 @@
 							await desktop.fs.pathsToFiles(validPaths);
 
 						if (error) {
-							report.error({ cause: error, title: 'Failed to read files' });
+							report.error({ cause: error, title: m.app_failed_to_read_files() });
 							return;
 						}
 
@@ -173,7 +174,7 @@
 			<SectionHeader.Title level={1} class="text-3xl">{PRODUCT_NAME}</SectionHeader.Title>
 		</div>
 		<SectionHeader.Description class="text-base">
-			Press shortcut → speak → get text. Free and open source ❤️
+			{m.app_press_shortcut_speak_get_text_free_and_open()}
 		</SectionHeader.Description>
 	</SectionHeader.Root>
 
@@ -182,7 +183,7 @@
 	{#if !transcriptionReadiness.isReady}
 		<div class="w-full space-y-3">
 			<div class="space-y-1">
-				<h2 class="text-base font-semibold">Set up transcription</h2>
+				<h2 class="text-base font-semibold">{m.transcription_selector_set_up_transcription()}</h2>
 				<p class="text-sm text-muted-foreground">
 					{transcriptionReadiness.primaryIssue ??
 						'Choose how Tironian turns your speech into text.'}
@@ -192,7 +193,7 @@
 				<ProviderConfigFields provider={inlineKeyProvider.id} secretsOnly />
 				<p class="text-muted-foreground text-sm">
 					<Link href={whisperingPath('/settings/processing')}>
-						Change provider, model, or endpoint in Privacy &amp; Processing
+						{m.app_change_provider_model_or_endpoint_in_privacy_amp()}
 					</Link>
 				</p>
 			{:else if needsHomeTranscriptionSetup}
@@ -201,11 +202,11 @@
 					class="w-full"
 					onclick={() => localRoute.openHomeTranscription()}
 				>
-					Set up in Epicenter Home
+					{m.app_set_up_in_epicenter_home()}
 				</Button>
 				<p class="text-muted-foreground text-sm">
-					Or <Link href={whisperingPath('/settings/processing')}>
-						transcribe with a cloud provider
+					{m.app_or()} <Link href={whisperingPath('/settings/processing')}>
+						{m.app_transcribe_with_a_cloud_provider()}
 					</Link> instead.
 				</p>
 			{:else}
@@ -214,7 +215,7 @@
 					variant="outline"
 					class="w-full"
 				>
-					Set up in Privacy &amp; Processing
+					{m.app_set_up_in_privacy_amp_processing()}
 				</Button>
 			{/if}
 		</div>
@@ -325,9 +326,9 @@
 				{#if hasActiveShortcut}
 					Your shortcut works
 					{tauri ? 'from any app.' : 'while this window is focused.'}
-					<Link href={whisperingPath('/settings/shortcuts')}>Configure shortcuts</Link>
+					<Link href={whisperingPath('/settings/shortcuts')}>{m.app_configure_shortcuts()}</Link>
 				{:else}
-					<Link href={whisperingPath('/settings/shortcuts')}>Set a shortcut</Link>
+					<Link href={whisperingPath('/settings/shortcuts')}>{m.app_set_a_shortcut()}</Link>
 					{tauri ? 'to dictate from any app.' : 'to start recording.'}
 				{/if}
 			</p>
@@ -335,14 +336,14 @@
 
 		{#if !tauri}
 			<p class="text-muted-foreground text-center text-sm font-light">
-				Tired of switching tabs?
+				{m.app_tired_of_switching_tabs()}
 				<Link
-					tooltip="Get Tironian for desktop"
+					tooltip={m.app_get_tironian_for_desktop({ productName: PRODUCT_NAME })}
 					href="https://epicenter.so/whispering"
 					target="_blank"
 					rel="noopener noreferrer"
 				>
-					Get the native desktop app
+					{m.app_get_the_native_desktop_app()}
 				</Link>
 			</p>
 		{/if}

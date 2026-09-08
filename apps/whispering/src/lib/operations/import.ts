@@ -9,6 +9,7 @@ import { logAnalyticsEvent } from '$lib/operations/analytics';
 import { processRecordingPipeline } from '$lib/operations/pipeline';
 import { report } from '$lib/report';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../paraglide/messages';
 
 type RejectedImportFile = { file: File; reason: string };
 
@@ -107,7 +108,7 @@ export async function importFiles(
 			const finalized = await app.recordings.storeAudio(file);
 			if (finalized.error !== null) {
 				report.error({
-					title: 'Failed to save imported audio',
+					title: m.import_failed_to_save_imported_audio(),
 					cause: finalized.error,
 				});
 				return;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import CloudDownloadIcon from '@lucide/svelte/icons/cloud-download';
 	import CloudUploadIcon from '@lucide/svelte/icons/cloud-upload';
@@ -96,7 +97,7 @@
 	<Button
 		variant="outline"
 		size="icon-sm"
-		tooltip="Remove audio from this device"
+		tooltip={m.recording_storage_action_remove_audio_from_this()}
 		disabled={!canUseRemote || pending}
 		onclick={() =>
 			removeLocal.mutate(undefined, {

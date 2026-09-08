@@ -84,7 +84,7 @@ async function scratchThat(): Promise<void> {
 		// reaching here would mean the two checks disagreed. Kept as a notice
 		// rather than a silent no-op in case that ever changes.
 		report.info({
-			title: 'Nothing to undo',
+			title: m.run_voice_command_nothing_to_undo(),
 			description: m.undo_nothing_at_cursor({ productName: PRODUCT_NAME }),
 		});
 		return;
@@ -94,9 +94,8 @@ async function scratchThat(): Promise<void> {
 		// Consumed: no retry helps, and the copy promises none.
 		lastDelivery.take();
 		report.info({
-			title: 'That dictation is too long to undo',
-			description:
-				'Undo is capped at 2000 characters, so nothing was removed. Select the text and delete it instead.',
+			title: m.run_voice_command_that_dictation_is_too_long_to_undo(),
+			description: m.run_voice_command_undo_is_capped_at_2000_characters(),
 		});
 		return;
 	}
@@ -119,15 +118,14 @@ async function scratchThat(): Promise<void> {
 	});
 	if (target === 'moved') {
 		report.info({
-			title: 'That dictation is in another window',
-			description:
-				'Undo only removes text from the app it was dictated into. Switch back to it, or select the text and delete it.',
+			title: m.run_voice_command_that_dictation_is_in_another_window(),
+			description: m.run_voice_command_undo_only_removes_text_from_the_app(),
 		});
 		return;
 	}
 	if (target === 'unknown') {
 		report.info({
-			title: "Couldn't tell which window to undo in",
+			title: m.run_voice_command_couldn_t_tell_which_window_to_undo(),
 			description: m.undo_unknown_app({ productName: PRODUCT_NAME }),
 		});
 		return;
@@ -140,7 +138,10 @@ async function scratchThat(): Promise<void> {
 	if (error !== null) {
 		// The held record is already gone, which is what we want: after a partial
 		// delete the count no longer describes what is on screen.
-		report.error({ title: "Couldn't undo the last dictation", cause: error });
+		report.error({
+			title: m.run_voice_command_couldn_t_undo_the_last_dictation(),
+			cause: error,
+		});
 		return;
 	}
 	log.info('Voice command undid the last dictation', {

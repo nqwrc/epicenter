@@ -2,16 +2,17 @@ import { defineErrors } from 'wellcrafted/error';
 import { createLogger } from 'wellcrafted/logger';
 import { tauri } from '#platform/tauri';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../paraglide/messages';
 
 const log = createLogger('whispering/recording-media');
 
 const RecordingMediaError = defineErrors({
 	PauseFailed: ({ cause }: { cause: unknown }) => ({
-		message: 'Failed to pause playback',
+		message: m.media_failed_to_pause_playback(),
 		cause,
 	}),
 	ResumeFailed: ({ cause }: { cause: unknown }) => ({
-		message: 'Failed to resume playback',
+		message: m.media_failed_to_resume_playback(),
 		cause,
 	}),
 });

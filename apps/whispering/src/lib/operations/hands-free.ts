@@ -1,6 +1,7 @@
 import { defineErrors } from 'wellcrafted/error';
 import { createLogger } from 'wellcrafted/logger';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../paraglide/messages';
 
 /**
  * Wispr Flow-style hands-free lock over push-to-talk: double-tap the hold
@@ -61,7 +62,7 @@ const log = createLogger('whispering/hands-free');
 
 const HandsFreeError = defineErrors({
 	DeferredStopFailed: ({ cause }: { cause: unknown }) => ({
-		message: 'Hands-free deferred push-to-talk stop failed',
+		message: m.hands_free_hands_free_deferred_push_to_talk_stop(),
 		cause,
 	}),
 });

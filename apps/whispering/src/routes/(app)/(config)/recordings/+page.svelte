@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { createPersistedState } from '@epicenter/svelte';
 	import { Badge } from '@epicenter/ui/badge';
 	import { Button, buttonVariants } from '@epicenter/ui/button';
@@ -359,11 +360,11 @@
 	async function openBlobsFolder() {
 		if (!tauri) return;
 		const { error } = await tauri.opener.openPath(await PATHS.DB.BLOBS());
-		if (error) report.error({ title: 'Failed to open folder', cause: error });
+		if (error) report.error({ title: m.recordings_failed_to_open_folder(), cause: error });
 	}
 </script>
 
-<svelte:head> <title>All Recordings</title> </svelte:head>
+<svelte:head> <title>{m.recordings_all_recordings()}</title> </svelte:head>
 
 <main class="flex w-full flex-1 flex-col gap-2 px-4 py-4 sm:px-8 mx-auto">
 	<SectionHeader.Root>
@@ -371,7 +372,7 @@
 			level={1}
 			class="scroll-m-20 text-4xl tracking-tight lg:text-5xl"
 		>
-			Recordings
+			{m.nav_recordings()}
 		</SectionHeader.Title>
 		<SectionHeader.Description>
 			Your latest recordings and transcriptions, stored locally
@@ -381,7 +382,7 @@
 	<Card class="flex flex-col gap-4 p-6">
 		<div class="flex flex-col md:flex-row items-center justify-between gap-2">
 			<Input
-				placeholder="Filter transcripts..."
+				placeholder={m.recordings_filter_transcripts()}
 				type="text"
 				class="w-full md:max-w-sm"
 				bind:value={globalFilter}
@@ -389,7 +390,7 @@
 			<div class="flex w-full items-center justify-between gap-2">
 				{#if selectedRecordingRows.length > 0}
 					<Button
-						tooltip="Transcribe selected recordings"
+						tooltip={m.recordings_transcribe_selected_recordings()}
 						variant="outline"
 						size="icon"
 						disabled={transcribeRecordings.isPending}
@@ -481,7 +482,7 @@
 					>
 						<Modal.Trigger>
 							<Button
-								tooltip="Copy transcripts from selected recordings"
+								tooltip={m.recordings_copy_transcripts_from_selected_recordings()}
 								variant="outline"
 								size="icon"
 							>
@@ -490,15 +491,14 @@
 						</Modal.Trigger>
 						<Modal.Content>
 							<Modal.Header>
-								<Modal.Title>Copy Transcripts</Modal.Title>
+								<Modal.Title>{m.recordings_copy_transcripts()}</Modal.Title>
 								<Modal.Description>
-									Choose the template and delimiter for the selected
-									transcripts.
+									{m.recordings_choose_the_template_and_delimiter_for_the()}
 								</Modal.Description>
 							</Modal.Header>
 							<div class="grid gap-4 py-4">
 								<div class="grid grid-cols-4 items-center gap-4">
-									<Label for="template" class="text-right">Template</Label>
+									<Label for="template" class="text-right">{m.recordings_template()}</Label>
 									<Textarea
 										id="template"
 										bind:value={template}
@@ -506,7 +506,7 @@
 									/>
 								</div>
 								<div class="grid grid-cols-4 items-center gap-4">
-									<Label for="delimiter" class="text-right">Delimiter</Label>
+									<Label for="delimiter" class="text-right">{m.recordings_delimiter()}</Label>
 									<Textarea
 										id="delimiter"
 										bind:value={delimiter}
@@ -515,7 +515,7 @@
 								</div>
 							</div>
 							<Textarea
-								placeholder="Preview of copied text"
+								placeholder={m.recordings_preview_of_copied_text()}
 								readonly
 								class="h-32"
 								value={joinedTranscriptionsText}
@@ -529,14 +529,14 @@
 										if (status === 'success') isDialogOpen = false;
 									}}
 								>
-									Copy Transcriptions
+									{m.recordings_copy_transcriptions()}
 								</CopyButton>
 							</Modal.Footer>
 						</Modal.Content>
 					</Modal.Root>
 
 					<Button
-						tooltip="Delete selected recordings"
+						tooltip={m.recordings_delete_selected_recordings()}
 						variant="outline"
 						size="icon"
 						onclick={() =>
@@ -551,7 +551,7 @@
 
 				{#if tauri}
 					<Button
-						tooltip="Open audio storage folder"
+						tooltip={m.recordings_open_audio_storage_folder()}
 						variant="outline"
 						size="icon"
 						onclick={openBlobsFolder}
@@ -567,7 +567,7 @@
 							'ml-auto items-center transition-all [&[data-state=open]>svg]:rotate-180',
 						)}
 					>
-						Columns
+						{m.recordings_columns()}
 						<ChevronDownIcon class="size-4 transition-transform duration-200" />
 					</DropdownMenu.Trigger>
 					<DropdownMenu.Content>
@@ -668,7 +668,7 @@
 					onclick={() => table.previousPage()}
 					disabled={!table.getCanPreviousPage()}
 				>
-					Previous
+					{m.recordings_previous()}
 				</Button>
 				<Button
 					variant="outline"
@@ -676,7 +676,7 @@
 					onclick={() => table.nextPage()}
 					disabled={!table.getCanNextPage()}
 				>
-					Next
+					{m.recordings_next()}
 				</Button>
 			</ButtonGroup.Root>
 		</div>

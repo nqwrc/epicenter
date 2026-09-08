@@ -92,8 +92,8 @@
 			{error instanceof Error ? error.message : String(error)}
 		</p>
 		<div class="flex gap-2">
-			<Button onclick={() => location.reload()}>Reload</Button>
-			<Button variant="outline" onclick={() => auth.signOut()}>Sign out</Button>
+			<Button onclick={() => location.reload()}>{m.app_reload()}</Button>
+			<Button variant="outline" onclick={() => auth.signOut()}>{m.app_sign_out()}</Button>
 		</div>
 	</div>
 {/await}

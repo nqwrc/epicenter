@@ -30,16 +30,17 @@ import {
 } from '$lib/recording-overlay/events';
 import type { RecordingPillStatus } from '$lib/recording-pill/model';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../paraglide/messages';
 
 const log = createLogger('whispering/recording-overlay');
 
 const RecordingOverlayError = defineErrors({
 	WindowCreateFailed: ({ payload }: { payload: unknown }) => ({
-		message: 'Failed to create recording overlay window',
+		message: m.window_manager_tauri_failed_to_create_recording(),
 		payload,
 	}),
 	SynchronizeFailed: ({ cause }: { cause: unknown }) => ({
-		message: 'Failed to synchronize the recording overlay window',
+		message: m.window_manager_tauri_failed_to_synchronize_the(),
 		cause,
 	}),
 });

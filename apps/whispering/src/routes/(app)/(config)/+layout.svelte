@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { cn } from '@epicenter/ui/utils';
 	import { whisperingPath } from '$lib/constants/urls';
@@ -21,7 +22,7 @@
 	)}
 >
 	<Button
-		tooltip="Go home"
+		tooltip={m.config_go_home()}
 		href={whisperingPath('/')}
 		variant="ghost"
 		class="-ml-4"

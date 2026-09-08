@@ -4,6 +4,7 @@ import {
 	type InferErrors,
 } from 'wellcrafted/error';
 import type { Result } from 'wellcrafted/result';
+import { m } from '../../paraglide/messages';
 
 export const DownloadError = defineErrors({
 	SaveDialogFailed: ({ cause }: { cause: unknown }) => ({
@@ -11,7 +12,7 @@ export const DownloadError = defineErrors({
 		cause,
 	}),
 	SaveCancelled: () => ({
-		message: 'Please specify a path to save the recording.',
+		message: m.types_please_specify_a_path_to_save_the_recording(),
 	}),
 	WriteFailed: ({ cause }: { cause: unknown }) => ({
 		message: `Failed to write file: ${extractErrorMessage(cause)}`,

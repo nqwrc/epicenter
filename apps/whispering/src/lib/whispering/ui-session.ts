@@ -1,6 +1,7 @@
 import { defineErrors, type InferErrors } from 'wellcrafted/error';
 import { handsFreePushToTalk } from '../operations/hands-free-instance';
 import { watchManualRecordingEnded } from '../operations/recording';
+import { m } from '../paraglide/messages';
 import { createWhisperingQueries } from '../queries';
 import { createWhisperingQueryRuntime } from '../queries/client';
 import { createRecordings } from '../state/recordings.svelte';
@@ -49,7 +50,7 @@ export type WhisperingUiSession = ReturnType<typeof createWhisperingUiSession>;
 
 export const WhisperingUiSessionError = defineErrors({
 	TeardownFailed: ({ cause }: { cause: unknown }) => ({
-		message: 'Whispering UI session teardown failed',
+		message: m.ui_session_whispering_ui_session_teardown_failed(),
 		cause,
 	}),
 });

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import * as Kbd from '@epicenter/ui/kbd';
 	import * as Popover from '@epicenter/ui/popover';
@@ -101,7 +103,7 @@
 						: `Those keys are already used by "${title}", which also fires in this window. Pick a different combination.`;
 			}
 			report.error({
-				title: 'That shortcut is not available',
+				title: m.keyboard_shortcut_recorder_that_shortcut_is_not(),
 				description: reason,
 				cause: {
 					name: 'ShortcutConflict',
@@ -171,7 +173,7 @@
 				class="h-8 font-normal text-muted-foreground"
 			>
 				<Plus class="size-3.5" />
-				<span class="text-xs">Add</span>
+				<span class="text-xs">{m.dictation_add()}</span>
 			</Button>
 		</Popover.Trigger>
 
@@ -191,9 +193,9 @@
 							{reachLabel(preview.realized)}
 						</p>
 					{:else}
-						<p class="text-sm font-medium">Press a key</p>
+						<p class="text-sm font-medium">{m.keyboard_shortcut_recorder_press_a_key()}</p>
 						<p class="text-xs text-muted-foreground">
-							A bare key works in Tironian, a chord works everywhere.
+							{m.shortcut_reach_hint({ productName: PRODUCT_NAME })}
 						</p>
 					{/if}
 				</div>

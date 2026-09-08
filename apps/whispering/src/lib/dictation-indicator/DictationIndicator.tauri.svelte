@@ -1,4 +1,5 @@
 <script lang="ts" module>
+	import { m } from '$lib/paraglide/messages';
 	import { defineErrors } from 'wellcrafted/error';
 
 	/**
@@ -7,7 +8,7 @@
 	 */
 	const DictationIndicatorError = defineErrors({
 		OverlayWiringFailed: ({ cause }: { cause: unknown }) => ({
-			message: 'Failed to wire the dictation overlay',
+			message: m.dictation_indicator_tauri_failed_to_wire_the(),
 			cause,
 		}),
 	});

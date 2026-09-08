@@ -5,12 +5,13 @@ import {
 	type InferErrors,
 } from 'wellcrafted/error';
 import { type Result, tryAsync } from 'wellcrafted/result';
+import { m } from '../../../paraglide/messages';
 
 const MAX_FILE_SIZE_MB = 1000 as const;
 
 export const ElevenLabsError = defineErrors({
 	MissingApiKey: () => ({
-		message: 'ElevenLabs API key is required',
+		message: m.elevenlabs_elevenlabs_api_key_is_required(),
 	}),
 	FileTooLarge: ({ sizeMb, maxMb }: { sizeMb: number; maxMb: number }) => ({
 		message: `File size ${sizeMb.toFixed(1)}MB exceeds ${maxMb}MB limit`,

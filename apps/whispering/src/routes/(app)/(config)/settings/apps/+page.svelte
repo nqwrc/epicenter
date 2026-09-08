@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { pageTitle } from '$lib/constants/brand';
 	import { Badge } from '@epicenter/ui/badge';
 	import { Button } from '@epicenter/ui/button';
@@ -105,9 +106,9 @@
 				.catch(() => ({ appId: null, appName: null }));
 			if (appId === null) {
 				report.info({
-					title: "Couldn't identify the app",
+					title: m.apps_couldn_t_identify_the_app(),
 					description:
-						'The system refused to name the foreground app. Type its identifier instead.',
+						m.apps_the_system_refused_to_name_the_foreground_app(),
 				});
 				return;
 			}
@@ -126,23 +127,23 @@
 		const bundle = working.matchMacosBundleId?.trim() || null;
 		if (!name) {
 			report.info({
-				title: 'Name the rule',
-				description: 'What you call the app, like "Terminal".',
+				title: m.apps_name_the_rule(),
+				description: m.apps_what_you_call_the_app_like_terminal(),
 			});
 			return;
 		}
 		if (exe === null && bundle === null) {
 			report.info({
-				title: 'Identify the app',
+				title: m.apps_identify_the_app(),
 				description:
-					'Add at least one identifier: a Windows exe name or a macOS bundle id.',
+					m.apps_add_at_least_one_identifier_a_windows_exe(),
 			});
 			return;
 		}
 		if (duplicateIdentifier) {
 			report.info({
-				title: 'Another rule already matches this app',
-				description: 'Edit that rule instead of adding a second one.',
+				title: m.apps_another_rule_already_matches_this_app(),
+				description: m.apps_edit_that_rule_instead_of_adding_a_second(),
 			});
 			return;
 		}
@@ -159,7 +160,7 @@
 			// synced in mid-edit); the store then refuses the update. The store
 			// only ever throws the table's own tagged error.
 			report.error({
-				title: "Couldn't save the rule",
+				title: m.apps_couldn_t_save_the_rule(),
 				cause: cause as AnyTaggedError,
 			});
 			return;
@@ -171,11 +172,11 @@
 	function remove(rule: AppRule) {
 		confirmationDialog.open({
 			title: `Delete ${rule.name}?`,
-			description: 'This removes the rule everywhere. It cannot be undone.',
+			description: m.apps_this_removes_the_rule_everywhere_it_cannot_be(),
 			confirm: { text: 'Delete', variant: 'destructive' },
 			onConfirm: async () => {
 				await app.appRules.delete(rule.id);
-				report.success({ title: 'Rule deleted' });
+				report.success({ title: m.apps_rule_deleted() });
 			},
 		});
 	}
@@ -187,31 +188,27 @@
 	}
 </script>
 
-<svelte:head> <title>{pageTitle('App rules')}</title> </svelte:head>
+<svelte:head> <title>{pageTitle(m.page_title_app_rules())}</title> </svelte:head>
 
 <main class="flex w-full flex-1 flex-col gap-2">
 	<SectionHeader.Root>
-		<SectionHeader.Title level={1}>App rules</SectionHeader.Title>
+		<SectionHeader.Title level={1}>{m.page_title_app_rules()}</SectionHeader.Title>
 		<SectionHeader.Description>
-			Shape dictation per app: when you start dictating with a matched app in
-			front, the rule can replace the Polish directive and auto-run a recipe.
-			A per-app directive still goes to the Text destination configured on
-			Privacy &amp; Processing.
+			{m.apps_shape_dictation_per_app_when_you_start_dictating()}
 		</SectionHeader.Description>
 	</SectionHeader.Root>
 
 	<Card class="flex flex-col gap-4 p-6">
 		<div class="flex items-center justify-between gap-2">
-			<h2 class="text-lg font-semibold">Your rules</h2>
+			<h2 class="text-lg font-semibold">{m.apps_your_rules()}</h2>
 			<Button variant="outline" onclick={openNew}>
-				<PlusIcon class="size-4" /> New rule
+				<PlusIcon class="size-4" /> {m.apps_new_rule()}
 			</Button>
 		</div>
 
 		{#if app.appRules.count === 0}
 			<p class="text-muted-foreground text-sm">
-				No rules yet. Add one to give an app its own dictation behavior, like
-				plain unpunctuated text in a terminal or a formal tone in email.
+				{m.apps_no_rules_yet_add_one_to_give_an()}
 			</p>
 		{:else}
 			<ul class="flex flex-col divide-y">
@@ -222,7 +219,7 @@
 								{rule.name}
 							</span>
 							{#if !rule.trusted}
-								<Badge variant="outline" class="ml-2">From a file</Badge>
+								<Badge variant="outline" class="ml-2">{m.recipes_from_a_file()}</Badge>
 							{/if}
 							<p class="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
 								{describeMatch(rule)}
@@ -233,7 +230,7 @@
 						</div>
 						<div class="flex shrink-0 items-center gap-1">
 							<Button
-								tooltip="Edit rule"
+								tooltip={m.apps_edit_rule()}
 								variant="ghost"
 								size="icon"
 								onclick={() => openEdit(rule)}
@@ -241,7 +238,7 @@
 								<PencilIcon class="size-4" />
 							</Button>
 							<Button
-								tooltip="Delete rule"
+								tooltip={m.apps_delete_rule()}
 								variant="ghost"
 								size="icon"
 								onclick={() => remove(rule)}
@@ -261,13 +258,13 @@
 		<Modal.Header>
 			<Modal.Title>{isEditing ? 'Edit rule' : 'New rule'}</Modal.Title>
 			<Modal.Description>
-				Matched against the app in front when you start dictating.
+				{m.apps_matched_against_the_app_in_front_when_you()}
 			</Modal.Description>
 		</Modal.Header>
 		<div class="space-y-4 p-4">
 			<div class="grid gap-2">
-				<Label for="rule-name">Name</Label>
-				<Input id="rule-name" placeholder="e.g. Terminal" bind:value={working.name} />
+				<Label for="rule-name">{m.recipes_name()}</Label>
+				<Input id="rule-name" placeholder={m.apps_e_g_terminal()} bind:value={working.name} />
 			</div>
 			<div class="grid gap-2">
 				<div class="flex items-center justify-between">
@@ -302,7 +299,7 @@
 				{/if}
 				{#if duplicateIdentifier}
 					<p class="text-destructive text-sm">
-						Another rule already matches this app.
+						{m.apps_another_rule_already_matches_this_app_2()}
 					</p>
 				{/if}
 			</div>
@@ -332,15 +329,14 @@
 					/>
 				{/if}
 				<p class="text-muted-foreground text-xs">
-					One rule can carry both identifiers, so it also works on your other
-					devices.
+					{m.apps_one_rule_can_carry_both_identifiers_so_it()}
 				</p>
 			</div>
 			<div class="grid gap-2">
-				<Label for="rule-polish">Polish directive (optional)</Label>
+				<Label for="rule-polish">{m.apps_polish_directive_optional()}</Label>
 				<Textarea
 					id="rule-polish"
-					placeholder="e.g. No punctuation, all lowercase, keep technical terms exactly as spoken."
+					placeholder={m.apps_e_g_no_punctuation_all_lowercase_keep_technical()}
 					rows={3}
 					bind:value={
 						() => working.polishInstructions ?? '',
@@ -348,13 +344,11 @@
 					}
 				/>
 				<p class="text-muted-foreground text-xs">
-					Replaces your global Polish directive while dictating into this app.
-					It runs through Polish, so it does nothing while Polish is off or
-					has no working provider.
+					{m.apps_replaces_your_global_polish_directive_while()}
 				</p>
 			</div>
 			<div class="grid gap-2">
-				<Label for="rule-recipe">Auto-run recipe (optional)</Label>
+				<Label for="rule-recipe">{m.apps_auto_run_recipe_optional()}</Label>
 				<Select.Root
 					type="single"
 					bind:value={
@@ -366,15 +360,14 @@
 						{recipeName}
 					</Select.Trigger>
 					<Select.Content>
-						<Select.Item value="none" label="None (Polish only)" />
+						<Select.Item value="none" label={m.apps_none_polish_only()} />
 						{#each app.recipes.pickable as recipe (recipe.id)}
 							<Select.Item value={recipe.id} label={recipe.name} />
 						{/each}
 					</Select.Content>
 				</Select.Root>
 				<p class="text-muted-foreground text-xs">
-					Runs after Polish on every dictation into this app: a second AI call,
-					so delivery takes a little longer.
+					{m.apps_runs_after_polish_on_every_dictation_into_this()}
 				</p>
 			</div>
 			<!--
@@ -385,27 +378,25 @@
 			-->
 			{#if isEditing && !working.trusted}
 				<div class="rounded-md border border-dashed p-3">
-					<p class="text-sm font-medium">This rule came from a file</p>
+					<p class="text-sm font-medium">{m.apps_this_rule_came_from_a_file()}</p>
 					<p class="text-muted-foreground mt-1 text-sm">
-						Its Polish directive runs as a description of how the text should
-						read, not as something the AI takes orders from, and it cannot
-						introduce a link or an address you did not dictate.
+						{m.apps_its_polish_directive_runs_as_a_description_of()}
 					</p>
 					<div class="mt-3 flex items-center gap-2">
 						<Switch id="rule-trusted" bind:checked={working.trusted} />
 						<Label for="rule-trusted" class="text-sm font-normal">
-							I have read this directive and want it to run as my own
+							{m.apps_i_have_read_this_directive_and_want_it()}
 						</Label>
 					</div>
 				</div>
 			{/if}
 			<div class="flex items-center justify-between">
-				<Label for="rule-enabled">Enabled</Label>
+				<Label for="rule-enabled">{m.apps_enabled()}</Label>
 				<Switch id="rule-enabled" bind:checked={working.enabled} />
 			</div>
 		</div>
 		<Modal.Footer>
-			<Button variant="outline" onclick={() => (editorOpen = false)}>Cancel</Button>
+			<Button variant="outline" onclick={() => (editorOpen = false)}>{m.recording_pill_reposition_cancel()}</Button>
 			<Button onclick={save}>{isEditing ? 'Save' : 'Create'}</Button>
 		</Modal.Footer>
 	</Modal.Content>

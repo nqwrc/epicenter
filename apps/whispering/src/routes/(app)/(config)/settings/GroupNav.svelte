@@ -13,6 +13,7 @@
 	global hotkey.
 -->
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import { cn } from '@epicenter/ui/utils';
 	import { cubicInOut } from 'svelte/easing';
@@ -28,11 +29,11 @@
 			activePathPrefix: whisperingPath('/settings/shortcuts'),
 		},
 		{
-			title: 'Privacy & Processing',
+			title: m.settings_title_processing(),
 			href: whisperingPath('/settings/processing'),
 		},
-		{ title: 'App rules', href: whisperingPath('/settings/apps') },
-		{ title: 'Account & data', href: whisperingPath('/settings/account') },
+		{ title: m.page_title_app_rules(), href: whisperingPath('/settings/apps') },
+		{ title: m.group_nav_account_data(), href: whisperingPath('/settings/account') },
 	] satisfies {
 		title: string;
 		href: string;
@@ -51,7 +52,7 @@
 
 <nav
 	class="border-border/40 -mx-1 flex gap-1 overflow-x-auto border-b px-1 pb-2"
-	aria-label="Settings navigation"
+	aria-label={m.group_nav_settings_navigation()}
 >
 	{#each items as item (item.href)}
 		{@const isActive = item.activePathPrefix

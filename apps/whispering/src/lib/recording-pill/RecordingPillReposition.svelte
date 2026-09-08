@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { cn } from '@epicenter/ui/utils';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
@@ -49,8 +50,8 @@
 				actionBase,
 				'bg-emerald-500/70 text-white hover:bg-emerald-500/90',
 			)}
-			aria-label="Save position"
-			title="Save position"
+			aria-label={m.recording_pill_reposition_save_position()}
+			title={m.recording_pill_reposition_save_position()}
 			onpointerdown={keepPressLocal}
 			onclick={onSave}
 		>
@@ -59,8 +60,8 @@
 		<button
 			type="button"
 			class={cn(actionBase, 'hover:bg-white/20')}
-			aria-label="Reset to default position"
-			title="Reset to default position"
+			aria-label={m.recording_pill_reposition_reset_to_default_position()}
+			title={m.recording_pill_reposition_reset_to_default_position()}
 			onpointerdown={keepPressLocal}
 			onclick={onReset}
 		>
@@ -69,8 +70,8 @@
 		<button
 			type="button"
 			class={cn(actionBase, 'hover:bg-[#faa2ca]/20 hover:text-[#ffd2e4]')}
-			aria-label="Cancel"
-			title="Cancel"
+			aria-label={m.recording_pill_reposition_cancel()}
+			title={m.recording_pill_reposition_cancel()}
 			onpointerdown={keepPressLocal}
 			onclick={onCancel}
 		>

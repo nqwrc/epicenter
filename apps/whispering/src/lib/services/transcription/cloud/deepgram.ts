@@ -7,6 +7,7 @@ import {
 import { Ok, type Result } from 'wellcrafted/result';
 import { HttpServiceLive } from '#platform/http';
 import type { HttpError } from '$lib/services/http/types';
+import { m } from '../../../paraglide/messages';
 
 const MAX_FILE_SIZE_MB = 500 as const;
 
@@ -23,7 +24,7 @@ const DeepgramResponse = type({
 
 export const DeepgramError = defineErrors({
 	MissingApiKey: () => ({
-		message: 'Deepgram API key is required',
+		message: m.deepgram_deepgram_api_key_is_required(),
 	}),
 	FileTooLarge: ({ sizeMb, maxMb }: { sizeMb: number; maxMb: number }) => ({
 		message: `File size ${sizeMb.toFixed(1)}MB exceeds ${maxMb}MB limit`,
@@ -74,7 +75,7 @@ export const DeepgramError = defineErrors({
 		cause,
 	}),
 	NoTranscriptDetected: () => ({
-		message: 'No speech was detected in the audio file',
+		message: m.deepgram_no_speech_was_detected_in_the_audio_file(),
 	}),
 	Unexpected: ({ cause }: { cause: unknown }) => ({
 		message: extractErrorMessage(cause),

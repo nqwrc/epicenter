@@ -6,6 +6,7 @@ import { os } from '#platform/os';
 import { BITRATES_KBPS, DEFAULT_BITRATE_KBPS } from '$lib/constants/audio';
 import { report } from '$lib/report';
 import { defaultGlobalBindings } from '$lib/utils/default-global-bindings';
+import { m } from '../paraglide/messages';
 
 const log = createLogger('whispering/device-config');
 
@@ -161,7 +162,7 @@ export const deviceConfig = createPersistedMap({
 	},
 	onUpdateError: (_key, error) => {
 		report.error({
-			title: 'Error updating device config',
+			title: m.device_config_error_updating_device_config(),
 			cause: {
 				name: 'DeviceConfigUpdateFailed',
 				message: extractErrorMessage(error),

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Button } from '@epicenter/ui/button';
 	import * as Popover from '@epicenter/ui/popover';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
@@ -26,8 +27,8 @@
 		{#snippet child({ props })}
 			<Button
 				{...props}
-				tooltip="Quick settings"
-				aria-label="Quick settings"
+				tooltip={m.capture_behavior_popover_quick_settings()}
+				aria-label={m.capture_behavior_popover_quick_settings()}
 				aria-expanded={open}
 				variant="ghost"
 				size="icon"
@@ -40,7 +41,7 @@
 		<div class="flex flex-col gap-3">
 			<SettingSwitch
 				key="recordingPausePlayback"
-				label="Pause playback while recording"
+				label={m.settings_pause_playback_while_recording()}
 				description={pausePlaybackDescription}
 			/>
 			<OutputDeliveryControls scope="transcription" />

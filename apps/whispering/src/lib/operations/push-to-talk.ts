@@ -4,6 +4,7 @@ import { createLogger } from 'wellcrafted/logger';
 import { report } from '$lib/report';
 import { manualRecorder } from '$lib/state/manual-recorder.svelte';
 import type { WhisperingApp } from '$lib/whispering/app';
+import { m } from '../paraglide/messages';
 import { startManualRecording, stopManualRecordingById } from './recording';
 
 /**
@@ -36,7 +37,7 @@ const log = createLogger('whispering/push-to-talk');
 
 const PushToTalkError = defineErrors({
 	CapStopFailed: ({ cause }: { cause: unknown }) => ({
-		message: 'Push-to-talk cap failed to stop recording',
+		message: m.push_to_talk_push_to_talk_cap_failed_to_stop(),
 		cause,
 	}),
 });
@@ -89,8 +90,8 @@ function createPushToTalk() {
 		if (recordingId) await stopManualRecordingById(app, recordingId);
 		if (options?.capped) {
 			report.info({
-				title: 'Recording stopped',
-				description: 'Push-to-talk hit the 5-minute limit.',
+				title: m.push_to_talk_recording_stopped(),
+				description: m.push_to_talk_push_to_talk_hit_the_5_minute_limit(),
 			});
 		}
 	}

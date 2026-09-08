@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { extractErrorMessage } from 'wellcrafted/error';
 	import { InstantString } from '@epicenter/field';
 	import { Button } from '@epicenter/ui/button';
@@ -95,8 +96,8 @@
 		}
 
 		confirmationDialog.open({
-			title: 'Unsaved changes',
-			description: 'You have unsaved changes. Are you sure you want to leave?',
+			title: m.recording_detail_modal_unsaved_changes(),
+			description: m.recording_detail_modal_you_have_unsaved_changes_are(),
 			confirm: { text: 'Leave' },
 			onConfirm: () => {
 				// Reset working copy and dirty flag
@@ -112,8 +113,8 @@
 		const snapshot = $state.snapshot(workingCopy);
 		if (!InstantString.is(snapshot.recordedAt)) {
 			report.info({
-				title: 'Recorded At is not a valid instant',
-				description: 'Use a UTC ISO timestamp like 2026-06-13T16:20:00.000Z.',
+				title: m.recording_detail_modal_recorded_at_is_not_a_valid(),
+				description: m.recording_detail_modal_use_a_utc_iso_timestamp_like(),
 			});
 			return;
 		}
@@ -131,15 +132,15 @@
 			});
 		} catch (cause) {
 			report.info({
-				title: 'Could not update recording',
+				title: m.recording_detail_modal_could_not_update_recording(),
 				description: extractErrorMessage(cause),
 			});
 			return;
 		}
 
 		report.success({
-			title: 'Updated recording!',
-			description: 'Your recording has been updated successfully.',
+			title: m.recording_detail_modal_updated_recording(),
+			description: m.recording_detail_modal_your_recording_has_been(),
 		});
 		isDialogOpen = false;
 	}
@@ -166,7 +167,7 @@
 		<Modal.Header>
 			<Modal.Title>{recording.title || 'Untitled recording'}</Modal.Title>
 			<Modal.Description>
-				Play it back, edit the transcript, transcribe, or download.
+				{m.recording_detail_modal_play_it_back_edit_the()}
 			</Modal.Description>
 		</Modal.Header>
 
@@ -185,18 +186,18 @@
 				/>
 			{:else if audioAvailabilityQuery.data === 'remote-only'}
 				<p class="text-muted-foreground text-sm">
-					Download the audio to play it on this device.
+					{m.recording_detail_modal_download_the_audio_to_play_it()}
 				</p>
 			{:else if audioAvailabilityQuery.data === 'unavailable'}
 				<p class="text-destructive text-sm">
-					The audio is no longer available locally or online.
+					{m.recording_detail_modal_the_audio_is_no_longer()}
 				</p>
 			{/if}
 
 			{#if workingCopy.polishedTranscript}
 				<div class="space-y-2">
 					<div class="flex items-center justify-between gap-2">
-						<Label for="delivered-transcript">Delivered transcript</Label>
+						<Label for="delivered-transcript">{m.recording_detail_modal_delivered_transcript()}</Label>
 						<CopyButton
 							text={workingCopy.polishedTranscript}
 							copyFn={createCopyFn('delivered transcript')}
@@ -249,7 +250,7 @@
 
 			<div class="space-y-4">
 				<div class="grid grid-cols-4 items-center gap-4">
-					<Label for="title" class="text-right">Title</Label>
+					<Label for="title" class="text-right">{m.recording_detail_modal_title()}</Label>
 					<Input
 						id="title"
 						value={workingCopy.title}
@@ -261,7 +262,7 @@
 					/>
 				</div>
 				<div class="grid grid-cols-4 items-center gap-4">
-					<Label for="recordedAt" class="text-right">Recorded At</Label>
+					<Label for="recordedAt" class="text-right">{m.recording_detail_modal_recorded_at()}</Label>
 					<Input
 						id="recordedAt"
 						value={workingCopy.recordedAt}
@@ -276,7 +277,7 @@
 					/>
 				</div>
 				<div class="grid grid-cols-4 items-center gap-4">
-					<Label class="text-right">Recorded Timezone</Label>
+					<Label class="text-right">{m.recording_detail_modal_recorded_timezone()}</Label>
 					<div class="col-span-3">
 						<TimezoneCombobox
 							bind:value={() => workingCopy.recordedAtZone,
@@ -305,11 +306,11 @@
 					})}
 			>
 				<TrashIcon class="size-4" />
-				Delete
+				{m.recording_detail_modal_delete()}
 			</Button>
 			<div class="flex-1"></div>
 			<Button variant="outline" onclick={() => promptUserConfirmLeave()}>
-				Close
+				{m.text_preview_dialog_close()}
 			</Button>
 			<CopyButton
 				text={deliveredTranscript}
@@ -318,9 +319,9 @@
 				size="default"
 				disabled={!deliveredTranscript.trim()}
 			>
-				Copy
+				{m.recording_detail_modal_copy()}
 			</CopyButton>
-			<Button onclick={save} disabled={!isWorkingCopyDirty}>Save</Button>
+			<Button onclick={save} disabled={!isWorkingCopyDirty}>{m.recording_detail_modal_save()}</Button>
 		</Modal.Footer>
 	</Modal.Content>
 </Modal.Root>

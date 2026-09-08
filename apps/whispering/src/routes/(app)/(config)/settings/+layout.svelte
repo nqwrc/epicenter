@@ -22,7 +22,7 @@
 	>
 		<SectionHeader.Root class="space-y-0.5">
 			<SectionHeader.Title level={2} class="text-2xl font-bold tracking-tight"
-				>Settings</SectionHeader.Title
+				>{m.nav_settings()}</SectionHeader.Title
 			>
 			<SectionHeader.Description>
 				{m.settings_customize({ productName: PRODUCT_NAME })}
@@ -50,7 +50,7 @@
 			class="shrink-0"
 		>
 			<RotateCcw class="size-4" />
-			Reset to defaults
+			{m.settings_reset_to_defaults()}
 		</Button>
 	</div>
 	<Separator class="my-6" />
