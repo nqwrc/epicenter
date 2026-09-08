@@ -85,8 +85,9 @@ As an app icon it works for reasons that have nothing to do with the story:
   not.
 
 Construction: single weight, flat terminals, the horizontal bar slightly shorter
-than an ampersand's would be so it does not read as a `7`. Recording state is
-the same glyph in vermilion; idle is ink.
+than an ampersand's would be so it does not read as a `7`. Idle is `--text`;
+recording is `--accent`, and nothing else in the interface is `--accent` at the
+same moment.
 
 ## Positioning
 
@@ -184,40 +185,77 @@ Taglines, in preference order:
 
 ## Color
 
-Built from rubrication: scribes wrote the body in ink and the marks that mattered
-in vermilion. Two colors and one accent, which is also what survives a 16px tray
-icon and a translucent overlay pill on two operating systems.
+Taken from the Vivavoce design assets rather than derived. The values below are
+the ones the artboards actually use, with their roles read off how they are
+applied: a hex that only ever appears as `background` is a ground, one that only
+appears as `color` is a text tone.
 
-| Token | Light | Dark | Use |
+The system is dark-first. That settles an earlier open question: the identity is
+not warm off-white with a serif and a red accent, which is the look most
+generated design work lands on. It is a dark warm-neutral stack with one clay
+accent, and the assets commit to it.
+
+**Grounds.** Six steps, all background-only, dark to light.
+
+| Token | Hex | Uses | Role |
 | --- | --- | --- | --- |
-| `--ink` | `#141210` | `#F4F1EB` | body text, the idle mark |
-| `--vellum` | `#F7F4EE` | `#141210` | app ground |
-| `--vermilion` | `#C8442A` | `#E05B3F` | recording state, the one accent |
-| `--muted` | `#6B655C` | `#948C80` | secondary text, disabled |
-| `--rule` | `#E2DCD1` | `#2A2622` | borders, separators |
+| `--ground-deep` | `#0F0F10` | 6 | overlay and pill, the only near-black |
+| `--ground` | `#1C1A18` | 21 | window ground |
+| `--panel` | `#211F1C` | 23 | sidebar and panels |
+| `--surface` | `#242220` | 35 | content surface |
+| `--raised` | `#2A2825` | 72 | cards and rows, the most used value in the system |
+| `--elevated` | `#33302C` | 28 | hover and selected |
+| `--edge` | `#3A3733` | 6 | the topmost step, and hairline borders |
 
-Warm neutrals rather than the blue-grey default, and vermilion rather than the
-indigo-to-violet gradient that every AI product in this category shipped between
-2024 and 2026. The accent appears in exactly one place at a time: whatever is
-recording.
+**Text.** Six tones, all color-only, bright to faint.
 
-Contrast: `--ink` on `--vellum` is above 15:1 in both modes. `--vermilion` on
-`--vellum` clears 4.5:1 in light and is used for state and iconography rather
-than body text.
+| Token | Hex | Uses | Role |
+| --- | --- | --- | --- |
+| `--text` | `#EDEAE6` | 104 | primary |
+| `--text-2` | `#C7C2BA` | 40 | secondary |
+| `--text-3` | `#A39D93` | 92 | tertiary, list metadata |
+| `--text-muted` | `#8F8A82` | 114 | labels and captions, the most used text tone |
+| `--text-faint` | `#6D675E` | 15 | disabled |
+| `--text-faintest` | `#57534C` | 11 | placeholder |
+
+**Accent and state.**
+
+| Token | Hex | Uses | Role |
+| --- | --- | --- | --- |
+| `--accent` | `#D97757` | 22 bg, 9 stroke | the one accent: recording, primary action, active nav |
+| `--accent-pressed` | `#C65F3F` | 6 bg | pressed and hover-down |
+| `--accent-text` | `#E06C5C` | 10 color | the accent as type, where a fill would be too heavy |
+| `--ok` | `#7DA878` | 5 stroke | success, and the level meter |
+
+Light mode is present in the assets but not fully resolved: `#FAF8F5` appears as
+a light ground and `#E5E1DA` as its border, with no complete text ramp beside
+them. Treat light as unfinished rather than inventing the missing tones. If the
+app ships light before the assets settle it, invert the ground stack and reuse
+the text ramp in reverse, then take the result back to the design file.
+
+**One flag before this goes anywhere public.** `#D97757` is Anthropic's own clay
+accent. It works, and it is a defensible color for this product, but shipping a
+tool's house color as your brand's single accent is a strange choice to make by
+accident. Worth a deliberate decision, not an inheritance.
 
 ## Type
 
-- **Wordmark and display:** an old-style or transitional serif with Roman
-  inscriptional bones. Newsreader and Spectral both work and are on Google Fonts.
-  The wordmark is set in lowercase except the T, tracked slightly open.
-- **UI:** the platform stack. `-apple-system` on macOS, `Segoe UI Variable` on
-  Windows. A dictation app that borrows the host OS's own UI font is doing the
-  thing a first-party app does, and the alternative is shipping a webfont that
-  makes every native control look imported.
-- **Transcript text:** the UI stack at a longer measure and looser leading. The
-  transcript is the product, so it gets reading typography, not chrome
-  typography.
-- **Monospace:** shortcut chords and model identifiers only.
+Three faces, from the assets.
+
+- **UI: Instrument Sans.** The system's working face, and a deliberate departure
+  from the earlier "borrow the platform stack" note, which the assets overrule.
+  Ships from Google Fonts. Give it a real fallback stack, because a silent
+  fallback to Arial changes the whole system's texture.
+- **Utility: IBM Plex Mono.** Weights 400, 500 and 600. Shortcut chords, model
+  identifiers, uppercase section labels, timestamps. The assets load exactly this
+  family from Google Fonts.
+- **Display: Newsreader Italic.** Used as an accent, not as a headline face:
+  a single italic serif line against the sans is what gives the system its
+  voice. Do not promote it to page headings.
+
+Transcript text stays on Instrument Sans at a longer measure and looser leading.
+The transcript is the product, so it gets reading typography rather than chrome
+typography.
 
 ## Naming architecture
 
@@ -283,6 +321,18 @@ never merged back into it, so the upstream slices stay clean.
    `apps/whispering/src/lib/constants/brand.ts`, replacing hardcoded literals so
    the next rename is one line.
 4. The Tier 1 string rename.
+5. Color and type taken from the Vivavoce design assets, replacing the earlier
+   rubrication palette. That earlier palette carried a stated risk of landing on
+   the most common look in generated design work; the assets answer it with a
+   dark warm-neutral system, so the risk note is retired rather than left open.
+
+Not yet implemented: the seven Vivavoce screens themselves. Retrieving
+`Vivavoce Screens.dc.html` needs `/design-login` run once from an interactive
+`claude` terminal on this machine, which is not something this session can do.
+Two decisions are open on those screens and are recorded here so they are not
+made by default: the assets carry the wordmark **Vivavoce** and Italian UI copy,
+while the app's name is Tironian and its interface is English with no i18n
+layer.
 
 Not changed: any transcription default. The defaults were checked rather than
 assumed, and local-first plus Polish-on were already shipping. The one default
