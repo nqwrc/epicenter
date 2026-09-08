@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/constants/brand';
 	import { Badge } from '@epicenter/ui/badge';
 	import { Button } from '@epicenter/ui/button';
 	import { Card } from '@epicenter/ui/card';
@@ -186,7 +187,7 @@
 	}
 </script>
 
-<svelte:head> <title>App rules - Whispering</title> </svelte:head>
+<svelte:head> <title>{pageTitle('App rules')}</title> </svelte:head>
 
 <main class="flex w-full flex-1 flex-col gap-2">
 	<SectionHeader.Root>

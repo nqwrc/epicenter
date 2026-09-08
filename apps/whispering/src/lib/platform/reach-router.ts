@@ -64,7 +64,7 @@ type RoutedShortcuts = {
 	): ShortcutConflict | null;
 	/**
 	 * The reach a candidate binding would achieve for a command on this platform.
-	 * Drives the read-only reach badge ("Works in Whispering" / "Works
+	 * Drives the read-only reach badge ("Works in Tironian" / "Works
 	 * everywhere") for both a recorded candidate and a stored slot.
 	 */
 	reachBadge(commandId: Command['id'], binding: KeyBinding): Reach;

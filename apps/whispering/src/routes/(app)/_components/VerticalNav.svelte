@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PRODUCT_NAME } from '$lib/constants/brand';
 	import * as Sidebar from '@epicenter/ui/sidebar';
 	import { useSidebar } from '@epicenter/ui/sidebar';
 	import MoonIcon from '@lucide/svelte/icons/moon';
@@ -34,7 +35,7 @@
 							<div
 								class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden"
 							>
-								<span class="truncate font-semibold">Whispering</span>
+								<span class="truncate font-semibold">{PRODUCT_NAME}</span>
 								<span class="truncate text-xs text-muted-foreground"
 									>Speech to text</span
 								>
@@ -80,7 +81,7 @@
 					disabledReason={recordingActive.current
 						? 'Stop recording to change your account'
 						: undefined}
-					instanceConnect={{ appName: 'Whispering', setting: instanceSetting }}
+					instanceConnect={{ appName: PRODUCT_NAME, setting: instanceSetting }}
 				/>
 			</Sidebar.MenuItem>
 

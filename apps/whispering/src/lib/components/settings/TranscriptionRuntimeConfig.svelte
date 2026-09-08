@@ -166,7 +166,7 @@
 </Field.Group>
 
 {#snippet onDeviceSection()}
-	<!-- Whispering chooses the transcription route; Epicenter owns which local
+	<!-- Tironian chooses the transcription route; Epicenter owns which local
 	     model runs and administers downloads, deletion, and the unload policy
 	     (ADR-0180). This section reports whether the route is ready and hands off
 	     to Home; it names no model, because model identity is administration data
@@ -314,7 +314,7 @@
 			<Card.Header>
 				<Card.Title class="text-lg">Speaches</Card.Title>
 				<Card.Description>
-					Install Speaches server and configure Whispering. Speaches is the
+					Install Speaches server and configure Tironian. Speaches is the
 					successor to faster-whisper-server with improved features and active
 					development.
 				</Card.Description>

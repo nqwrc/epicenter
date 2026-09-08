@@ -85,7 +85,7 @@
 	</WhisperingUiSessionProvider>
 {:catch error}
 	<div class="flex h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
-		<h1 class="text-lg font-semibold">Whispering could not start</h1>
+		<h1 class="text-lg font-semibold">Tironian could not start</h1>
 		<p class="text-muted-foreground max-w-md text-sm">
 			{error instanceof Error ? error.message : String(error)}
 		</p>

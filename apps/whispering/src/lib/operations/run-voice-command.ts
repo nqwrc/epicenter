@@ -78,7 +78,7 @@ async function scratchThat(): Promise<void> {
 		report.info({
 			title: 'Nothing to undo',
 			description:
-				'There is no dictation at your cursor to remove. Only text Whispering pasted at the cursor can be taken back.',
+				'There is no dictation at your cursor to remove. Only text Tironian pasted at the cursor can be taken back.',
 		});
 		return;
 	}
@@ -122,7 +122,7 @@ async function scratchThat(): Promise<void> {
 		report.info({
 			title: "Couldn't tell which window to undo in",
 			description:
-				'Whispering could not confirm the app the last dictation went to, so it sent no backspaces. Select the text and delete it instead.',
+				'Tironian could not confirm the app the last dictation went to, so it sent no backspaces. Select the text and delete it instead.',
 		});
 		return;
 	}

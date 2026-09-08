@@ -1,0 +1,22 @@
+Tironian
+Copyright (C) 2026 the Tironian contributors
+
+This product is a modified version of Whispering, part of the Epicenter
+project.
+
+  Upstream:  Epicenter (Whispering)
+  Source:    https://github.com/EpicenterHQ/epicenter
+  License:   GNU Affero General Public License v3.0
+  Forked at: 3ef2103a72, 2026-08-27
+
+Tironian is distributed under the same license. The full text is in LICENSE.
+Corresponding source for any network-served instance is published at the fork's
+repository, as AGPL-3.0 section 13 requires.
+
+"Whispering" and "Epicenter" are the upstream project's names and appear in this
+repository only as attribution and as internal identifiers inherited from the
+fork point. They are not used to name, market, or endorse this product, and no
+endorsement by the upstream project is claimed or implied.
+
+The embeddable toolkit packages remain MIT-licensed as upstream published them.
+See docs/licensing/licensing-strategy.md for the boundary.

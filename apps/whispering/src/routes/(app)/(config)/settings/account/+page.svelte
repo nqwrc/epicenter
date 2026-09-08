@@ -5,6 +5,7 @@
 	menu entries.
 -->
 <script lang="ts">
+	import { pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import * as Field from '@epicenter/ui/field';
 	import { Link } from '@epicenter/ui/link';
@@ -185,7 +186,7 @@
 					? 'That file is not valid JSON.'
 					: error.type === 'NotAnObject'
 						? 'Expected a settings file, not a bare value or list.'
-						: 'This is not a settings file Whispering recognizes.';
+						: 'This is not a settings file Tironian recognizes.';
 			return;
 		}
 
@@ -228,7 +229,7 @@
 	}
 </script>
 
-<svelte:head> <title>Account & Data - Whispering</title> </svelte:head>
+<svelte:head> <title>{pageTitle('Account & Data')}</title> </svelte:head>
 
 <Field.Set>
 	<Field.Legend>Account &amp; data</Field.Legend>
@@ -241,7 +242,7 @@
 		<Field.Set id="account" class="scroll-mt-20">
 			<Field.Legend variant="label">Account</Field.Legend>
 			<Field.Description>
-				Sign in to your Epicenter account. Whispering works fully offline
+				Sign in to your Epicenter account. Tironian works fully offline
 				without one; your account is what device sync will use.
 			</Field.Description>
 			<Field.Group>
@@ -300,7 +301,7 @@
 					<Field.Description>
 						{#if tauri}
 							On the desktop, your recordings and settings stay on this computer
-							for now; signing in powers hosted transcription. Use Whispering in
+							for now; signing in powers hosted transcription. Use Tironian in
 							the browser to sync them across devices.
 						{:else}
 							While signed in, your recordings, transcripts, and settings sync
@@ -370,7 +371,7 @@
 					</Button>
 					<Field.Description>
 						Download every recording as a zip of Markdown files. This is a
-						snapshot: later edits in Whispering do not change the downloaded
+						snapshot: later edits in Tironian do not change the downloaded
 						file.
 					</Field.Description>
 				</Field.Field>
@@ -431,7 +432,7 @@
 		<Field.Set id="analytics" class="scroll-mt-20">
 			<Field.Legend variant="label">Analytics</Field.Legend>
 			<Field.Description>
-				Off unless you turn it on. With it on, Whispering logs anonymized
+				Off unless you turn it on. With it on, Tironian logs anonymized
 				events so we can see which features are used most, and the switch is
 				the whole of it: off means nothing is sent.
 			</Field.Description>

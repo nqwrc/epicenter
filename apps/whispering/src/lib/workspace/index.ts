@@ -268,7 +268,7 @@ const settingsKv = {
 
 export const whisperingDefinition = defineData({
 	id: 'so.epicenter.whispering',
-	title: 'Whispering',
+	title: 'Tironian',
 	kv: settingsKv,
 	tables: {
 		recordings: recordingsTable,

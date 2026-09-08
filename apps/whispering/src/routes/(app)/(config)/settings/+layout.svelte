@@ -23,7 +23,7 @@
 				>Settings</SectionHeader.Title
 			>
 			<SectionHeader.Description>
-				Customize your Whispering experience.
+				Customize your Tironian experience.
 			</SectionHeader.Description>
 		</SectionHeader.Root>
 		<Button

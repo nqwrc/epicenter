@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PRODUCT_NAME, pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import { FileDropZone } from '@epicenter/ui/file-drop-zone';
 	import { Link } from '@epicenter/ui/link';
@@ -67,10 +68,10 @@
 		const provider = getSelectedTranscriptionProvider(app);
 		return provider?.access === 'key' ? provider : null;
 	});
-	// The local route is the one blocker Whispering cannot clear anywhere in its
+	// The local route is the one blocker Tironian cannot clear anywhere in its
 	// own settings: there is no key, endpoint, or model for this app to set, and
 	// the active model belongs to the host (ADR-0180). So the action goes to the
-	// surface that owns the fix rather than to a Whispering page that would only
+	// surface that owns the fix rather than to a Tironian page that would only
 	// repeat the same sentence and a second button.
 	const needsHomeTranscriptionSetup = $derived(
 		Boolean(tauri) &&
@@ -161,7 +162,7 @@
 	});
 </script>
 
-<svelte:head> <title>Whispering</title> </svelte:head>
+<svelte:head> <title>{pageTitle()}</title> </svelte:head>
 
 <div
 	class="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-start gap-5 px-4 pt-8 pb-24 sm:justify-center sm:py-12"
@@ -169,7 +170,7 @@
 	<SectionHeader.Root class="flex flex-col items-center gap-2 text-center">
 		<div class="flex items-center gap-2.5">
 			<img src={studioMicrophone} alt="" class="size-8" />
-			<SectionHeader.Title level={1} class="text-3xl">Whispering</SectionHeader.Title>
+			<SectionHeader.Title level={1} class="text-3xl">{PRODUCT_NAME}</SectionHeader.Title>
 		</div>
 		<SectionHeader.Description class="text-base">
 			Press shortcut → speak → get text. Free and open source ❤️
@@ -184,7 +185,7 @@
 				<h2 class="text-base font-semibold">Set up transcription</h2>
 				<p class="text-sm text-muted-foreground">
 					{transcriptionReadiness.primaryIssue ??
-						'Choose how Whispering turns your speech into text.'}
+						'Choose how Tironian turns your speech into text.'}
 				</p>
 			</div>
 			{#if inlineKeyProvider}
@@ -336,7 +337,7 @@
 			<p class="text-muted-foreground text-center text-sm font-light">
 				Tired of switching tabs?
 				<Link
-					tooltip="Get Whispering for desktop"
+					tooltip="Get Tironian for desktop"
 					href="https://epicenter.so/whispering"
 					target="_blank"
 					rel="noopener noreferrer"

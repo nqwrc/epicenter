@@ -2,7 +2,7 @@
 	"name": "@epicenter/whispering",
 	"private": true,
 	"version": "7.11.1",
-	"description": "Browser-deployable speech-to-text SPA hosted natively by Epicenter",
+	"description": "Tironian: dictation you own. Local-first speech-to-text on macOS and Windows.",
 	"exports": {
 		"./app": "./src/lib/whispering/app.ts",
 		"./commands": "./src/lib/commands.ts",

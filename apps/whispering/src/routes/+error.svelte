@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import * as Empty from '@epicenter/ui/empty';
 	import { page } from '$app/state';
@@ -6,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>{page.status === 404 ? 'Page Not Found' : 'Error'} - Whispering</title>
+	<title>{pageTitle(page.status === 404 ? 'Page Not Found' : 'Error')}</title>
 </svelte:head>
 
 <Empty.Root class="flex-1 p-8">

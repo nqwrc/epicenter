@@ -1,17 +1,41 @@
 <p align="center">
-  <a href="https://whispering.epicenter.so">
-    <img width="180" src="./src/lib/assets/studio-microphone.png" alt="Whispering">
+  <a href="https://tironian.app">
+    <img width="180" src="./src/lib/assets/studio-microphone.png" alt="Tironian">
   </a>
-  <h1 align="center">Whispering</h1>
-  <p align="center">Press shortcut → speak → get text.</p>
+  <h1 align="center">Tironian</h1>
+  <p align="center">Dictation you own.</p>
 </p>
 
-Whispering is a free and open source speech-to-text app. It records speech, transcribes it with a provider you choose, optionally polishes the transcript, and delivers the text. The same browser-hostable Svelte SPA serves two hosts:
+Tironian is a free and open source dictation app for macOS and Windows. It
+records speech, transcribes it with a model on your machine by default, cleans
+the transcript up, and puts the text where your cursor is. No account, no server
+holding the only copy, and no telemetry unless you switch it on.
 
-- [whispering.epicenter.so](https://whispering.epicenter.so) runs the browser build.
-- [Epicenter](../epicenter) runs the Tauri build under `/apps/whispering`.
+Named after Marcus Tullius Tiro, who in 63 BC built the first Western shorthand
+so a speech could be written at the speed it was spoken. The brand system,
+including what the product may and may not claim today, is in
+[docs/brand/tironian.md](../../docs/brand/tironian.md).
 
-Whispering does not own a native shell. Epicenter owns the only Tauri runtime at `apps/epicenter/src-tauri`.
+## Attribution
+
+Tironian is a modified version of **Whispering**, part of the
+[Epicenter](https://github.com/EpicenterHQ/epicenter) project, used under
+AGPL-3.0. Forked at `3ef2103a72` on 2026-08-27. The upstream project does not
+endorse this fork. See [NOTICE](../../NOTICE).
+
+Internal identifiers, package names and import paths still read `whispering` and
+`@epicenter/*` on purpose, so this fork can keep taking upstream fixes. The
+reasoning is in the brand document under "Rename tiers".
+
+## Hosting
+
+The same browser-hostable Svelte SPA serves two hosts:
+
+- The browser build, served as static assets.
+- The Epicenter Tauri host, which runs it under `/apps/whispering`.
+
+Tironian does not own a native shell. Epicenter owns the only Tauri runtime at
+`apps/epicenter/src-tauri`.
 
 ## Host boundary
 
@@ -90,7 +114,7 @@ bun run --cwd apps/epicenter desktop:build
 
 ## Data boundary
 
-Whispering stores settings and recording metadata locally first. Audio leaves the device only when the selected transcription provider requires an upload. The browser and Epicenter builds can both use direct provider connections, the hosted Epicenter gateway, or a self-hosted endpoint. On-device transcription is available only through Epicenter because it depends on the native model runtime.
+Tironian stores settings and recording metadata locally first. Audio leaves the device only when the selected transcription provider requires an upload. The browser and Epicenter builds can both use direct provider connections, the hosted Epicenter gateway, or a self-hosted endpoint. On-device transcription is available only through Epicenter because it depends on the native model runtime.
 
 See the repository [trust model](../../docs/trust-model.md) for hosted sync and account boundaries.
 

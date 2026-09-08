@@ -37,7 +37,7 @@
 		onCancel: () => void;
 		/** Skip the in-flight Polish pass and deliver the raw transcript now. */
 		onShipRaw: () => void;
-		/** Reveal Whispering by raising the main window (desktop). */
+		/** Reveal Tironian by raising the main window (desktop). */
 		onReveal?: () => void;
 	} = $props();
 
@@ -139,7 +139,7 @@
 		onReveal && 'cursor-pointer',
 	)}
 	style="width: {dims.w}px; height: {dims.h}px;"
-	title={onReveal ? 'Open Whispering' : undefined}
+	title={onReveal ? 'Open Tironian' : undefined}
 	onclick={onReveal}
 >
 	{#if !status}

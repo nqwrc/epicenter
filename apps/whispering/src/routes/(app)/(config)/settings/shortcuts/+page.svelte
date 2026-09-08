@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/constants/brand';
 	import { Button } from '@epicenter/ui/button';
 	import * as SectionHeader from '@epicenter/ui/section-header';
 	import { Separator } from '@epicenter/ui/separator';
@@ -22,7 +23,7 @@
 	}
 </script>
 
-<svelte:head> <title>Keyboard Shortcuts - Whispering</title> </svelte:head>
+<svelte:head> <title>{pageTitle('Keyboard Shortcuts')}</title> </svelte:head>
 
 <section class="mx-auto max-w-4xl py-6">
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -31,7 +32,7 @@
 				Keyboard Shortcuts
 			</SectionHeader.Title>
 			<SectionHeader.Description class="mt-2">
-				Set a shortcut for any command, in Whispering or everywhere.
+				Set a shortcut for any command, in Tironian or everywhere.
 			</SectionHeader.Description>
 		</SectionHeader.Root>
 		<Button variant="outline" size="sm" onclick={reset} class="shrink-0">

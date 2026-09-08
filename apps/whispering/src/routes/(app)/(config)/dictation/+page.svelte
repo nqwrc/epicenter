@@ -102,7 +102,7 @@
 		<SectionHeader.Description>
 			What happens to your words between the transcript and your cursor:
 			the cleanup pass, the phrases that act instead of typing, and the
-			spellings Whispering should already know.
+			spellings Tironian should already know.
 		</SectionHeader.Description>
 	</SectionHeader.Root>
 
@@ -202,7 +202,7 @@
 		<Field.Set>
 			<Field.Legend variant="label">Dictionary</Field.Legend>
 			<Field.Description>
-				Proper nouns and domain terms Whispering should know: names, jargon,
+				Proper nouns and domain terms Tironian should know: names, jargon,
 				product names. The AI keeps these spellings and maps obvious mishearings
 				onto them.
 			</Field.Description>

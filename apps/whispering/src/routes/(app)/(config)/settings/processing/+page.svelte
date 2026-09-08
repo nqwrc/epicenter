@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/constants/brand';
 	import * as Field from '@epicenter/ui/field';
 	import {
 		CompletionRuntimeConfig,
@@ -7,7 +8,7 @@
 	} from '$lib/components/settings';
 </script>
 
-<svelte:head> <title>Privacy & Processing - Whispering</title> </svelte:head>
+<svelte:head> <title>{pageTitle('Privacy & Processing')}</title> </svelte:head>
 
 <Field.Set>
 	<Field.Legend>Privacy &amp; Processing</Field.Legend>

@@ -104,7 +104,7 @@ test('scratchThat with nothing held sends no backspaces and reports an info noti
 	expect(reportInfo).toHaveBeenLastCalledWith({
 		title: 'Nothing to undo',
 		description:
-			'There is no dictation at your cursor to remove. Only text Whispering pasted at the cursor can be taken back.',
+			'There is no dictation at your cursor to remove. Only text Tironian pasted at the cursor can be taken back.',
 	});
 });
 
@@ -163,7 +163,7 @@ test('scratchThat refuses when the app in front cannot be identified', async () 
 	expect(reportInfo).toHaveBeenLastCalledWith({
 		title: "Couldn't tell which window to undo in",
 		description:
-			'Whispering could not confirm the app the last dictation went to, so it sent no backspaces. Select the text and delete it instead.',
+			'Tironian could not confirm the app the last dictation went to, so it sent no backspaces. Select the text and delete it instead.',
 	});
 	focusedNow = 'Code.exe';
 });

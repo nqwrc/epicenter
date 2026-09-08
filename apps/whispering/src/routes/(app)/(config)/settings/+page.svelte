@@ -9,6 +9,7 @@
 	microphone is hot is already looking.
 -->
 <script lang="ts">
+	import { pageTitle } from '$lib/constants/brand';
 	import * as Alert from '@epicenter/ui/alert';
 	import { Button } from '@epicenter/ui/button';
 	import * as Field from '@epicenter/ui/field';
@@ -62,7 +63,7 @@
 	}
 </script>
 
-<svelte:head> <title>Capture Settings - Whispering</title> </svelte:head>
+<svelte:head> <title>{pageTitle('Capture Settings')}</title> </svelte:head>
 
 <Field.Set>
 	<Field.Legend>Capture</Field.Legend>
@@ -91,7 +92,7 @@
 				<SettingSwitch
 					key="recordingPausePlayback"
 					label="Pause playback while recording"
-					description="Whispering pauses media playing on your computer (music, video, browser tabs) while your voice is being captured, then tries to resume it after. In voice activated mode it pauses only while you actually speak, so music keeps playing between phrases. Works with most apps in your system media controls. A few can't be paused, and on macOS the resume can occasionally wake a different app that was already paused."
+					description="Tironian pauses media playing on your computer (music, video, browser tabs) while your voice is being captured, then tries to resume it after. In voice activated mode it pauses only while you actually speak, so music keeps playing between phrases. Works with most apps in your system media controls. A few can't be paused, and on macOS the resume can occasionally wake a different app that was already paused."
 				/>
 
 				{#if app.recordings.remoteAvailable}
@@ -127,7 +128,7 @@
 								<Alert.Title>Global Shortcuts May Be Unreliable</Alert.Title>
 								<Alert.Description>
 									VAD uses browser-owned capture. macOS App Nap may delay
-									browser recording logic when Whispering is not in focus.
+									browser recording logic when Tironian is not in focus.
 								</Alert.Description>
 							</Alert.Root>
 						{/if}
@@ -228,9 +229,9 @@
 			<Field.Separator />
 
 			<Field.Set id="app" class="scroll-mt-20">
-				<Field.Legend variant="label">Whispering on this machine</Field.Legend>
+				<Field.Legend variant="label">Tironian on this machine</Field.Legend>
 				<Field.Description>
-					Whether Whispering is running and ready to capture, and where it shows
+					Whether Tironian is running and ready to capture, and where it shows
 					that it is.
 				</Field.Description>
 				<Field.Group>

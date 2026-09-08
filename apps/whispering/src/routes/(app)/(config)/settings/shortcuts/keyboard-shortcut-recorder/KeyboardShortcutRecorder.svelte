@@ -44,7 +44,7 @@
 	// One string feeds the glyph tooltip, the live preview, and the success toast.
 	function reachLabel(reach: Reach): string {
 		if (reach === 'focused')
-			return 'Works in Whispering, synced across your devices';
+			return 'Works in Tironian, synced across your devices';
 		return 'Works everywhere on this computer';
 	}
 
@@ -193,7 +193,7 @@
 					{:else}
 						<p class="text-sm font-medium">Press a key</p>
 						<p class="text-xs text-muted-foreground">
-							A bare key works in Whispering, a chord works everywhere.
+							A bare key works in Tironian, a chord works everywhere.
 						</p>
 					{/if}
 				</div>

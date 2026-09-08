@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/constants/brand';
 	import { Toaster } from '@epicenter/ui/sonner';
 	import { ModeWatcher } from 'mode-watcher';
 	import { onNavigate } from '$app/navigation';
 	import { FlushEditsOnHide } from '@epicenter/svelte';
 	import '@epicenter/ui/app.css';
-	// Whispering's brand overrides, layered after the shared theme so they win.
+	// Tironian's brand overrides, layered after the shared theme so they win.
 	// Keep this import last among the stylesheets.
 	import '../app.css';
 
@@ -31,7 +32,7 @@
 	});
 </script>
 
-<svelte:head> <title>Whispering</title> </svelte:head>
+<svelte:head> <title>{pageTitle()}</title> </svelte:head>
 
 {@render children()}
 
