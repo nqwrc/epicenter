@@ -12,6 +12,10 @@
  * page. The rule is: interpolate the name when the name is the whole string,
  * write it when it is a word in a sentence.
  *
+ * One exception, and it is unavoidable: `src/app.html` is static HTML served
+ * before any module loads, so its `<title>` carries the literal. That is the
+ * only copy of the name outside this file that a rename has to remember.
+ *
  * Internal identifiers (`WhisperingApp`, `$lib/whispering/*`,
  * `@epicenter/whispering`) are deliberately not renamed. See
  * `docs/brand/tironian.md`, "Rename tiers": this fork still takes upstream
